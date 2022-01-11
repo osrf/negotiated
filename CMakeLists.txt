@@ -9,6 +9,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED
   src/negotiated_subscriber.cpp
@@ -19,6 +20,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 target_link_libraries(${PROJECT_NAME} PUBLIC
   rclcpp::rclcpp
   ${std_msgs_LIBRARIES}
+)
+ament_target_dependencies(${PROJECT_NAME} PUBLIC
+  std_srvs
 )
 
 ament_export_targets(export_${PROJECT_NAME})

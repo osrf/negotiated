@@ -19,6 +19,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/empty.hpp"
+#include "std_srvs/srv/empty.hpp"
 
 namespace negotiated
 {
@@ -30,6 +31,7 @@ public:
 
 private:
   rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr subscription_;
+  rclcpp::Service<std_srvs::srv::Empty>::SharedPtr negotiation_srv_;
 };
 
 }  // namespace negotiated
