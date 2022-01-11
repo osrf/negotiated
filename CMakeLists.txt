@@ -27,6 +27,14 @@ ament_target_dependencies(${PROJECT_NAME} PUBLIC
 
 ament_export_targets(export_${PROJECT_NAME})
 
+add_executable(neg_sub_example1
+  src/neg_sub_example1.cpp
+)
+target_link_libraries(neg_sub_example1
+  rclcpp::rclcpp
+  ${PROJECT_NAME}
+)
+
 install(
   DIRECTORY include/
   DESTINATION include/${PROJECT_NAME}
@@ -37,6 +45,11 @@ install(
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
+)
+
+install(TARGETS
+  neg_sub_example1
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)
