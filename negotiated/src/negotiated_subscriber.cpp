@@ -36,8 +36,12 @@ NegotiatedSubscriber::NegotiatedSubscriber(rclcpp::Node & node, const std::strin
   auto srv_cb = [](const negotiated_interfaces::srv::NegotiatedPreferences::Request::SharedPtr req,
                    negotiated_interfaces::srv::NegotiatedPreferences::Response::SharedPtr resp)
   {
-    (void)req;
-    resp->preferences = "a,b,c";
+    if (req->command != "negotiate") {
+      resp->preferences = "";
+    } else {
+      // TODO(clalancette): this should be given to us by the user somehow
+      resp->preferences = "a,b,c";
+    }
   };
 
   negotiation_srv_ = rclcpp::create_service<negotiated_interfaces::srv::NegotiatedPreferences>(node.get_node_base_interface(), node.get_node_services_interface(), "negotiation_service", srv_cb, rmw_qos_profile_services_default, nullptr);

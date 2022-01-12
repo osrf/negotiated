@@ -36,9 +36,15 @@ NegotiatedPublisher::NegotiatedPublisher(rclcpp::Node::SharedPtr node, const std
 
 bool NegotiatedPublisher::negotiate()
 {
+  std::vector<std::string> preferences;
+
   rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph = node_->get_node_graph_interface();
   std::vector<rclcpp::TopicEndpointInfo> sub_info_list = node_graph->get_subscriptions_info_by_topic(topic_name_);
 
+  // TODO(clalancette): we could probably significantly speed this up by
+  // checking which negotiated subscriptions are ready now, sending the request
+  // to all of those, and then periodically waiting on the rest until they ar
+  // ready.
   for (const rclcpp::TopicEndpointInfo & info : sub_info_list) {
     std::string name = info.node_name();
     std::string ns = info.node_namespace();
@@ -48,21 +54,27 @@ bool NegotiatedPublisher::negotiate()
     rclcpp::Client<negotiated_interfaces::srv::NegotiatedPreferences>::SharedPtr client = node_->create_client<negotiated_interfaces::srv::NegotiatedPreferences>("negotiation_service");
 
     auto request = std::make_shared<negotiated_interfaces::srv::NegotiatedPreferences::Request>();
+    request->command = "negotiate";
 
     while (!client->wait_for_service(std::chrono::seconds(1))) {
       if (!rclcpp::ok()) {
         RCLCPP_ERROR(node_->get_logger(), "Interrupted while waiting for the service");
-        // TODO(clalancette): this means that if any of the negotiated subscribers
-        // goes away before we can perform negotiation, the whole thing fails.
-        // We should probably instead return a list of those that failed.
         return false;
       }
+
+      // TODO(clalancette): we should eventually give up on this one and go to
+      // the next one.
     }
 
     auto result = client->async_send_request(request);
     // TODO(clalancette): timeout?
     if (rclcpp::spin_until_future_complete(node_, result) == rclcpp::FutureReturnCode::SUCCESS) {
-      RCLCPP_INFO(node_->get_logger(), "Result: %s", result.get()->preferences.c_str());
+      auto result_pointer = result.get();
+      RCLCPP_INFO(node_->get_logger(), "Result: %s", result_pointer->preferences.c_str());
+    // TODO(clalancette): if the NegotiatedSubscriber didn't give us preferences,
+    // we should probably not respond to them; something is probably wrong
+    std::string pref = result_pointer->preferences;
+    preferences.push_back(pref);
     } else {
       RCLCPP_INFO(node_->get_logger(), "Failed to call service");
       // TODO(clalancette): this means that if any of the negotiated subscribers
@@ -70,7 +82,14 @@ bool NegotiatedPublisher::negotiate()
       // We should probably instead return a list of those that failed.
       return false;
     }
+
   }
+
+  // TODO(clalancette): run the algorithm to choose the type
+
+  // Now that we've run the algorithm and figured out what our actual publication
+  // "type" is going to be, create the publisher and inform the subscriptions
+  // the name of it.
 
   return true;
 }
