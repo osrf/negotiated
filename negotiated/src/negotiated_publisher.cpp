@@ -52,7 +52,7 @@ bool NegotiatedPublisher::negotiate()
 
     RCLCPP_INFO(node_->get_logger(), "Attempting to negotiate with %s/%s", name.c_str(), ns.c_str());
 
-    rclcpp::Client<negotiated_interfaces::srv::NegotiatedPreferences>::SharedPtr client = node_->create_client<negotiated_interfaces::srv::NegotiatedPreferences>(name + "/negotiation_service");
+    rclcpp::Client<negotiated_interfaces::srv::NegotiatedPreferences>::SharedPtr client = node_->create_client<negotiated_interfaces::srv::NegotiatedPreferences>(name + "/" + topic_name_ + "/negotiation_service");
 
     auto request = std::make_shared<negotiated_interfaces::srv::NegotiatedPreferences::Request>();
 
