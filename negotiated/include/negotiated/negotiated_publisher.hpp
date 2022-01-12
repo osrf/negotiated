@@ -21,6 +21,8 @@
 #include "rclcpp/node_interfaces/node_graph.hpp"
 #include "std_msgs/msg/empty.hpp"
 
+#include "negotiated_interfaces/msg/new_topic_info.hpp"
+
 namespace negotiated
 {
 
@@ -34,7 +36,7 @@ public:
 private:
   std::string topic_name_;
   rclcpp::Node::SharedPtr node_;
-  rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr neg_publisher_;
+  rclcpp::Publisher<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_publisher_;
   rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr publisher_;
 };
 
