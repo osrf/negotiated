@@ -23,22 +23,25 @@
 
 namespace negotiated
 {
-NegotiatedPublisher::NegotiatedPublisher(rclcpp::Node & node, const std::string & topic_name)
+NegotiatedPublisher::NegotiatedPublisher(rclcpp::Node::SharedPtr node, const std::string & topic_name)
+  : topic_name_(topic_name),
+    node_(node)
 {
-  topic_name_ = topic_name;
   publisher_ = rclcpp::create_publisher<std_msgs::msg::Empty>(node, topic_name, rclcpp::QoS(10));
-  node_graph_ = node.get_node_graph_interface().get();
 }
 
 void NegotiatedPublisher::negotiate()
 {
-  std::vector<rclcpp::TopicEndpointInfo> sub_info_list = node_graph_->get_subscriptions_info_by_topic(topic_name_);
+  rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph = node_->get_node_graph_interface();
+  std::vector<rclcpp::TopicEndpointInfo> sub_info_list = node_graph->get_subscriptions_info_by_topic(topic_name_);
 
   for (const rclcpp::TopicEndpointInfo & info : sub_info_list) {
     std::string name = info.node_name();
     std::string ns = info.node_namespace();
 
     fprintf(stderr, "Attempting to negotiate with %s/%s\n", name.c_str(), ns.c_str());
+
+    //rclcpp::Client<negotiated_interfaces::srv::NegotiatedPreferences>::SharedPtr client =
   }
 }
 
