@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include <string>
+#include <vector>
 
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp/node_interfaces/node_graph.hpp"
 #include "std_msgs/msg/empty.hpp"
 
 #include "negotiated/negotiated_publisher.hpp"
@@ -23,7 +25,21 @@ namespace negotiated
 {
 NegotiatedPublisher::NegotiatedPublisher(rclcpp::Node & node, const std::string & topic_name)
 {
+  topic_name_ = topic_name;
   publisher_ = rclcpp::create_publisher<std_msgs::msg::Empty>(node, topic_name, rclcpp::QoS(10));
+  node_graph_ = node.get_node_graph_interface().get();
+}
+
+void NegotiatedPublisher::negotiate()
+{
+  std::vector<rclcpp::TopicEndpointInfo> sub_info_list = node_graph_->get_subscriptions_info_by_topic(topic_name_);
+
+  for (const rclcpp::TopicEndpointInfo & info : sub_info_list) {
+    std::string name = info.node_name();
+    std::string ns = info.node_namespace();
+
+    fprintf(stderr, "Attempting to negotiate with %s/%s\n", name.c_str(), ns.c_str());
+  }
 }
 
 }  // namespace negotiated

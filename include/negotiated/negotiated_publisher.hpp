@@ -18,8 +18,8 @@
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp/node_interfaces/node_graph.hpp"
 #include "std_msgs/msg/empty.hpp"
-#include "std_srvs/srv/empty.hpp"
 
 namespace negotiated
 {
@@ -29,8 +29,12 @@ class NegotiatedPublisher
 public:
   explicit NegotiatedPublisher(rclcpp::Node & node, const std::string & topic_name);
 
+  void negotiate();
+
 private:
+  std::string topic_name_;
   rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr publisher_;
+  rclcpp::node_interfaces::NodeGraphInterface * node_graph_;  // FIXME: what about the lifetime of this vs. the node?
 };
 
 }  // namespace negotiated
