@@ -7,9 +7,9 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(negotiated_interfaces REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
-find_package(std_srvs REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED
   src/negotiated_publisher.cpp
@@ -20,8 +20,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>")
 target_link_libraries(${PROJECT_NAME} PUBLIC
   rclcpp::rclcpp
-  ${std_msgs_LIBRARIES}
-  ${std_srvs_TARGETS}
+  ${std_msg_LIBRARIES}
+  ${negotiated_interfaces_TARGETS}
 )
 
 ament_export_targets(export_${PROJECT_NAME})

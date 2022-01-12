@@ -16,7 +16,8 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/empty.hpp"
-#include "std_srvs/srv/empty.hpp"
+
+#include "negotiated_interfaces/srv/negotiated_preferences.hpp"
 
 #include "negotiated/negotiated_subscriber.hpp"
 
@@ -32,14 +33,14 @@ NegotiatedSubscriber::NegotiatedSubscriber(rclcpp::Node & node, const std::strin
 
   subscription_ = rclcpp::create_subscription<std_msgs::msg::Empty>(node, topic_name, rclcpp::QoS(10), sub_cb, rclcpp::SubscriptionOptions());
 
-  auto srv_cb = [](const std_srvs::srv::Empty::Request::SharedPtr req,
-                   std_srvs::srv::Empty::Response::SharedPtr resp)
+  auto srv_cb = [](const negotiated_interfaces::srv::NegotiatedPreferences::Request::SharedPtr req,
+                   negotiated_interfaces::srv::NegotiatedPreferences::Response::SharedPtr resp)
   {
     (void)req;
     (void)resp;
   };
 
-  negotiation_srv_ = rclcpp::create_service<std_srvs::srv::Empty>(node.get_node_base_interface(), node.get_node_services_interface(), "myservice", srv_cb, rmw_qos_profile_services_default, nullptr);
+  negotiation_srv_ = rclcpp::create_service<negotiated_interfaces::srv::NegotiatedPreferences>(node.get_node_base_interface(), node.get_node_services_interface(), "myservice", srv_cb, rmw_qos_profile_services_default, nullptr);
 }
 
 }  // namespace negotiated
