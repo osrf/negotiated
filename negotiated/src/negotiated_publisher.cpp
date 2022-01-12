@@ -51,7 +51,7 @@ bool NegotiatedPublisher::negotiate()
 
     RCLCPP_INFO(node_->get_logger(), "Attempting to negotiate with %s/%s", name.c_str(), ns.c_str());
 
-    rclcpp::Client<negotiated_interfaces::srv::NegotiatedPreferences>::SharedPtr client = node_->create_client<negotiated_interfaces::srv::NegotiatedPreferences>("negotiation_service");
+    rclcpp::Client<negotiated_interfaces::srv::NegotiatedPreferences>::SharedPtr client = node_->create_client<negotiated_interfaces::srv::NegotiatedPreferences>(name + "/negotiation_service");
 
     auto request = std::make_shared<negotiated_interfaces::srv::NegotiatedPreferences::Request>();
     request->command = "negotiate";
@@ -105,7 +105,7 @@ bool NegotiatedPublisher::negotiate()
 
     RCLCPP_INFO(node_->get_logger(), "Setting topic name to %s/%s", name.c_str(), ns.c_str());
 
-    rclcpp::Client<negotiated_interfaces::srv::NegotiatedPreferences>::SharedPtr client = node_->create_client<negotiated_interfaces::srv::NegotiatedPreferences>("negotiation_service");
+    rclcpp::Client<negotiated_interfaces::srv::NegotiatedPreferences>::SharedPtr client = node_->create_client<negotiated_interfaces::srv::NegotiatedPreferences>(name + "/negotiation_service");
 
     auto request = std::make_shared<negotiated_interfaces::srv::NegotiatedPreferences::Request>();
     request->command = "set_negotiated_name";

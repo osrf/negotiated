@@ -56,7 +56,7 @@ NegotiatedSubscriber::NegotiatedSubscriber(rclcpp::Node::SharedPtr node, const s
     }
   };
 
-  negotiation_srv_ = rclcpp::create_service<negotiated_interfaces::srv::NegotiatedPreferences>(node->get_node_base_interface(), node->get_node_services_interface(), "negotiation_service", srv_cb, rmw_qos_profile_services_default, nullptr);
+  negotiation_srv_ = rclcpp::create_service<negotiated_interfaces::srv::NegotiatedPreferences>(node->get_node_base_interface(), node->get_node_services_interface(), std::string(node_->get_name()) + "/negotiation_service", srv_cb, rmw_qos_profile_services_default, nullptr);
 }
 
 }  // namespace negotiated
