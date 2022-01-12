@@ -20,9 +20,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 target_link_libraries(${PROJECT_NAME} PUBLIC
   rclcpp::rclcpp
   ${std_msgs_LIBRARIES}
-)
-ament_target_dependencies(${PROJECT_NAME} PUBLIC
-  std_srvs
+  ${std_srvs_TARGETS}
 )
 
 ament_export_targets(export_${PROJECT_NAME})
