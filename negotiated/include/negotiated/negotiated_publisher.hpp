@@ -29,7 +29,7 @@ class NegotiatedPublisher
 public:
   explicit NegotiatedPublisher(rclcpp::Node::SharedPtr node, const std::string & topic_name);
 
-  void negotiate();
+  bool negotiate();
 
 private:
   std::string topic_name_;

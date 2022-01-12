@@ -34,6 +34,14 @@ target_link_libraries(neg_sub_example1
   ${PROJECT_NAME}
 )
 
+add_executable(neg_pub_example1
+  src/neg_pub_example1.cpp
+)
+target_link_libraries(neg_pub_example1
+  rclcpp::rclcpp
+  ${PROJECT_NAME}
+)
+
 install(
   DIRECTORY include/
   DESTINATION include/${PROJECT_NAME}
@@ -48,6 +56,7 @@ install(
 
 install(TARGETS
   neg_sub_example1
+  neg_pub_example1
   DESTINATION lib/${PROJECT_NAME}
 )
 
