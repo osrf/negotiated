@@ -103,12 +103,13 @@ bool NegotiatedPublisher::negotiate()
     std::string name = info.node_name();
     std::string ns = info.node_namespace();
 
-    RCLCPP_INFO(node_->get_logger(), "Attempting to negotiate with %s/%s", name.c_str(), ns.c_str());
+    RCLCPP_INFO(node_->get_logger(), "Setting topic name to %s/%s", name.c_str(), ns.c_str());
 
     rclcpp::Client<negotiated_interfaces::srv::NegotiatedPreferences>::SharedPtr client = node_->create_client<negotiated_interfaces::srv::NegotiatedPreferences>("negotiation_service");
 
     auto request = std::make_shared<negotiated_interfaces::srv::NegotiatedPreferences::Request>();
     request->command = "set_negotiated_name";
+    request->name = new_topic_name;
 
     while (!client->wait_for_service(std::chrono::seconds(1))) {
       if (!rclcpp::ok()) {

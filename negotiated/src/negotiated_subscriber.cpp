@@ -24,29 +24,39 @@
 namespace negotiated
 {
 
-NegotiatedSubscriber::NegotiatedSubscriber(rclcpp::Node & node, const std::string & topic_name)
+NegotiatedSubscriber::NegotiatedSubscriber(rclcpp::Node::SharedPtr node, const std::string & topic_name)
+  : node_(node)
 {
-  auto sub_cb = [](const std_msgs::msg::Empty & msg)
+  auto sub_cb = [this](const std_msgs::msg::Empty & msg)
   {
     (void)msg;
+    RCLCPP_INFO(this->node_->get_logger(), "Negotiated callback");
   };
 
   // TODO(clalancette): can we just use node->create_subscription() here?
-  neg_subscription_ = rclcpp::create_subscription<std_msgs::msg::Empty>(node, topic_name, rclcpp::QoS(10), sub_cb, rclcpp::SubscriptionOptions());
+  neg_subscription_ = rclcpp::create_subscription<std_msgs::msg::Empty>(node_, topic_name, rclcpp::QoS(10), sub_cb, rclcpp::SubscriptionOptions());
 
-  auto srv_cb = [](const negotiated_interfaces::srv::NegotiatedPreferences::Request::SharedPtr req,
+  auto user_cb = [this](const std_msgs::msg::Empty & msg)
+  {
+    (void)msg;
+    RCLCPP_INFO(this->node_->get_logger(), "User callback");
+  };
+
+  auto srv_cb = [this, user_cb](const negotiated_interfaces::srv::NegotiatedPreferences::Request::SharedPtr req,
                    negotiated_interfaces::srv::NegotiatedPreferences::Response::SharedPtr resp)
   {
     if (req->command == "negotiate") {
       // TODO(clalancette): this should be given to us by the user somehow
       resp->preferences = "a,b,c";
     } else if (req->command == "set_negotiated_name") {
+      RCLCPP_INFO(this->node_->get_logger(), "Creating subscription to %s", req->name.c_str());
+      this->subscription_ = this->node_->create_subscription<std_msgs::msg::Empty>(req->name, rclcpp::QoS(10), user_cb);
     } else {
       resp->preferences = "";
     }
   };
 
-  negotiation_srv_ = rclcpp::create_service<negotiated_interfaces::srv::NegotiatedPreferences>(node.get_node_base_interface(), node.get_node_services_interface(), "negotiation_service", srv_cb, rmw_qos_profile_services_default, nullptr);
+  negotiation_srv_ = rclcpp::create_service<negotiated_interfaces::srv::NegotiatedPreferences>(node->get_node_base_interface(), node->get_node_services_interface(), "negotiation_service", srv_cb, rmw_qos_profile_services_default, nullptr);
 }
 
 }  // namespace negotiated

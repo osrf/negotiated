@@ -18,23 +18,13 @@
 
 #include "negotiated/negotiated_subscriber.hpp"
 
-class NegSub1 : public rclcpp::Node
-{
-public:
-  NegSub1() : rclcpp::Node("neg_sub_node")
-  {
-    neg_sub_ = std::make_shared<negotiated::NegotiatedSubscriber>(*this, "myneg");
-  }
-
-private:
-  std::shared_ptr<negotiated::NegotiatedSubscriber> neg_sub_;
-};
-
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
 
-  auto node = std::make_shared<NegSub1>();
+  auto node = std::make_shared<rclcpp::Node>("neg_sub_node");
+
+  auto neg_sub = std::make_shared<negotiated::NegotiatedSubscriber>(node, "myneg");
 
   rclcpp::spin(node);
 
