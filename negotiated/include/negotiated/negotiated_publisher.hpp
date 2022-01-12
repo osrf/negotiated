@@ -34,6 +34,7 @@ public:
 private:
   std::string topic_name_;
   rclcpp::Node::SharedPtr node_;
+  rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr neg_publisher_;
   rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr publisher_;
 };
 

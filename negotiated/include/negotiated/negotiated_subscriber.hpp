@@ -27,10 +27,12 @@ namespace negotiated
 class NegotiatedSubscriber
 {
 public:
+  // TODO: to be compatible with the NegotiatedPublisher, we should use a
+  // rclcpp::Node::SharedPtr here
   explicit NegotiatedSubscriber(rclcpp::Node & node, const std::string & topic_name);
 
 private:
-  rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr subscription_;
+  rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr neg_subscription_;
   rclcpp::Service<negotiated_interfaces::srv::NegotiatedPreferences>::SharedPtr negotiation_srv_;
 };
 

@@ -31,16 +31,18 @@ NegotiatedSubscriber::NegotiatedSubscriber(rclcpp::Node & node, const std::strin
     (void)msg;
   };
 
-  subscription_ = rclcpp::create_subscription<std_msgs::msg::Empty>(node, topic_name, rclcpp::QoS(10), sub_cb, rclcpp::SubscriptionOptions());
+  // TODO(clalancette): can we just use node->create_subscription() here?
+  neg_subscription_ = rclcpp::create_subscription<std_msgs::msg::Empty>(node, topic_name, rclcpp::QoS(10), sub_cb, rclcpp::SubscriptionOptions());
 
   auto srv_cb = [](const negotiated_interfaces::srv::NegotiatedPreferences::Request::SharedPtr req,
                    negotiated_interfaces::srv::NegotiatedPreferences::Response::SharedPtr resp)
   {
-    if (req->command != "negotiate") {
-      resp->preferences = "";
-    } else {
+    if (req->command == "negotiate") {
       // TODO(clalancette): this should be given to us by the user somehow
       resp->preferences = "a,b,c";
+    } else if (req->command == "set_negotiated_name") {
+    } else {
+      resp->preferences = "";
     }
   };
 
