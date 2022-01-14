@@ -14,14 +14,15 @@
 
 #include <chrono>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/node_interfaces/node_graph.hpp"
 #include "std_msgs/msg/empty.hpp"
+#include "std_msgs/msg/string.hpp"
 
 #include "negotiated_interfaces/msg/new_topic_info.hpp"
-#include "negotiated_interfaces/srv/negotiated_preferences.hpp"
 
 #include "negotiated/negotiated_publisher.hpp"
 
@@ -33,56 +34,24 @@ NegotiatedPublisher::NegotiatedPublisher(rclcpp::Node::SharedPtr node, const std
 {
   // TODO(clalancette): can we just use node->create_publisher() ?
   neg_publisher_ = rclcpp::create_publisher<negotiated_interfaces::msg::NewTopicInfo>(node_, topic_name_, rclcpp::QoS(10));
+
+  auto user_cb = [this](const std_msgs::msg::String & pref)
+  {
+    fprintf(stderr, "Saw data %s\n", pref.data.c_str());
+    preferences_.push_back(pref.data);
+  };
+
+  std::string pref_name = topic_name_ + "_preferences";
+  fprintf(stderr, "About to subscribe to %s\n", pref_name.c_str());
+  pref_sub_ = node_->create_subscription<std_msgs::msg::String>(pref_name, rclcpp::QoS(100).transient_local(), user_cb);
 }
 
 bool NegotiatedPublisher::negotiate()
 {
-  std::vector<std::string> preferences;
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-  rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph = node_->get_node_graph_interface();
-  std::vector<rclcpp::TopicEndpointInfo> sub_info_list = node_graph->get_subscriptions_info_by_topic(topic_name_);
-
-  // TODO(clalancette): we could probably significantly speed this up by
-  // checking which negotiated subscriptions are ready now, sending the request
-  // to all of those, and then periodically waiting on the rest until they ar
-  // ready.
-  for (const rclcpp::TopicEndpointInfo & info : sub_info_list) {
-    std::string name = info.node_name();
-    std::string ns = info.node_namespace();
-
-    RCLCPP_INFO(node_->get_logger(), "Attempting to negotiate with %s/%s", name.c_str(), ns.c_str());
-
-    rclcpp::Client<negotiated_interfaces::srv::NegotiatedPreferences>::SharedPtr client = node_->create_client<negotiated_interfaces::srv::NegotiatedPreferences>(name + "/" + topic_name_ + "/negotiation_service");
-
-    auto request = std::make_shared<negotiated_interfaces::srv::NegotiatedPreferences::Request>();
-
-    while (!client->wait_for_service(std::chrono::seconds(1))) {
-      if (!rclcpp::ok()) {
-        RCLCPP_ERROR(node_->get_logger(), "Interrupted while waiting for the service");
-        return false;
-      }
-
-      // TODO(clalancette): we should eventually give up on this one and go to
-      // the next one.
-    }
-
-    auto result = client->async_send_request(request);
-    // TODO(clalancette): timeout?
-    if (rclcpp::spin_until_future_complete(node_, result) == rclcpp::FutureReturnCode::SUCCESS) {
-      auto result_pointer = result.get();
-      RCLCPP_INFO(node_->get_logger(), "Result: %s", result_pointer->preferences.c_str());
-      // TODO(clalancette): if the NegotiatedSubscriber gave us empty preferences,
-      // we should probably not respond to them; something is probably wrong
-      std::string pref = result_pointer->preferences;
-      preferences.push_back(pref);
-    } else {
-      RCLCPP_INFO(node_->get_logger(), "Failed to call service with command");
-      // TODO(clalancette): this means that if any of the negotiated subscribers
-      // goes away before we can perform negotiation, the whole thing fails.
-      // We should probably instead return a list of those that failed.
-      return false;
-    }
-
+  for (const std::string & pref : preferences_) {
+    fprintf(stderr, "Saw preferences %s\n", pref.c_str());
   }
 
   // TODO(clalancette): run the algorithm to choose the type

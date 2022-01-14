@@ -19,9 +19,9 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/empty.hpp"
+#include "std_msgs/msg/string.hpp"
 
 #include "negotiated_interfaces/msg/new_topic_info.hpp"
-#include "negotiated_interfaces/srv/negotiated_preferences.hpp"
 
 namespace negotiated
 {
@@ -35,7 +35,7 @@ private:
   rclcpp::Node::SharedPtr node_;
   rclcpp::Subscription<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_subscription_;
   rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr subscription_;
-  rclcpp::Service<negotiated_interfaces::srv::NegotiatedPreferences>::SharedPtr negotiation_srv_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr preferences_pub_;
 };
 
 }  // namespace negotiated

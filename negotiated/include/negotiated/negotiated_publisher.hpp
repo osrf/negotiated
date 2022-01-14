@@ -16,10 +16,12 @@
 #define NEGOTIATED__NEGOTIATED_PUBLISHER_HPP_
 
 #include <string>
+#include <vector>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/node_interfaces/node_graph.hpp"
 #include "std_msgs/msg/empty.hpp"
+#include "std_msgs/msg/string.hpp"
 
 #include "negotiated_interfaces/msg/new_topic_info.hpp"
 
@@ -38,6 +40,8 @@ private:
   rclcpp::Node::SharedPtr node_;
   rclcpp::Publisher<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_publisher_;
   rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr publisher_;
+  rclcpp::Subscription<std_msgs::msg::String>::SharedPtr pref_sub_;
+  std::vector<std::string> preferences_;
 };
 
 }  // namespace negotiated

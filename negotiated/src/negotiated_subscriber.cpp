@@ -16,9 +16,9 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/empty.hpp"
+#include "std_msgs/msg/string.hpp"
 
 #include "negotiated_interfaces/msg/new_topic_info.hpp"
-#include "negotiated_interfaces/srv/negotiated_preferences.hpp"
 
 #include "negotiated/negotiated_subscriber.hpp"
 
@@ -43,16 +43,13 @@ NegotiatedSubscriber::NegotiatedSubscriber(rclcpp::Node::SharedPtr node, const s
   // TODO(clalancette): can we just use node->create_subscription() here?
   neg_subscription_ = rclcpp::create_subscription<negotiated_interfaces::msg::NewTopicInfo>(node_, topic_name, rclcpp::QoS(10), sub_cb, rclcpp::SubscriptionOptions());
 
-  auto srv_cb = [](const negotiated_interfaces::srv::NegotiatedPreferences::Request::SharedPtr req,
-                   negotiated_interfaces::srv::NegotiatedPreferences::Response::SharedPtr resp)
-  {
-    (void)req;
+  preferences_pub_ = node_->create_publisher<std_msgs::msg::String>(
+    topic_name + "_preferences",
+    rclcpp::QoS(100).transient_local());
 
-    // TODO(clalancette): this should be given to us by the user somehow
-    resp->preferences = "a,b,c";
-  };
-
-  negotiation_srv_ = rclcpp::create_service<negotiated_interfaces::srv::NegotiatedPreferences>(node->get_node_base_interface(), node->get_node_services_interface(), std::string(node_->get_name()) + "/" + topic_name + "/negotiation_service", srv_cb, rmw_qos_profile_services_default, nullptr);
+  auto pref = std::make_unique<std_msgs::msg::String>();
+  pref->data = "a,b,c";
+  preferences_pub_->publish(std::move(pref));
 }
 
 }  // namespace negotiated
