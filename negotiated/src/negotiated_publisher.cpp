@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <chrono>
+#include <memory>
 #include <string>
-#include <thread>
-#include <vector>
+#include <utility>
 
 #include "rclcpp/rclcpp.hpp"
-#include "rclcpp/node_interfaces/node_graph.hpp"
 #include "std_msgs/msg/empty.hpp"
 #include "std_msgs/msg/string.hpp"
 
@@ -32,11 +30,11 @@ NegotiatedPublisher::NegotiatedPublisher(rclcpp::Node::SharedPtr node, const std
   : topic_name_(topic_name),
     node_(node)
 {
-  // TODO(clalancette): can we just use node->create_publisher() ?
-  neg_publisher_ = rclcpp::create_publisher<negotiated_interfaces::msg::NewTopicInfo>(node_, topic_name_, rclcpp::QoS(10));
+  neg_publisher_ = node_->create_publisher<negotiated_interfaces::msg::NewTopicInfo>(topic_name_, rclcpp::QoS(10));
 
   auto user_cb = [this](const std_msgs::msg::String & pref)
   {
+    // TODO(clalancette): We have to consider renegotiation here
     fprintf(stderr, "Saw data %s\n", pref.data.c_str());
     preferences_.push_back(pref.data);
   };
@@ -48,8 +46,6 @@ NegotiatedPublisher::NegotiatedPublisher(rclcpp::Node::SharedPtr node, const std
 
 bool NegotiatedPublisher::negotiate()
 {
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
   for (const std::string & pref : preferences_) {
     fprintf(stderr, "Saw preferences %s\n", pref.c_str());
   }
@@ -60,9 +56,8 @@ bool NegotiatedPublisher::negotiate()
   // "type" is going to be, create the publisher and inform the subscriptions
   // the name of it.
 
-  // TODO(clalancette): can we just use node->create_publisher() ?
   std::string new_topic_name = topic_name_ + "/yuv422";
-  publisher_ = rclcpp::create_publisher<std_msgs::msg::Empty>(node_, new_topic_name, rclcpp::QoS(10));
+  publisher_ = node_->create_publisher<std_msgs::msg::Empty>(new_topic_name, rclcpp::QoS(10));
 
   auto msg = std::make_unique<negotiated_interfaces::msg::NewTopicInfo>();
   msg->name = new_topic_name;

@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
 #include <string>
+#include <utility>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/empty.hpp"
@@ -40,8 +42,7 @@ NegotiatedSubscriber::NegotiatedSubscriber(rclcpp::Node::SharedPtr node, const s
     this->subscription_ = this->node_->create_subscription<std_msgs::msg::Empty>(msg.name, rclcpp::QoS(10), user_cb);
   };
 
-  // TODO(clalancette): can we just use node->create_subscription() here?
-  neg_subscription_ = rclcpp::create_subscription<negotiated_interfaces::msg::NewTopicInfo>(node_, topic_name, rclcpp::QoS(10), sub_cb, rclcpp::SubscriptionOptions());
+  neg_subscription_ = node_->create_subscription<negotiated_interfaces::msg::NewTopicInfo>(topic_name, rclcpp::QoS(10), sub_cb);
 
   preferences_pub_ = node_->create_publisher<std_msgs::msg::String>(
     topic_name + "_preferences",

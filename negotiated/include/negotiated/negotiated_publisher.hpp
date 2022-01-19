@@ -19,7 +19,6 @@
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
-#include "rclcpp/node_interfaces/node_graph.hpp"
 #include "std_msgs/msg/empty.hpp"
 #include "std_msgs/msg/string.hpp"
 
