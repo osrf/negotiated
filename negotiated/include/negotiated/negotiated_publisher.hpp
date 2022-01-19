@@ -15,7 +15,9 @@
 #ifndef NEGOTIATED__NEGOTIATED_PUBLISHER_HPP_
 #define NEGOTIATED__NEGOTIATED_PUBLISHER_HPP_
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
@@ -53,7 +55,7 @@ public:
     std::string pref_name = topic_name_ + "_preferences";
     fprintf(stderr, "About to subscribe to %s\n", pref_name.c_str());
     pref_sub_ = node_->create_subscription<negotiated_interfaces::msg::Preferences>(
-                                                                                    pref_name, rclcpp::QoS(100).transient_local(), user_cb);
+      pref_name, rclcpp::QoS(100).transient_local(), user_cb);
   }
 
   bool negotiate()

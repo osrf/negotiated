@@ -25,7 +25,9 @@ int main(int argc, char ** argv)
 
   auto node = std::make_shared<rclcpp::Node>("neg_pub_node");
 
-  auto neg_pub = std::make_shared<negotiated::NegotiatedPublisher<std_msgs::msg::Empty>>(node, "myneg");
+  auto neg_pub = std::make_shared<negotiated::NegotiatedPublisher<std_msgs::msg::Empty>>(
+    node,
+    "myneg");
 
   neg_pub->negotiate();
 

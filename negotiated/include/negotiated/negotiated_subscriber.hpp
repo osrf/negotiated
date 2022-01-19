@@ -40,7 +40,8 @@ public:
     CallbackT && callback,
     rclcpp::QoS final_qos = rclcpp::QoS(10))
   {
-    auto sub_cb = [this, node, callback, final_qos](const negotiated_interfaces::msg::NewTopicInfo & msg)
+    auto sub_cb =
+      [this, node, callback, final_qos](const negotiated_interfaces::msg::NewTopicInfo & msg)
       {
         RCLCPP_INFO(node->get_logger(), "Creating subscription to %s", msg.name.c_str());
         this->subscription_ = node->create_subscription<MessageT>(
