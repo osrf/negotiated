@@ -24,12 +24,13 @@ int main(int argc, char ** argv)
 
   auto node = std::make_shared<rclcpp::Node>("neg_pub_node");
 
-  std::shared_ptr<negotiated::NegotiatedPublisher> neg_pub = std::make_shared<negotiated::NegotiatedPublisher>(node, "myneg");
+  auto neg_pub = std::make_shared<negotiated::NegotiatedPublisher>(node, "myneg");
 
   neg_pub->negotiate();
 
   rclcpp::spin(node);
 
   rclcpp::shutdown();
+
   return 0;
 }
