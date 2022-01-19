@@ -15,11 +15,11 @@
 #ifndef NEGOTIATED__NEGOTIATED_SUBSCRIBER_HPP_
 #define NEGOTIATED__NEGOTIATED_SUBSCRIBER_HPP_
 
+#include <memory>
 #include <string>
+#include <utility>
 
 #include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/empty.hpp"
-#include "std_msgs/msg/string.hpp"
 
 #include "negotiated_interfaces/msg/new_topic_info.hpp"
 #include "negotiated_interfaces/msg/preferences.hpp"
@@ -27,6 +27,7 @@
 namespace negotiated
 {
 
+template<typename MessageT>
 class NegotiatedSubscriber
 {
 public:
@@ -42,7 +43,7 @@ public:
     auto sub_cb = [this, node, callback, final_qos](const negotiated_interfaces::msg::NewTopicInfo & msg)
       {
         RCLCPP_INFO(node->get_logger(), "Creating subscription to %s", msg.name.c_str());
-        this->subscription_ = node->create_subscription<std_msgs::msg::Empty>(
+        this->subscription_ = node->create_subscription<MessageT>(
           msg.name, final_qos, callback);
       };
 
@@ -75,7 +76,7 @@ public:
 
 private:
   rclcpp::Subscription<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_subscription_;
-  rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr subscription_;
+  typename rclcpp::Subscription<MessageT>::SharedPtr subscription_;
   rclcpp::Publisher<negotiated_interfaces::msg::Preferences>::SharedPtr preferences_pub_;
 };
 
