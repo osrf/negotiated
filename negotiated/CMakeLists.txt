@@ -11,33 +11,35 @@ find_package(negotiated_interfaces REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 
-add_library(${PROJECT_NAME} SHARED
-  src/negotiated_publisher.cpp
-)
-target_include_directories(${PROJECT_NAME} PUBLIC
-  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+add_library(${PROJECT_NAME} INTERFACE)
+target_include_directories(${PROJECT_NAME} INTERFACE
   "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>")
-target_link_libraries(${PROJECT_NAME} PUBLIC
+target_link_libraries(${PROJECT_NAME} INTERFACE
   rclcpp::rclcpp
-  ${std_msg_LIBRARIES}
   ${negotiated_interfaces_TARGETS}
 )
-
-ament_export_targets(export_${PROJECT_NAME})
 
 add_executable(neg_sub_example1
   src/neg_sub_example1.cpp
 )
+target_include_directories(neg_sub_example1 PRIVATE
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+)
 target_link_libraries(neg_sub_example1
   rclcpp::rclcpp
+  ${std_msg_LIBRARIES}
   ${PROJECT_NAME}
 )
 
 add_executable(neg_pub_example1
   src/neg_pub_example1.cpp
 )
+target_include_directories(neg_pub_example1 PRIVATE
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+)
 target_link_libraries(neg_pub_example1
   rclcpp::rclcpp
+  ${std_msg_LIBRARIES}
   ${PROJECT_NAME}
 )
 
@@ -46,12 +48,13 @@ install(
   DESTINATION include/${PROJECT_NAME}
 )
 
-install(
-  TARGETS ${PROJECT_NAME}
-  EXPORT export_${PROJECT_NAME}
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-)
+install(TARGETS ${PROJECT_NAME} EXPORT export_${PROJECT_NAME})
+
+ament_export_include_directories("include/${PROJECT_NAME}")
+
+ament_export_targets(export_${PROJECT_NAME})
+
+ament_export_dependencies(negotiated_interfaces rclcpp)
 
 install(TARGETS
   neg_sub_example1
