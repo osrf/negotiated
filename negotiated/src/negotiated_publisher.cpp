@@ -29,9 +29,10 @@
 namespace negotiated
 {
 NegotiatedPublisher::NegotiatedPublisher(
-  rclcpp::Node::SharedPtr node, const std::string & topic_name)
-: topic_name_(topic_name),
-  node_(node)
+  rclcpp::Node::SharedPtr node, const std::string & topic_name, const rclcpp::QoS final_qos)
+: node_(node),
+  topic_name_(topic_name),
+  final_qos_(final_qos)
 {
   neg_publisher_ = node_->create_publisher<negotiated_interfaces::msg::NewTopicInfo>(
     topic_name_, rclcpp::QoS(10));
@@ -64,7 +65,7 @@ bool NegotiatedPublisher::negotiate()
   // the name of it.
 
   std::string new_topic_name = topic_name_ + "/yuv422";
-  publisher_ = node_->create_publisher<std_msgs::msg::Empty>(new_topic_name, rclcpp::QoS(10));
+  publisher_ = node_->create_publisher<std_msgs::msg::Empty>(new_topic_name, final_qos_);
 
   auto msg = std::make_unique<negotiated_interfaces::msg::NewTopicInfo>();
   msg->name = new_topic_name;

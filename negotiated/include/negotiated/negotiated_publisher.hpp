@@ -32,13 +32,16 @@ namespace negotiated
 class NegotiatedPublisher
 {
 public:
-  explicit NegotiatedPublisher(rclcpp::Node::SharedPtr node, const std::string & topic_name);
+  explicit NegotiatedPublisher(
+    rclcpp::Node::SharedPtr node, const std::string & topic_name,
+    const rclcpp::QoS final_qos = rclcpp::QoS(10));
 
   bool negotiate();
 
 private:
-  std::string topic_name_;
   rclcpp::Node::SharedPtr node_;
+  std::string topic_name_;
+  rclcpp::QoS final_qos_;
   rclcpp::Publisher<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_publisher_;
   rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr publisher_;
   rclcpp::Subscription<negotiated_interfaces::msg::Preferences>::SharedPtr pref_sub_;

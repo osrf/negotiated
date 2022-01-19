@@ -30,7 +30,9 @@ namespace negotiated
 class NegotiatedSubscriber
 {
 public:
-  explicit NegotiatedSubscriber(rclcpp::Node::SharedPtr node, const std::string & topic_name);
+  explicit NegotiatedSubscriber(
+    rclcpp::Node::SharedPtr node, const std::string & topic_name,
+    rclcpp::QoS final_qos = rclcpp::QoS(10));
 
 private:
   rclcpp::Node::SharedPtr node_;

@@ -31,7 +31,8 @@ namespace negotiated
 
 NegotiatedSubscriber::NegotiatedSubscriber(
   rclcpp::Node::SharedPtr node,
-  const std::string & topic_name)
+  const std::string & topic_name,
+  rclcpp::QoS final_qos)
 : node_(node)
 {
   auto user_cb = [this](const std_msgs::msg::Empty & msg)
@@ -40,11 +41,11 @@ NegotiatedSubscriber::NegotiatedSubscriber(
       RCLCPP_INFO(this->node_->get_logger(), "User callback");
     };
 
-  auto sub_cb = [this, user_cb](const negotiated_interfaces::msg::NewTopicInfo & msg)
+  auto sub_cb = [this, final_qos, user_cb](const negotiated_interfaces::msg::NewTopicInfo & msg)
     {
       RCLCPP_INFO(this->node_->get_logger(), "Creating subscription to %s", msg.name.c_str());
       this->subscription_ = this->node_->create_subscription<std_msgs::msg::Empty>(
-        msg.name, rclcpp::QoS(10), user_cb);
+        msg.name, final_qos, user_cb);
     };
 
   neg_subscription_ = node_->create_subscription<negotiated_interfaces::msg::NewTopicInfo>(
