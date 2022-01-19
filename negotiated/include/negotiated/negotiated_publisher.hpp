@@ -40,9 +40,12 @@ public:
   using MessageDeleter = rclcpp::allocator::Deleter<MessageAlloc, MessageT>;
 
   explicit NegotiatedPublisher(
-    rclcpp::Node::SharedPtr node, const std::string & topic_name,
+    rclcpp::Node::SharedPtr node,
+    const negotiated_interfaces::msg::Preferences & preferences,
+    const std::string & topic_name,
     const rclcpp::QoS final_qos = rclcpp::QoS(10))
   : node_(node),
+    pub_prefs_(preferences),
     topic_name_(topic_name),
     final_qos_(final_qos)
   {
@@ -54,7 +57,7 @@ public:
         // TODO(clalancette): We have to consider renegotiation here
         for (const negotiated_interfaces::msg::Preference & pref : prefs.preferences) {
           fprintf(stderr, "Adding preferences %s -> %f\n", pref.name.c_str(), pref.weight);
-          this->preferences_.push_back(pref);
+          this->sub_prefs_.push_back(pref);
         }
       };
 
@@ -66,11 +69,14 @@ public:
 
   bool negotiate()
   {
-    for (const negotiated_interfaces::msg::Preference & pref : preferences_) {
+    for (const negotiated_interfaces::msg::Preference & pref : sub_prefs_) {
       fprintf(stderr, "Saw preference %s -> %f\n", pref.name.c_str(), pref.weight);
     }
 
     // TODO(clalancette): run the algorithm to choose the type
+
+    // TODO(clalancette): What happens if the subscription preferences are empty?
+    // TODO(clalancette): What happens if the publisher preferences are empty?
 
     // Now that we've run the algorithm and figured out what our actual publication
     // "type" is going to be, create the publisher and inform the subscriptions
@@ -100,12 +106,13 @@ public:
 
 private:
   rclcpp::Node::SharedPtr node_;
+  negotiated_interfaces::msg::Preferences pub_prefs_;
   std::string topic_name_;
   rclcpp::QoS final_qos_;
   rclcpp::Publisher<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_publisher_;
   typename rclcpp::Publisher<MessageT>::SharedPtr publisher_;
   rclcpp::Subscription<negotiated_interfaces::msg::Preferences>::SharedPtr pref_sub_;
-  std::vector<negotiated_interfaces::msg::Preference> preferences_;
+  std::vector<negotiated_interfaces::msg::Preference> sub_prefs_;
 };
 
 }  // namespace negotiated
