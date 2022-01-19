@@ -21,6 +21,8 @@
 #include "std_msgs/msg/string.hpp"
 
 #include "negotiated_interfaces/msg/new_topic_info.hpp"
+#include "negotiated_interfaces/msg/preference.hpp"
+#include "negotiated_interfaces/msg/preferences.hpp"
 
 #include "negotiated/negotiated_subscriber.hpp"
 
@@ -48,13 +50,28 @@ NegotiatedSubscriber::NegotiatedSubscriber(
   neg_subscription_ = node_->create_subscription<negotiated_interfaces::msg::NewTopicInfo>(
     topic_name, rclcpp::QoS(10), sub_cb);
 
-  preferences_pub_ = node_->create_publisher<std_msgs::msg::String>(
+  preferences_pub_ = node_->create_publisher<negotiated_interfaces::msg::Preferences>(
     topic_name + "_preferences",
     rclcpp::QoS(100).transient_local());
 
-  auto pref = std::make_unique<std_msgs::msg::String>();
-  pref->data = "a,b,c";
-  preferences_pub_->publish(std::move(pref));
+  auto prefs = std::make_unique<negotiated_interfaces::msg::Preferences>();
+
+  negotiated_interfaces::msg::Preference pref_a;
+  pref_a.name = "a";
+  pref_a.weight = 1.0;
+  prefs->preferences.push_back(pref_a);
+
+  negotiated_interfaces::msg::Preference pref_b;
+  pref_b.name = "b";
+  pref_b.weight = 1.0;
+  prefs->preferences.push_back(pref_b);
+
+  negotiated_interfaces::msg::Preference pref_c;
+  pref_c.name = "c";
+  pref_c.weight = 1.0;
+  prefs->preferences.push_back(pref_c);
+
+  preferences_pub_->publish(std::move(prefs));
 }
 
 }  // namespace negotiated

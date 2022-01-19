@@ -23,6 +23,8 @@
 #include "std_msgs/msg/string.hpp"
 
 #include "negotiated_interfaces/msg/new_topic_info.hpp"
+#include "negotiated_interfaces/msg/preference.hpp"
+#include "negotiated_interfaces/msg/preferences.hpp"
 
 namespace negotiated
 {
@@ -39,8 +41,8 @@ private:
   rclcpp::Node::SharedPtr node_;
   rclcpp::Publisher<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_publisher_;
   rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr publisher_;
-  rclcpp::Subscription<std_msgs::msg::String>::SharedPtr pref_sub_;
-  std::vector<std::string> preferences_;
+  rclcpp::Subscription<negotiated_interfaces::msg::Preferences>::SharedPtr pref_sub_;
+  std::vector<negotiated_interfaces::msg::Preference> preferences_;
 };
 
 }  // namespace negotiated

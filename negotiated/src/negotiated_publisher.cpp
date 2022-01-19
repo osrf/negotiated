@@ -21,6 +21,8 @@
 #include "std_msgs/msg/string.hpp"
 
 #include "negotiated_interfaces/msg/new_topic_info.hpp"
+#include "negotiated_interfaces/msg/preference.hpp"
+#include "negotiated_interfaces/msg/preferences.hpp"
 
 #include "negotiated/negotiated_publisher.hpp"
 
@@ -34,23 +36,25 @@ NegotiatedPublisher::NegotiatedPublisher(
   neg_publisher_ = node_->create_publisher<negotiated_interfaces::msg::NewTopicInfo>(
     topic_name_, rclcpp::QoS(10));
 
-  auto user_cb = [this](const std_msgs::msg::String & pref)
+  auto user_cb = [this](const negotiated_interfaces::msg::Preferences & prefs)
     {
       // TODO(clalancette): We have to consider renegotiation here
-      fprintf(stderr, "Saw data %s\n", pref.data.c_str());
-      preferences_.push_back(pref.data);
+      for (const negotiated_interfaces::msg::Preference & pref : prefs.preferences) {
+        fprintf(stderr, "Adding preferences %s -> %f\n", pref.name.c_str(), pref.weight);
+        this->preferences_.push_back(pref);
+      }
     };
 
   std::string pref_name = topic_name_ + "_preferences";
   fprintf(stderr, "About to subscribe to %s\n", pref_name.c_str());
-  pref_sub_ = node_->create_subscription<std_msgs::msg::String>(
+  pref_sub_ = node_->create_subscription<negotiated_interfaces::msg::Preferences>(
     pref_name, rclcpp::QoS(100).transient_local(), user_cb);
 }
 
 bool NegotiatedPublisher::negotiate()
 {
-  for (const std::string & pref : preferences_) {
-    fprintf(stderr, "Saw preferences %s\n", pref.c_str());
+  for (const negotiated_interfaces::msg::Preference & pref : preferences_) {
+    fprintf(stderr, "Saw preference %s -> %f\n", pref.name.c_str(), pref.weight);
   }
 
   // TODO(clalancette): run the algorithm to choose the type
