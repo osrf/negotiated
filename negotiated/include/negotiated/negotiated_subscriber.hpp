@@ -15,9 +15,7 @@
 #ifndef NEGOTIATED__NEGOTIATED_SUBSCRIBER_HPP_
 #define NEGOTIATED__NEGOTIATED_SUBSCRIBER_HPP_
 
-#include <memory>
 #include <string>
-#include <utility>
 
 #include "rclcpp/rclcpp.hpp"
 
@@ -31,9 +29,7 @@ template<typename MessageT>
 class NegotiatedSubscriber
 {
 public:
-  template<
-    typename CallbackT
-  >
+  template<typename CallbackT>
   explicit NegotiatedSubscriber(
     rclcpp::Node::SharedPtr node,
     const negotiated_interfaces::msg::Preferences & preferences,
