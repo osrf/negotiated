@@ -16,6 +16,8 @@
 
 #include "rclcpp/rclcpp.hpp"
 
+#include "std_msgs/msg/empty.hpp"
+
 #include "negotiated/negotiated_subscriber.hpp"
 
 int main(int argc, char ** argv)
@@ -24,7 +26,13 @@ int main(int argc, char ** argv)
 
   auto node = std::make_shared<rclcpp::Node>("neg_sub_node");
 
-  auto neg_sub = std::make_shared<negotiated::NegotiatedSubscriber>(node, "myneg");
+  auto user_cb = [node](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      RCLCPP_INFO(rclcpp::get_logger("neg_sub_example1"), "User callback");
+    };
+
+  auto neg_sub = std::make_shared<negotiated::NegotiatedSubscriber>(node, "myneg", user_cb);
 
   rclcpp::spin(node);
 
