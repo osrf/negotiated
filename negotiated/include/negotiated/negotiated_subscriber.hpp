@@ -36,6 +36,7 @@ public:
   >
   explicit NegotiatedSubscriber(
     rclcpp::Node::SharedPtr node,
+    const negotiated_interfaces::msg::Preferences & preferences,
     const std::string & topic_name,
     CallbackT && callback,
     rclcpp::QoS final_qos = rclcpp::QoS(10))
@@ -51,28 +52,12 @@ public:
     neg_subscription_ = node->create_subscription<negotiated_interfaces::msg::NewTopicInfo>(
       topic_name, rclcpp::QoS(10), sub_cb);
 
+    // TODO(clalancette): Is this the topic name we want to use?
     preferences_pub_ = node->create_publisher<negotiated_interfaces::msg::Preferences>(
-      topic_name + "_preferences",
+      topic_name + "/preferences",
       rclcpp::QoS(100).transient_local());
 
-    auto prefs = std::make_unique<negotiated_interfaces::msg::Preferences>();
-
-    negotiated_interfaces::msg::Preference pref_a;
-    pref_a.name = "a";
-    pref_a.weight = 1.0;
-    prefs->preferences.push_back(pref_a);
-
-    negotiated_interfaces::msg::Preference pref_b;
-    pref_b.name = "b";
-    pref_b.weight = 1.0;
-    prefs->preferences.push_back(pref_b);
-
-    negotiated_interfaces::msg::Preference pref_c;
-    pref_c.name = "c";
-    pref_c.weight = 1.0;
-    prefs->preferences.push_back(pref_c);
-
-    preferences_pub_->publish(std::move(prefs));
+    preferences_pub_->publish(preferences);
   }
 
 private:

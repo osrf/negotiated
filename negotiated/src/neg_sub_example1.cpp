@@ -31,8 +31,26 @@ int main(int argc, char ** argv)
       RCLCPP_INFO(rclcpp::get_logger("neg_sub_example1"), "User callback: %s", msg.data.c_str());
     };
 
+  negotiated_interfaces::msg::Preferences prefs;
+
+  negotiated_interfaces::msg::Preference pref_a;
+  pref_a.name = "a";
+  pref_a.weight = 1.0;
+  prefs.preferences.push_back(pref_a);
+
+  negotiated_interfaces::msg::Preference pref_b;
+  pref_b.name = "b";
+  pref_b.weight = 1.0;
+  prefs.preferences.push_back(pref_b);
+
+  negotiated_interfaces::msg::Preference pref_c;
+  pref_c.name = "c";
+  pref_c.weight = 1.0;
+  prefs.preferences.push_back(pref_c);
+
   auto neg_sub = std::make_shared<negotiated::NegotiatedSubscriber<std_msgs::msg::String>>(
     node,
+    prefs,
     "myneg",
     user_cb);
 

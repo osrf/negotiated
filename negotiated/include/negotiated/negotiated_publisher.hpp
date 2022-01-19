@@ -49,7 +49,7 @@ public:
     neg_publisher_ = node_->create_publisher<negotiated_interfaces::msg::NewTopicInfo>(
       topic_name_, rclcpp::QoS(10));
 
-    auto user_cb = [this](const negotiated_interfaces::msg::Preferences & prefs)
+    auto neg_cb = [this](const negotiated_interfaces::msg::Preferences & prefs)
       {
         // TODO(clalancette): We have to consider renegotiation here
         for (const negotiated_interfaces::msg::Preference & pref : prefs.preferences) {
@@ -58,10 +58,10 @@ public:
         }
       };
 
-    std::string pref_name = topic_name_ + "_preferences";
+    std::string pref_name = topic_name_ + "/preferences";
     fprintf(stderr, "About to subscribe to %s\n", pref_name.c_str());
     pref_sub_ = node_->create_subscription<negotiated_interfaces::msg::Preferences>(
-      pref_name, rclcpp::QoS(100).transient_local(), user_cb);
+      pref_name, rclcpp::QoS(100).transient_local(), neg_cb);
   }
 
   bool negotiate()
