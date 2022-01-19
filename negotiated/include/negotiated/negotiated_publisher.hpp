@@ -29,10 +29,16 @@
 namespace negotiated
 {
 
-template<typename MessageT>
+template<typename MessageT, typename Alloc = std::allocator<void>>
 class NegotiatedPublisher
 {
 public:
+  RCLCPP_SMART_PTR_DEFINITIONS(NegotiatedPublisher)
+
+  using MessageAllocTraits = rclcpp::allocator::AllocRebind<MessageT, Alloc>;
+  using MessageAlloc = typename MessageAllocTraits::allocator_type;
+  using MessageDeleter = rclcpp::allocator::Deleter<MessageAlloc, MessageT>;
+
   explicit NegotiatedPublisher(
     rclcpp::Node::SharedPtr node, const std::string & topic_name,
     const rclcpp::QoS final_qos = rclcpp::QoS(10))
@@ -78,6 +84,18 @@ public:
     neg_publisher_->publish(std::move(msg));
 
     return true;
+  }
+
+  void
+  publish(std::unique_ptr<MessageT, MessageDeleter> msg)
+  {
+    publisher_->publish(std::move(msg));
+  }
+
+  void
+  publish(const MessageT & msg)
+  {
+    publisher_->publish(msg);
   }
 
 private:

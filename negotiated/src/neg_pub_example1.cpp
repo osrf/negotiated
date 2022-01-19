@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <chrono>
 #include <memory>
 
 #include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/empty.hpp"
+#include "std_msgs/msg/string.hpp"
 
 #include "negotiated/negotiated_publisher.hpp"
 
@@ -25,11 +26,21 @@ int main(int argc, char ** argv)
 
   auto node = std::make_shared<rclcpp::Node>("neg_pub_node");
 
-  auto neg_pub = std::make_shared<negotiated::NegotiatedPublisher<std_msgs::msg::Empty>>(
+  auto neg_pub = std::make_shared<negotiated::NegotiatedPublisher<std_msgs::msg::String>>(
     node,
     "myneg");
 
   neg_pub->negotiate();
+
+  int count = 0;
+  auto publish_message = [&count, &neg_pub]() -> void
+  {
+    auto msg = std::make_unique<std_msgs::msg::String>();
+    msg->data = "Hello World: " + std::to_string(count++);
+    neg_pub->publish(std::move(msg));
+  };
+
+  rclcpp::TimerBase::SharedPtr timer = node->create_wall_timer(std::chrono::seconds(1), publish_message);
 
   rclcpp::spin(node);
 
