@@ -16,6 +16,7 @@
 #define NEGOTIATED__NEGOTIATED_SUBSCRIBER_HPP_
 
 #include <string>
+#include <unordered_map>
 
 #include "rclcpp/rclcpp.hpp"
 
@@ -25,6 +26,23 @@
 namespace negotiated
 {
 
+class SupportedTypeMap final
+{
+public:
+  void add_to_map(const negotiated_interfaces::msg::SupportedTypes & supported_types)
+  {
+    type_to_supported_types_["foo"] = supported_types;
+  }
+
+  negotiated_interfaces::msg::SupportedTypes get(const std::string & key) const
+  {
+    return type_to_supported_types_.at(key);
+  }
+
+private:
+  std::unordered_map<std::string, negotiated_interfaces::msg::SupportedTypes> type_to_supported_types_;
+};
+
 template<typename MessageT>
 class NegotiatedSubscriber
 {
@@ -32,7 +50,7 @@ public:
   template<typename CallbackT>
   explicit NegotiatedSubscriber(
     rclcpp::Node::SharedPtr node,
-    const negotiated_interfaces::msg::SupportedTypes & supported_types,
+    const SupportedTypeMap & supported_type_map,
     const std::string & topic_name,
     CallbackT && callback,
     rclcpp::QoS final_qos = rclcpp::QoS(10))
@@ -53,7 +71,7 @@ public:
       topic_name + "/supported_types",
       rclcpp::QoS(100).transient_local());
 
-    supported_types_pub_->publish(supported_types);
+    supported_types_pub_->publish(supported_type_map.get("foo"));
   }
 
 private:

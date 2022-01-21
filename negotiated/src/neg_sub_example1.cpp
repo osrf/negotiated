@@ -48,9 +48,12 @@ int main(int argc, char ** argv)
   supported_type_c.weight = 1.0;
   supported_types.supported_types.push_back(supported_type_c);
 
+  negotiated::SupportedTypeMap supported_type_map;
+  supported_type_map.add_to_map(supported_types);
+
   auto neg_sub = std::make_shared<negotiated::NegotiatedSubscriber<std_msgs::msg::String>>(
     node,
-    supported_types,
+    supported_type_map,
     "myneg",
     user_cb);
 
