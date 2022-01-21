@@ -29,30 +29,37 @@
 namespace negotiated
 {
 
+struct SupportedTypeInfo final
+{
+  negotiated_interfaces::msg::SupportedType supported_type;
+  rclcpp::AnySubscriptionCallbackBase callback;
+};
+
 class SupportedTypeMap final
 {
 public:
   template<typename SupportedMessageT>
   void add_to_map(const std::string & ros_type_name, const std::string & name, double weight)
   {
-    name_to_supported_types_.emplace(typeid(SupportedMessageT), negotiated_interfaces::msg::SupportedType());
-    name_to_supported_types_[typeid(SupportedMessageT)].ros_type_name = ros_type_name;
-    name_to_supported_types_[typeid(SupportedMessageT)].name = name;
-    name_to_supported_types_[typeid(SupportedMessageT)].weight = weight;
+    // TODO(clalancette): What if the supported type is already in the map?
+    name_to_supported_types_.emplace(typeid(SupportedMessageT), SupportedTypeInfo());
+    name_to_supported_types_[typeid(SupportedMessageT)].supported_type.ros_type_name = ros_type_name;
+    name_to_supported_types_[typeid(SupportedMessageT)].supported_type.name = name;
+    name_to_supported_types_[typeid(SupportedMessageT)].supported_type.weight = weight;
   }
 
   negotiated_interfaces::msg::SupportedTypes get() const
   {
     auto ret = negotiated_interfaces::msg::SupportedTypes();
-    for (const std::pair<std::type_index, negotiated_interfaces::msg::SupportedType> & pair : name_to_supported_types_) {
-      ret.supported_types.push_back(pair.second);
+    for (const std::pair<std::type_index, SupportedTypeInfo> & pair : name_to_supported_types_) {
+      ret.supported_types.push_back(pair.second.supported_type);
     }
 
     return ret;
   }
 
 private:
-  std::unordered_map<std::type_index, negotiated_interfaces::msg::SupportedType> name_to_supported_types_;
+  std::unordered_map<std::type_index, SupportedTypeInfo> name_to_supported_types_;
 };
 
 template<typename MessageT>
