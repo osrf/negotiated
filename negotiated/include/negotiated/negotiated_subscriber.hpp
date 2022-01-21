@@ -29,18 +29,26 @@ namespace negotiated
 class SupportedTypeMap final
 {
 public:
-  void add_to_map(const negotiated_interfaces::msg::SupportedTypes & supported_types)
+  template<typename SupportedMessageT>
+  void add_to_map(const std::string & name, double weight)
   {
-    type_to_supported_types_["foo"] = supported_types;
+    name_to_supported_types_.emplace(name, negotiated_interfaces::msg::SupportedType());
+    name_to_supported_types_[name].name = name;
+    name_to_supported_types_[name].weight = weight;
   }
 
-  negotiated_interfaces::msg::SupportedTypes get(const std::string & key) const
+  negotiated_interfaces::msg::SupportedTypes get() const
   {
-    return type_to_supported_types_.at(key);
+    auto ret = negotiated_interfaces::msg::SupportedTypes();
+    for (const std::pair<std::string, negotiated_interfaces::msg::SupportedType> & pair : name_to_supported_types_) {
+      ret.supported_types.push_back(pair.second);
+    }
+
+    return ret;
   }
 
 private:
-  std::unordered_map<std::string, negotiated_interfaces::msg::SupportedTypes> type_to_supported_types_;
+  std::unordered_map<std::string, negotiated_interfaces::msg::SupportedType> name_to_supported_types_;
 };
 
 template<typename MessageT>
@@ -71,7 +79,7 @@ public:
       topic_name + "/supported_types",
       rclcpp::QoS(100).transient_local());
 
-    supported_types_pub_->publish(supported_type_map.get("foo"));
+    supported_types_pub_->publish(supported_type_map.get());
   }
 
 private:

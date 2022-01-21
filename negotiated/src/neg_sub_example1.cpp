@@ -31,25 +31,10 @@ int main(int argc, char ** argv)
       RCLCPP_INFO(rclcpp::get_logger("neg_sub_example1"), "User callback: %s", msg.data.c_str());
     };
 
-  negotiated_interfaces::msg::SupportedTypes supported_types;
-
-  negotiated_interfaces::msg::SupportedType supported_type_a;
-  supported_type_a.name = "a";
-  supported_type_a.weight = 1.0;
-  supported_types.supported_types.push_back(supported_type_a);
-
-  negotiated_interfaces::msg::SupportedType supported_type_b;
-  supported_type_b.name = "b";
-  supported_type_b.weight = 1.0;
-  supported_types.supported_types.push_back(supported_type_b);
-
-  negotiated_interfaces::msg::SupportedType supported_type_c;
-  supported_type_c.name = "c";
-  supported_type_c.weight = 1.0;
-  supported_types.supported_types.push_back(supported_type_c);
-
   negotiated::SupportedTypeMap supported_type_map;
-  supported_type_map.add_to_map(supported_types);
+  supported_type_map.add_to_map<std_msgs::msg::String>("a", 1.0);
+  supported_type_map.add_to_map<std_msgs::msg::String>("b", 1.0);
+  supported_type_map.add_to_map<std_msgs::msg::String>("c", 1.0);
 
   auto neg_sub = std::make_shared<negotiated::NegotiatedSubscriber<std_msgs::msg::String>>(
     node,
