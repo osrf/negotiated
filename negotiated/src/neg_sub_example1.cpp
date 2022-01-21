@@ -32,8 +32,8 @@ int main(int argc, char ** argv)
     };
 
   negotiated::SupportedTypeMap supported_type_map;
-  supported_type_map.add_to_map<std_msgs::msg::String>("a", 1.0);
-  supported_type_map.add_to_map<int>("b", 1.0);
+  supported_type_map.add_to_map<std_msgs::msg::String>("std_msgs/msg/String", "a", 1.0);
+  supported_type_map.add_to_map<int>("int", "b", 1.0);
 
   auto neg_sub = std::make_shared<negotiated::NegotiatedSubscriber<std_msgs::msg::String>>(
     node,
