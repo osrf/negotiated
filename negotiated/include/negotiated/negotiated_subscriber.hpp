@@ -20,7 +20,7 @@
 #include "rclcpp/rclcpp.hpp"
 
 #include "negotiated_interfaces/msg/new_topic_info.hpp"
-#include "negotiated_interfaces/msg/preferences.hpp"
+#include "negotiated_interfaces/msg/supported_types.hpp"
 
 namespace negotiated
 {
@@ -32,7 +32,7 @@ public:
   template<typename CallbackT>
   explicit NegotiatedSubscriber(
     rclcpp::Node::SharedPtr node,
-    const negotiated_interfaces::msg::Preferences & preferences,
+    const negotiated_interfaces::msg::SupportedTypes & supported_types,
     const std::string & topic_name,
     CallbackT && callback,
     rclcpp::QoS final_qos = rclcpp::QoS(10))
@@ -49,17 +49,17 @@ public:
       topic_name, rclcpp::QoS(10), sub_cb);
 
     // TODO(clalancette): Is this the topic name we want to use?
-    preferences_pub_ = node->create_publisher<negotiated_interfaces::msg::Preferences>(
-      topic_name + "/preferences",
+    supported_types_pub_ = node->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+      topic_name + "/supported_types",
       rclcpp::QoS(100).transient_local());
 
-    preferences_pub_->publish(preferences);
+    supported_types_pub_->publish(supported_types);
   }
 
 private:
   rclcpp::Subscription<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_subscription_;
   typename rclcpp::Subscription<MessageT>::SharedPtr subscription_;
-  rclcpp::Publisher<negotiated_interfaces::msg::Preferences>::SharedPtr preferences_pub_;
+  rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_pub_;
 };
 
 }  // namespace negotiated

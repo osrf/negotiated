@@ -18,8 +18,8 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
 
-#include "negotiated_interfaces/msg/preference.hpp"
-#include "negotiated_interfaces/msg/preferences.hpp"
+#include "negotiated_interfaces/msg/supported_type.hpp"
+#include "negotiated_interfaces/msg/supported_types.hpp"
 
 #include "negotiated/negotiated_publisher.hpp"
 
@@ -29,16 +29,16 @@ int main(int argc, char ** argv)
 
   auto node = std::make_shared<rclcpp::Node>("neg_pub_node");
 
-  negotiated_interfaces::msg::Preferences prefs;
+  negotiated_interfaces::msg::SupportedTypes supported_types;
 
-  negotiated_interfaces::msg::Preference pref_a;
-  pref_a.name = "a";
-  pref_a.weight = 1.0;
-  prefs.preferences.push_back(pref_a);
+  negotiated_interfaces::msg::SupportedType supported_type_a;
+  supported_type_a.name = "a";
+  supported_type_a.weight = 1.0;
+  supported_types.supported_types.push_back(supported_type_a);
 
   auto neg_pub = std::make_shared<negotiated::NegotiatedPublisher<std_msgs::msg::String>>(
     node,
-    prefs,
+    supported_types,
     "myneg");
 
   neg_pub->negotiate();

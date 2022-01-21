@@ -23,8 +23,8 @@
 #include "rclcpp/rclcpp.hpp"
 
 #include "negotiated_interfaces/msg/new_topic_info.hpp"
-#include "negotiated_interfaces/msg/preference.hpp"
-#include "negotiated_interfaces/msg/preferences.hpp"
+#include "negotiated_interfaces/msg/supported_type.hpp"
+#include "negotiated_interfaces/msg/supported_types.hpp"
 
 namespace negotiated
 {
@@ -41,42 +41,44 @@ public:
 
   explicit NegotiatedPublisher(
     rclcpp::Node::SharedPtr node,
-    const negotiated_interfaces::msg::Preferences & preferences,
+    const negotiated_interfaces::msg::SupportedTypes & supported_types,
     const std::string & topic_name,
     const rclcpp::QoS final_qos = rclcpp::QoS(10))
   : node_(node),
-    pub_prefs_(preferences),
+    pub_supported_types_(supported_types),
     topic_name_(topic_name),
     final_qos_(final_qos)
   {
     neg_publisher_ = node_->create_publisher<negotiated_interfaces::msg::NewTopicInfo>(
       topic_name_, rclcpp::QoS(10));
 
-    auto neg_cb = [this](const negotiated_interfaces::msg::Preferences & prefs)
+    auto neg_cb = [this](const negotiated_interfaces::msg::SupportedTypes & supported_types)
       {
         // TODO(clalancette): We have to consider renegotiation here
-        for (const negotiated_interfaces::msg::Preference & pref : prefs.preferences) {
-          fprintf(stderr, "Adding preferences %s -> %f\n", pref.name.c_str(), pref.weight);
-          this->sub_prefs_.push_back(pref);
+        for (const negotiated_interfaces::msg::SupportedType & type :
+          supported_types.supported_types)
+        {
+          fprintf(stderr, "Adding supported_types %s -> %f\n", type.name.c_str(), type.weight);
+          this->sub_supported_types_.push_back(type);
         }
       };
 
-    std::string pref_name = topic_name_ + "/preferences";
-    fprintf(stderr, "About to subscribe to %s\n", pref_name.c_str());
-    pref_sub_ = node_->create_subscription<negotiated_interfaces::msg::Preferences>(
-      pref_name, rclcpp::QoS(100).transient_local(), neg_cb);
+    std::string supported_type_name = topic_name_ + "/supported_types";
+    fprintf(stderr, "About to subscribe to %s\n", supported_type_name.c_str());
+    supported_types_sub_ = node_->create_subscription<negotiated_interfaces::msg::SupportedTypes>(
+      supported_type_name, rclcpp::QoS(100).transient_local(), neg_cb);
   }
 
   bool negotiate()
   {
-    for (const negotiated_interfaces::msg::Preference & pref : sub_prefs_) {
-      fprintf(stderr, "Saw preference %s -> %f\n", pref.name.c_str(), pref.weight);
+    for (const negotiated_interfaces::msg::SupportedType & type : sub_supported_types_) {
+      fprintf(stderr, "Saw supported type %s -> %f\n", type.name.c_str(), type.weight);
     }
 
     // TODO(clalancette): run the algorithm to choose the type
 
-    // TODO(clalancette): What happens if the subscription preferences are empty?
-    // TODO(clalancette): What happens if the publisher preferences are empty?
+    // TODO(clalancette): What happens if the subscription supported_types are empty?
+    // TODO(clalancette): What happens if the publisher supported_types are empty?
 
     // Now that we've run the algorithm and figured out what our actual publication
     // "type" is going to be, create the publisher and inform the subscriptions
@@ -95,24 +97,26 @@ public:
   void
   publish(std::unique_ptr<MessageT, MessageDeleter> msg)
   {
+    // TODO(clalancette): Only publish here if negotiation is successful
     publisher_->publish(std::move(msg));
   }
 
   void
   publish(const MessageT & msg)
   {
+    // TODO(clalancette): Only publish here if negotiation is successful
     publisher_->publish(msg);
   }
 
 private:
   rclcpp::Node::SharedPtr node_;
-  negotiated_interfaces::msg::Preferences pub_prefs_;
+  negotiated_interfaces::msg::SupportedTypes pub_supported_types_;
   std::string topic_name_;
   rclcpp::QoS final_qos_;
   rclcpp::Publisher<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_publisher_;
   typename rclcpp::Publisher<MessageT>::SharedPtr publisher_;
-  rclcpp::Subscription<negotiated_interfaces::msg::Preferences>::SharedPtr pref_sub_;
-  std::vector<negotiated_interfaces::msg::Preference> sub_prefs_;
+  rclcpp::Subscription<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_sub_;
+  std::vector<negotiated_interfaces::msg::SupportedType> sub_supported_types_;
 };
 
 }  // namespace negotiated

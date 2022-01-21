@@ -15,8 +15,8 @@ find_package(rosidl_default_generators REQUIRED)
 
 set(msg_files
   "msg/NewTopicInfo.msg"
-  "msg/Preference.msg"
-  "msg/Preferences.msg"
+  "msg/SupportedType.msg"
+  "msg/SupportedTypes.msg"
 )
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${msg_files}

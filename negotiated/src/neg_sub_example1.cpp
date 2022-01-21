@@ -31,26 +31,26 @@ int main(int argc, char ** argv)
       RCLCPP_INFO(rclcpp::get_logger("neg_sub_example1"), "User callback: %s", msg.data.c_str());
     };
 
-  negotiated_interfaces::msg::Preferences prefs;
+  negotiated_interfaces::msg::SupportedTypes supported_types;
 
-  negotiated_interfaces::msg::Preference pref_a;
-  pref_a.name = "a";
-  pref_a.weight = 1.0;
-  prefs.preferences.push_back(pref_a);
+  negotiated_interfaces::msg::SupportedType supported_type_a;
+  supported_type_a.name = "a";
+  supported_type_a.weight = 1.0;
+  supported_types.supported_types.push_back(supported_type_a);
 
-  negotiated_interfaces::msg::Preference pref_b;
-  pref_b.name = "b";
-  pref_b.weight = 1.0;
-  prefs.preferences.push_back(pref_b);
+  negotiated_interfaces::msg::SupportedType supported_type_b;
+  supported_type_b.name = "b";
+  supported_type_b.weight = 1.0;
+  supported_types.supported_types.push_back(supported_type_b);
 
-  negotiated_interfaces::msg::Preference pref_c;
-  pref_c.name = "c";
-  pref_c.weight = 1.0;
-  prefs.preferences.push_back(pref_c);
+  negotiated_interfaces::msg::SupportedType supported_type_c;
+  supported_type_c.name = "c";
+  supported_type_c.weight = 1.0;
+  supported_types.supported_types.push_back(supported_type_c);
 
   auto neg_sub = std::make_shared<negotiated::NegotiatedSubscriber<std_msgs::msg::String>>(
     node,
-    prefs,
+    supported_types,
     "myneg",
     user_cb);
 
