@@ -33,10 +33,10 @@ class SupportedTypeMap final
 {
 public:
   template<typename SupportedMessageT>
-  void add_to_map(const std::string & type_name, const std::string & name, double weight)
+  void add_to_map(const std::string & ros_type_name, const std::string & name, double weight)
   {
     name_to_supported_types_.emplace(typeid(SupportedMessageT), negotiated_interfaces::msg::SupportedType());
-    name_to_supported_types_[typeid(SupportedMessageT)].type_name = type_name;
+    name_to_supported_types_[typeid(SupportedMessageT)].ros_type_name = ros_type_name;
     name_to_supported_types_[typeid(SupportedMessageT)].name = name;
     name_to_supported_types_[typeid(SupportedMessageT)].weight = weight;
   }
