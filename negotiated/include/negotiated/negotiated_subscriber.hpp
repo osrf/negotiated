@@ -16,11 +16,14 @@
 #define NEGOTIATED__NEGOTIATED_SUBSCRIBER_HPP_
 
 #include <string>
+#include <typeindex>
 #include <unordered_map>
+#include <utility>
 
 #include "rclcpp/rclcpp.hpp"
 
 #include "negotiated_interfaces/msg/new_topic_info.hpp"
+#include "negotiated_interfaces/msg/supported_type.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
 
 namespace negotiated
@@ -32,15 +35,15 @@ public:
   template<typename SupportedMessageT>
   void add_to_map(const std::string & name, double weight)
   {
-    name_to_supported_types_.emplace(name, negotiated_interfaces::msg::SupportedType());
-    name_to_supported_types_[name].name = name;
-    name_to_supported_types_[name].weight = weight;
+    name_to_supported_types_.emplace(typeid(SupportedMessageT), negotiated_interfaces::msg::SupportedType());
+    name_to_supported_types_[typeid(SupportedMessageT)].name = name;
+    name_to_supported_types_[typeid(SupportedMessageT)].weight = weight;
   }
 
   negotiated_interfaces::msg::SupportedTypes get() const
   {
     auto ret = negotiated_interfaces::msg::SupportedTypes();
-    for (const std::pair<std::string, negotiated_interfaces::msg::SupportedType> & pair : name_to_supported_types_) {
+    for (const std::pair<std::type_index, negotiated_interfaces::msg::SupportedType> & pair : name_to_supported_types_) {
       ret.supported_types.push_back(pair.second);
     }
 
@@ -48,7 +51,7 @@ public:
   }
 
 private:
-  std::unordered_map<std::string, negotiated_interfaces::msg::SupportedType> name_to_supported_types_;
+  std::unordered_map<std::type_index, negotiated_interfaces::msg::SupportedType> name_to_supported_types_;
 };
 
 template<typename MessageT>
