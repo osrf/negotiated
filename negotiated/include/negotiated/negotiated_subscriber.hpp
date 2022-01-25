@@ -64,6 +64,13 @@ public:
     return ret;
   }
 
+  std::shared_ptr<rclcpp::AnySubscriptionCallback<std_msgs::msg::String>> get_callback_from_name(const std::string & name) const
+  {
+    // TODO(clalancette): what happens if the name isn't in the map?
+    return name_to_supported_types_.at(name).callback;
+  }
+
+private:
   std::unordered_map<std::string, SupportedTypeInfo> name_to_supported_types_;
 };
 
@@ -95,8 +102,7 @@ public:
           serializer.deserialize_message(msg.get(), string_message.get());
 
           // TODO(clalancette): what happens if the name isn't in the map?
-          // TODO(clalancette): We should make a public method on SupportedTypeMap
-          std::shared_ptr<rclcpp::AnySubscriptionCallback<std_msgs::msg::String>> asc = supported_type_map.name_to_supported_types_.at(new_topic_ros_type_name).callback;
+          std::shared_ptr<rclcpp::AnySubscriptionCallback<std_msgs::msg::String>> asc = supported_type_map.get_callback_from_name(new_topic_ros_type_name);
 
           asc->dispatch(string_message, msg_info);
         };
