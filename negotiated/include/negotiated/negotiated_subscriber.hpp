@@ -36,6 +36,7 @@ struct SupportedTypeInfo final
 {
   negotiated_interfaces::msg::SupportedType supported_type;
   std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> callback;
+  std::shared_ptr<rclcpp::SerializationBase> serializer;
 };
 
 class SupportedTypeMap final
@@ -52,6 +53,7 @@ public:
     auto any_sub_callback = std::make_shared<rclcpp::AnySubscriptionCallback<MessageT>>();
     any_sub_callback->set(callback);
     name_to_supported_types_[ros_type_name].callback = any_sub_callback;
+    name_to_supported_types_[ros_type_name].serializer = std::make_shared<rclcpp::Serialization<MessageT>>();
   }
 
   negotiated_interfaces::msg::SupportedTypes get() const
@@ -64,13 +66,16 @@ public:
     return ret;
   }
 
-  template<typename MessageT>
-  std::shared_ptr<rclcpp::AnySubscriptionCallback<MessageT>> get_callback_from_name(const std::string & name) const
+  std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> get_callback_from_name(const std::string & name) const
   {
     // TODO(clalancette): what happens if the name isn't in the map?
-    std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> base_callback = name_to_supported_types_.at(name).callback;
+    return name_to_supported_types_.at(name).callback;
+  }
 
-    return std::dynamic_pointer_cast<rclcpp::AnySubscriptionCallback<MessageT>>(base_callback);
+  std::shared_ptr<rclcpp::SerializationBase> get_serializer_from_name(const std::string & name) const
+  {
+    // TODO(clalancette): what happens if the name isn't in the map?
+    return name_to_supported_types_.at(name).serializer;
   }
 
 private:
@@ -101,11 +106,11 @@ public:
           rclcpp::MessageInfo msg_info;
 
           auto string_message = std::make_shared<std_msgs::msg::String>();
-          rclcpp::Serialization<std_msgs::msg::String> serializer;
-          serializer.deserialize_message(msg.get(), string_message.get());
+          std::shared_ptr<rclcpp::SerializationBase> serializer = supported_type_map.get_serializer_from_name(new_topic_ros_type_name);
+          serializer->deserialize_message(msg.get(), string_message.get());
 
           // TODO(clalancette): what happens if the name isn't in the map?
-          std::shared_ptr<rclcpp::AnySubscriptionCallback<std_msgs::msg::String>> asc = supported_type_map.get_callback_from_name<std_msgs::msg::String>(new_topic_ros_type_name);
+          std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> asc = supported_type_map.get_callback_from_name(new_topic_ros_type_name);
 
           asc->dispatch(string_message, msg_info);
         };
