@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp/serialization.hpp"
 
 #include "negotiated_interfaces/msg/new_topic_info.hpp"
 #include "negotiated_interfaces/msg/supported_type.hpp"
@@ -65,7 +66,7 @@ public:
   std::unordered_map<std::string, SupportedTypeInfo> name_to_supported_types_;
 };
 
-template<typename MessageT>
+// TODO(clalancette): Now that this isn't templatized, we can move this to a .cpp file
 class NegotiatedSubscriber
 {
 public:
@@ -75,15 +76,25 @@ public:
     const std::string & topic_name,
     rclcpp::QoS final_qos = rclcpp::QoS(10))
   {
+    asc_.set(std::bind(&NegotiatedSubscriber::string_cb, this, std::placeholders::_1));
+
     auto sub_cb =
       [this, node, final_qos](const negotiated_interfaces::msg::NewTopicInfo & msg)
       {
         RCLCPP_INFO(node->get_logger(), "Creating subscription to %s with type %s", msg.topic_name.c_str(), msg.ros_type_name.c_str());
 
-        auto cb = [node](std::shared_ptr<rclcpp::SerializedMessage> msg)
+        auto cb = [this, node](std::shared_ptr<rclcpp::SerializedMessage> msg)
         {
           (void)msg;
           RCLCPP_INFO(node->get_logger(), "Got serialized message");
+          // TODO(clalancette): This is bogus; what should we fill in?
+          rclcpp::MessageInfo msg_info;
+
+          auto string_message = std::make_shared<std_msgs::msg::String>();
+          rclcpp::Serialization<std_msgs::msg::String> serializer;
+          serializer.deserialize_message(msg.get(), string_message.get());
+
+          asc_.dispatch(string_message, msg_info);
         };
 
         this->subscription_ = node->create_generic_subscription(msg.topic_name, msg.ros_type_name, final_qos, cb);
@@ -114,10 +125,16 @@ public:
     supported_types_pub_->publish(supported_type_map.get());
   }
 
+  void string_cb(const std_msgs::msg::String & msg)
+  {
+    RCLCPP_INFO(rclcpp::get_logger("string_cb"), "User-like callback: %s", msg.data.c_str());
+  }
+
 private:
   rclcpp::Subscription<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_subscription_;
   std::shared_ptr<rclcpp::GenericSubscription> subscription_;
   rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_pub_;
+  rclcpp::AnySubscriptionCallback<std_msgs::msg::String> asc_;
 };
 
 }  // namespace negotiated

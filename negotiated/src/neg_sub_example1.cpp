@@ -41,7 +41,7 @@ int main(int argc, char ** argv)
   supported_type_map.add_to_map<std_msgs::msg::String>("std_msgs/msg/String", "a", 1.0, string_user_cb);
   supported_type_map.add_to_map<std_msgs::msg::Int32>("std_msgs/msg/Int32", "b", 1.0, int_user_cb);
 
-  auto neg_sub = std::make_shared<negotiated::NegotiatedSubscriber<std_msgs::msg::String>>(
+  auto neg_sub = std::make_shared<negotiated::NegotiatedSubscriber>(
     node,
     supported_type_map,
     "myneg");
