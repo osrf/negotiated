@@ -138,11 +138,6 @@ public:
     supported_types_pub_->publish(supported_type_map.get());
   }
 
-  void string_cb(const std_msgs::msg::String & msg)
-  {
-    RCLCPP_INFO(rclcpp::get_logger("string_cb"), "User-like callback: %s", msg.data.c_str());
-  }
-
 private:
   rclcpp::Subscription<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_subscription_;
   std::shared_ptr<rclcpp::GenericSubscription> subscription_;
