@@ -15,6 +15,7 @@
 #ifndef NEGOTIATED__NEGOTIATED_SUBSCRIBER_HPP_
 #define NEGOTIATED__NEGOTIATED_SUBSCRIBER_HPP_
 
+#include <memory>
 #include <string>
 #include <typeindex>
 #include <unordered_map>
@@ -32,33 +33,37 @@ namespace negotiated
 struct SupportedTypeInfo final
 {
   negotiated_interfaces::msg::SupportedType supported_type;
-  rclcpp::AnySubscriptionCallbackBase callback;
+  std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> callback;
+  // std::type_index type_index;
 };
 
 class SupportedTypeMap final
 {
 public:
-  template<typename SupportedMessageT>
-  void add_to_map(const std::string & ros_type_name, const std::string & name, double weight)
+  template<typename SupportedMessageT, typename CallbackT>
+  void add_to_map(const std::string & ros_type_name, const std::string & name, double weight, CallbackT && callback)
   {
     // TODO(clalancette): What if the supported type is already in the map?
     name_to_supported_types_.emplace(typeid(SupportedMessageT), SupportedTypeInfo());
     name_to_supported_types_[typeid(SupportedMessageT)].supported_type.ros_type_name = ros_type_name;
     name_to_supported_types_[typeid(SupportedMessageT)].supported_type.name = name;
     name_to_supported_types_[typeid(SupportedMessageT)].supported_type.weight = weight;
+    auto any_sub_callback = std::make_shared<rclcpp::AnySubscriptionCallback<SupportedMessageT>>();
+    any_sub_callback->set(callback);
+    name_to_supported_types_[typeid(SupportedMessageT)].callback = any_sub_callback;
+    // name_to_supported_types_[typeid(SupportedMessageT)].type_index = typeid(SupportedMessageT);
   }
 
   negotiated_interfaces::msg::SupportedTypes get() const
   {
     auto ret = negotiated_interfaces::msg::SupportedTypes();
-    for (const std::pair<std::type_index, SupportedTypeInfo> & pair : name_to_supported_types_) {
+    for (const std::pair<const std::type_index, SupportedTypeInfo> & pair : name_to_supported_types_) {
       ret.supported_types.push_back(pair.second.supported_type);
     }
 
     return ret;
   }
 
-private:
   std::unordered_map<std::type_index, SupportedTypeInfo> name_to_supported_types_;
 };
 
@@ -75,11 +80,15 @@ public:
     rclcpp::QoS final_qos = rclcpp::QoS(10))
   {
     auto sub_cb =
-      [this, node, callback, final_qos](const negotiated_interfaces::msg::NewTopicInfo & msg)
+      [this, node, callback, final_qos, supported_type_map](const negotiated_interfaces::msg::NewTopicInfo & msg)
       {
         RCLCPP_INFO(node->get_logger(), "Creating subscription to %s", msg.name.c_str());
+        //const SupportedTypeInfo & type_info = supported_type_map.name_to_supported_types_.at(typeid(std::string));
         this->subscription_ = node->create_subscription<MessageT>(
           msg.name, final_qos, callback);
+        //auto cb = std::unique_ptr<AnySubscriptionCallback<MessageT>>(static_cast<AnySubscriptionCallback<int>*>(sti.callback.release()));
+        //this->subscription_ = node->create_subscription<std_msg::msg::String>(
+        //  msg.name, final_qos, type_info.callback);
       };
 
     neg_subscription_ = node->create_subscription<negotiated_interfaces::msg::NewTopicInfo>(

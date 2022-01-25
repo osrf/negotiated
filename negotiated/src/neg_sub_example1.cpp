@@ -27,20 +27,25 @@ int main(int argc, char ** argv)
 
   auto node = std::make_shared<rclcpp::Node>("neg_sub_node");
 
-  auto user_cb = [node](const std_msgs::msg::String & msg)
+  auto string_user_cb = [node](const std_msgs::msg::String & msg)
     {
       RCLCPP_INFO(rclcpp::get_logger("neg_sub_example1"), "User callback: %s", msg.data.c_str());
     };
 
+  auto int_user_cb = [node](const std_msgs::msg::Int32 & msg)
+    {
+      RCLCPP_INFO(rclcpp::get_logger("neg_sub_example1"), "User callback: %d", msg.data);
+    };
+
   negotiated::SupportedTypeMap supported_type_map;
-  supported_type_map.add_to_map<std_msgs::msg::String>("std_msgs/msg/String", "a", 1.0);
-  supported_type_map.add_to_map<std_msgs::msg::Int32>("std_msgs/msg/Int32", "b", 1.0);
+  supported_type_map.add_to_map<std_msgs::msg::String>("std_msgs/msg/String", "a", 1.0, string_user_cb);
+  supported_type_map.add_to_map<std_msgs::msg::Int32>("std_msgs/msg/Int32", "b", 1.0, int_user_cb);
 
   auto neg_sub = std::make_shared<negotiated::NegotiatedSubscriber<std_msgs::msg::String>>(
     node,
     supported_type_map,
     "myneg",
-    user_cb);
+    string_user_cb);
 
   rclcpp::spin(node);
 
