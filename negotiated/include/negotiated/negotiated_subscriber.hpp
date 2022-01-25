@@ -77,15 +77,14 @@ public:
     const std::string & topic_name,
     rclcpp::QoS final_qos = rclcpp::QoS(10))
   {
-    asc_ = std::make_shared<rclcpp::AnySubscriptionCallback<std_msgs::msg::String>>();
-    asc_->set(std::bind(&NegotiatedSubscriber::string_cb, this, std::placeholders::_1));
-
     auto sub_cb =
-      [this, node, final_qos](const negotiated_interfaces::msg::NewTopicInfo & msg)
+      [this, node, supported_type_map, final_qos](const negotiated_interfaces::msg::NewTopicInfo & msg)
       {
         RCLCPP_INFO(node->get_logger(), "Creating subscription to %s with type %s", msg.topic_name.c_str(), msg.ros_type_name.c_str());
 
-        auto cb = [this, node](std::shared_ptr<rclcpp::SerializedMessage> msg)
+        std::string new_topic_ros_type_name = msg.ros_type_name;
+
+        auto cb = [this, node, supported_type_map, new_topic_ros_type_name](std::shared_ptr<rclcpp::SerializedMessage> msg)
         {
           RCLCPP_INFO(node->get_logger(), "Got serialized message");
           // TODO(clalancette): This is bogus; what should we fill in?
@@ -95,7 +94,11 @@ public:
           rclcpp::Serialization<std_msgs::msg::String> serializer;
           serializer.deserialize_message(msg.get(), string_message.get());
 
-          asc_->dispatch(string_message, msg_info);
+          // TODO(clalancette): what happens if the name isn't in the map?
+          // TODO(clalancette): We should make a public method on SupportedTypeMap
+          std::shared_ptr<rclcpp::AnySubscriptionCallback<std_msgs::msg::String>> asc = supported_type_map.name_to_supported_types_.at(new_topic_ros_type_name).callback;
+
+          asc->dispatch(string_message, msg_info);
         };
 
         this->subscription_ = node->create_generic_subscription(msg.topic_name, msg.ros_type_name, final_qos, cb);
@@ -135,7 +138,6 @@ private:
   rclcpp::Subscription<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_subscription_;
   std::shared_ptr<rclcpp::GenericSubscription> subscription_;
   rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_pub_;
-  std::shared_ptr<rclcpp::AnySubscriptionCallback<std_msgs::msg::String>> asc_;
 };
 
 }  // namespace negotiated
