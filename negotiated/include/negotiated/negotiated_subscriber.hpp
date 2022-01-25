@@ -15,6 +15,7 @@
 #ifndef NEGOTIATED__NEGOTIATED_SUBSCRIBER_HPP_
 #define NEGOTIATED__NEGOTIATED_SUBSCRIBER_HPP_
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <typeindex>
@@ -34,13 +35,13 @@ namespace negotiated
 struct SupportedTypeInfo final
 {
   negotiated_interfaces::msg::SupportedType supported_type;
-  std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> callback;
+  std::shared_ptr<rclcpp::AnySubscriptionCallback<std_msgs::msg::String>> callback;
 };
 
 class SupportedTypeMap final
 {
 public:
-  template<typename SupportedMessageT, typename CallbackT>
+  template<typename CallbackT>
   void add_to_map(const std::string & ros_type_name, const std::string & name, double weight, CallbackT && callback)
   {
     // TODO(clalancette): What if the supported type is already in the map?
@@ -48,7 +49,7 @@ public:
     name_to_supported_types_[ros_type_name].supported_type.ros_type_name = ros_type_name;
     name_to_supported_types_[ros_type_name].supported_type.name = name;
     name_to_supported_types_[ros_type_name].supported_type.weight = weight;
-    auto any_sub_callback = std::make_shared<rclcpp::AnySubscriptionCallback<SupportedMessageT>>();
+    auto any_sub_callback = std::make_shared<rclcpp::AnySubscriptionCallback<std_msgs::msg::String>>();
     any_sub_callback->set(callback);
     name_to_supported_types_[ros_type_name].callback = any_sub_callback;
   }
