@@ -78,6 +78,22 @@ public:
     return name_to_supported_types_.at(name).serializer;
   }
 
+  void dispatch_msg(const std::string & ros_type_name, std::shared_ptr<rclcpp::SerializedMessage> msg) const
+  {
+    // TODO(clalancette): This is bogus; what should we fill in?
+    rclcpp::MessageInfo msg_info;
+
+    auto string_message = std::make_shared<std_msgs::msg::String>();
+    // TODO(clalancette): what happens if the name isn't in the map?
+    std::shared_ptr<rclcpp::SerializationBase> serializer = name_to_supported_types_.at(ros_type_name).serializer;
+    serializer->deserialize_message(msg.get(), string_message.get());
+
+    // TODO(clalancette): what happens if the name isn't in the map?
+    std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> asc = name_to_supported_types_.at(ros_type_name).callback;
+
+    asc->dispatch(string_message, msg_info);
+  }
+
 private:
   std::unordered_map<std::string, SupportedTypeInfo> name_to_supported_types_;
 };
@@ -102,17 +118,8 @@ public:
         auto cb = [this, node, supported_type_map, new_topic_ros_type_name](std::shared_ptr<rclcpp::SerializedMessage> msg)
         {
           RCLCPP_INFO(node->get_logger(), "Got serialized message");
-          // TODO(clalancette): This is bogus; what should we fill in?
-          rclcpp::MessageInfo msg_info;
 
-          auto string_message = std::make_shared<std_msgs::msg::String>();
-          std::shared_ptr<rclcpp::SerializationBase> serializer = supported_type_map.get_serializer_from_name(new_topic_ros_type_name);
-          serializer->deserialize_message(msg.get(), string_message.get());
-
-          // TODO(clalancette): what happens if the name isn't in the map?
-          std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> asc = supported_type_map.get_callback_from_name(new_topic_ros_type_name);
-
-          asc->dispatch(string_message, msg_info);
+          supported_type_map.dispatch_msg(new_topic_ros_type_name, msg);
         };
 
         this->subscription_ = node->create_generic_subscription(msg.topic_name, msg.ros_type_name, final_qos, cb);
