@@ -44,8 +44,7 @@ int main(int argc, char ** argv)
   auto neg_sub = std::make_shared<negotiated::NegotiatedSubscriber<std_msgs::msg::String>>(
     node,
     supported_type_map,
-    "myneg",
-    string_user_cb);
+    "myneg");
 
   rclcpp::spin(node);
 

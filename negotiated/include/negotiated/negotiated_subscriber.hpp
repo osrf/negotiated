@@ -34,7 +34,6 @@ struct SupportedTypeInfo final
 {
   negotiated_interfaces::msg::SupportedType supported_type;
   std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> callback;
-  // std::type_index type_index;
 };
 
 class SupportedTypeMap final
@@ -44,48 +43,61 @@ public:
   void add_to_map(const std::string & ros_type_name, const std::string & name, double weight, CallbackT && callback)
   {
     // TODO(clalancette): What if the supported type is already in the map?
-    name_to_supported_types_.emplace(typeid(SupportedMessageT), SupportedTypeInfo());
-    name_to_supported_types_[typeid(SupportedMessageT)].supported_type.ros_type_name = ros_type_name;
-    name_to_supported_types_[typeid(SupportedMessageT)].supported_type.name = name;
-    name_to_supported_types_[typeid(SupportedMessageT)].supported_type.weight = weight;
+    name_to_supported_types_.emplace(ros_type_name, SupportedTypeInfo());
+    name_to_supported_types_[ros_type_name].supported_type.ros_type_name = ros_type_name;
+    name_to_supported_types_[ros_type_name].supported_type.name = name;
+    name_to_supported_types_[ros_type_name].supported_type.weight = weight;
     auto any_sub_callback = std::make_shared<rclcpp::AnySubscriptionCallback<SupportedMessageT>>();
     any_sub_callback->set(callback);
-    name_to_supported_types_[typeid(SupportedMessageT)].callback = any_sub_callback;
-    // name_to_supported_types_[typeid(SupportedMessageT)].type_index = typeid(SupportedMessageT);
+    name_to_supported_types_[ros_type_name].callback = any_sub_callback;
   }
 
   negotiated_interfaces::msg::SupportedTypes get() const
   {
     auto ret = negotiated_interfaces::msg::SupportedTypes();
-    for (const std::pair<const std::type_index, SupportedTypeInfo> & pair : name_to_supported_types_) {
+    for (const std::pair<const std::string, SupportedTypeInfo> & pair : name_to_supported_types_) {
       ret.supported_types.push_back(pair.second.supported_type);
     }
 
     return ret;
   }
 
-  std::unordered_map<std::type_index, SupportedTypeInfo> name_to_supported_types_;
+  std::unordered_map<std::string, SupportedTypeInfo> name_to_supported_types_;
 };
 
 template<typename MessageT>
 class NegotiatedSubscriber
 {
 public:
-  template<typename CallbackT>
   explicit NegotiatedSubscriber(
     rclcpp::Node::SharedPtr node,
     const SupportedTypeMap & supported_type_map,
     const std::string & topic_name,
-    CallbackT && callback,
     rclcpp::QoS final_qos = rclcpp::QoS(10))
   {
     auto sub_cb =
-      [this, node, callback, final_qos, supported_type_map](const negotiated_interfaces::msg::NewTopicInfo & msg)
+      [this, node, final_qos](const negotiated_interfaces::msg::NewTopicInfo & msg)
       {
-        RCLCPP_INFO(node->get_logger(), "Creating subscription to %s", msg.name.c_str());
+        RCLCPP_INFO(node->get_logger(), "Creating subscription to %s with type %s", msg.topic_name.c_str(), msg.ros_type_name.c_str());
+
+        auto cb = [node](std::shared_ptr<rclcpp::SerializedMessage> msg)
+        {
+          (void)msg;
+          RCLCPP_INFO(node->get_logger(), "Got serialized message");
+        };
+
+        this->subscription_ = node->create_generic_subscription(msg.topic_name, msg.ros_type_name, final_qos, cb);
+
+        //auto ts_lib = rclcpp::get_typesupport_library(
+        //  msg.ros_type_name, "rosidl_typesupport_cpp");
+        //const rosidl_message_type_support_t * type_support_handle = rclcpp::get_typesupport_handle(msg.ros_type_name, "rosidl_typesupport_cpp", *ts_lib);
+        //std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> cb = supported_type_map.name_to_supported_types_.at(msg.ros_type_name).callback;
+
+        //rclcpp::AnySubscriptionCallback * mycb = static_cast<rclcpp::AnySubscriptionCallback<std_msgs::msg::String>>(*cb.get());
+
+        //this->subscription_ = node->create_subscription<MessageT>(
+        //  msg.topic_name, final_qos, mycb);
         //const SupportedTypeInfo & type_info = supported_type_map.name_to_supported_types_.at(typeid(std::string));
-        this->subscription_ = node->create_subscription<MessageT>(
-          msg.name, final_qos, callback);
         //auto cb = std::unique_ptr<AnySubscriptionCallback<MessageT>>(static_cast<AnySubscriptionCallback<int>*>(sti.callback.release()));
         //this->subscription_ = node->create_subscription<std_msg::msg::String>(
         //  msg.name, final_qos, type_info.callback);
@@ -104,7 +116,7 @@ public:
 
 private:
   rclcpp::Subscription<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_subscription_;
-  typename rclcpp::Subscription<MessageT>::SharedPtr subscription_;
+  std::shared_ptr<rclcpp::GenericSubscription> subscription_;
   rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_pub_;
 };
 

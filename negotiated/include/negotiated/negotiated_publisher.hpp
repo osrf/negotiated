@@ -88,7 +88,9 @@ public:
     publisher_ = node_->create_publisher<MessageT>(new_topic_name, final_qos_);
 
     auto msg = std::make_unique<negotiated_interfaces::msg::NewTopicInfo>();
-    msg->name = new_topic_name;
+    // TODO(clalancette): Make this the chosen type
+    msg->ros_type_name = "std_msgs/msg/String";
+    msg->topic_name = new_topic_name;
     neg_publisher_->publish(std::move(msg));
 
     return true;

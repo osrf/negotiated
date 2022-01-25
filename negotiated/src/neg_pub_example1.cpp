@@ -32,6 +32,7 @@ int main(int argc, char ** argv)
   negotiated_interfaces::msg::SupportedTypes supported_types;
 
   negotiated_interfaces::msg::SupportedType supported_type_a;
+  supported_type_a.ros_type_name = "std_msgs/msg/String";
   supported_type_a.name = "a";
   supported_type_a.weight = 1.0;
   supported_types.supported_types.push_back(supported_type_a);

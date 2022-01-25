@@ -1,1 +1,2 @@
-string name
+string ros_type_name
+string topic_name
