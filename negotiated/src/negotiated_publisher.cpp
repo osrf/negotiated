@@ -73,6 +73,7 @@ void NegotiatedPublisher::negotiate()
 
   auto msg = std::make_unique<negotiated_interfaces::msg::NewTopicInfo>();
 
+  // TODO(clalancette): This is a stupid negotiation algorithm that just computes the highest weight.  Needs work.
   double max_weight = 0.0;
   for (const negotiated_interfaces::msg::SupportedType & pub_type : supported_type_map_.get_types().supported_types) {
     RCLCPP_INFO(node_->get_logger(), "  Saw pub supported type %s -> %f", pub_type.ros_type_name.c_str(), pub_type.weight);
@@ -88,23 +89,12 @@ void NegotiatedPublisher::negotiate()
       if (current_weight > max_weight) {
         max_weight = current_weight;
         RCLCPP_INFO(node_->get_logger(), "  Chose type %s", pub_type.ros_type_name.c_str());
-        msg->topic_name = topic_name_ + "/yuv422";
+        // TODO(clalancette): What if the sub names don't match the pub name?
+        msg->topic_name = topic_name_ + "/" + pub_type.name;
         ros_type_name_ = pub_type.ros_type_name;
         msg->ros_type_name = ros_type_name_;
       }
     }
-
-#if 0
-    std::unordered_map<std::string, std::vector<double>>::iterator it = subscription_names_to_weights_.find(pub_type.ros_type_name);
-    // TODO(clalancette): This is just taking the first match and totally ignoring weights
-    if (it != subscription_names_to_weights_.end()) {
-      // TODO(clalancette): This is still hardcoded!
-      RCLCPP_INFO(node_->get_logger(), "  Chose type %s", pub_type.ros_type_name);
-      msg->topic_name = topic_name_ + "/yuv422";
-      ros_type_name_ = pub_type.ros_type_name;
-      msg->ros_type_name = ros_type_name_;
-    }
-#endif
   }
 
   // Now that we've run the algorithm and figured out what our actual publication
