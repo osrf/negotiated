@@ -15,10 +15,8 @@
 #ifndef NEGOTIATED__NEGOTIATED_SUBSCRIBER_HPP_
 #define NEGOTIATED__NEGOTIATED_SUBSCRIBER_HPP_
 
-#include <functional>
 #include <memory>
 #include <string>
-#include <typeindex>
 #include <unordered_map>
 #include <utility>
 
@@ -39,7 +37,7 @@ public:
 };
 
 template<typename MessageT>
-class MessageContainer : public MessageContainerBase
+class MessageContainer final : public MessageContainerBase
 {
 public:
   MessageContainer()
@@ -59,7 +57,7 @@ private:
 struct SupportedTypeInfo final
 {
   negotiated_interfaces::msg::SupportedType supported_type;
-  std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> callback;
+  std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> asc;
   std::shared_ptr<rclcpp::SerializationBase> serializer;
   std::shared_ptr<MessageContainerBase> message_container;
 };
@@ -68,18 +66,24 @@ class SupportedTypeMap final
 {
 public:
   template<typename MessageT, typename CallbackT>
-  void add_to_map(const std::string & ros_type_name, const std::string & name, double weight, CallbackT && callback)
+  void add_to_map(
+    const std::string & ros_type_name,
+    const std::string & name,
+    double weight,
+    CallbackT && callback)
   {
     // TODO(clalancette): What if the supported type is already in the map?
     name_to_supported_types_.emplace(ros_type_name, SupportedTypeInfo());
     name_to_supported_types_[ros_type_name].supported_type.ros_type_name = ros_type_name;
     name_to_supported_types_[ros_type_name].supported_type.name = name;
     name_to_supported_types_[ros_type_name].supported_type.weight = weight;
-    auto any_sub_callback = std::make_shared<rclcpp::AnySubscriptionCallback<MessageT>>();
-    any_sub_callback->set(callback);
-    name_to_supported_types_[ros_type_name].callback = any_sub_callback;
-    name_to_supported_types_[ros_type_name].serializer = std::make_shared<rclcpp::Serialization<MessageT>>();
-    name_to_supported_types_[ros_type_name].message_container = std::make_shared<MessageContainer<MessageT>>();
+    auto asc = std::make_shared<rclcpp::AnySubscriptionCallback<MessageT>>();
+    asc->set(callback);
+    name_to_supported_types_[ros_type_name].asc = asc;
+    name_to_supported_types_[ros_type_name].serializer =
+      std::make_shared<rclcpp::Serialization<MessageT>>();
+    name_to_supported_types_[ros_type_name].message_container =
+      std::make_shared<MessageContainer<MessageT>>();
   }
 
   negotiated_interfaces::msg::SupportedTypes get() const
@@ -92,20 +96,27 @@ public:
     return ret;
   }
 
-  void dispatch_msg(const std::string & ros_type_name, std::shared_ptr<rclcpp::SerializedMessage> msg) const
+  void dispatch_msg(
+    const std::string & ros_type_name,
+    std::shared_ptr<rclcpp::SerializedMessage> msg) const
   {
+    if (name_to_supported_types_.count(ros_type_name) == 0) {
+      // We were asked to dispatch for a type that we don't have, so skip
+      return;
+    }
+
     // TODO(clalancette): This is bogus; what should we fill in?
     rclcpp::MessageInfo msg_info;
 
-    std::shared_ptr<MessageContainerBase> msg_container = name_to_supported_types_.at(ros_type_name).message_container;
+    SupportedTypeInfo type_info = name_to_supported_types_.at(ros_type_name);
+
+    std::shared_ptr<MessageContainerBase> msg_container = type_info.message_container;
     std::shared_ptr<void> msg_ptr = msg_container->get_msg_ptr();
-    // TODO(clalancette): what happens if the name isn't in the map?
-    std::shared_ptr<rclcpp::SerializationBase> serializer = name_to_supported_types_.at(ros_type_name).serializer;
+
+    std::shared_ptr<rclcpp::SerializationBase> serializer = type_info.serializer;
     serializer->deserialize_message(msg.get(), msg_ptr.get());
 
-    // TODO(clalancette): what happens if the name isn't in the map?
-    std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> asc = name_to_supported_types_.at(ros_type_name).callback;
-
+    std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> asc = type_info.asc;
     asc->dispatch(msg_ptr, msg_info);
   }
 
@@ -124,20 +135,20 @@ public:
     rclcpp::QoS final_qos = rclcpp::QoS(10))
   {
     auto sub_cb =
-      [this, node, supported_type_map, final_qos](const negotiated_interfaces::msg::NewTopicInfo & msg)
+      [this, node, supported_type_map,
+        final_qos](const negotiated_interfaces::msg::NewTopicInfo & msg)
       {
-        RCLCPP_INFO(node->get_logger(), "Creating subscription to %s with type %s", msg.topic_name.c_str(), msg.ros_type_name.c_str());
-
         std::string new_topic_ros_type_name = msg.ros_type_name;
 
-        auto cb = [this, node, supported_type_map, new_topic_ros_type_name](std::shared_ptr<rclcpp::SerializedMessage> msg)
-        {
-          RCLCPP_INFO(node->get_logger(), "Got serialized message");
+        auto serialized_cb =
+          [this, node, supported_type_map,
+            new_topic_ros_type_name](std::shared_ptr<rclcpp::SerializedMessage> msg)
+          {
+            supported_type_map.dispatch_msg(new_topic_ros_type_name, msg);
+          };
 
-          supported_type_map.dispatch_msg(new_topic_ros_type_name, msg);
-        };
-
-        this->subscription_ = node->create_generic_subscription(msg.topic_name, msg.ros_type_name, final_qos, cb);
+        this->subscription_ = node->create_generic_subscription(
+          msg.topic_name, msg.ros_type_name, final_qos, serialized_cb);
       };
 
     neg_subscription_ = node->create_subscription<negotiated_interfaces::msg::NewTopicInfo>(
@@ -149,7 +160,6 @@ public:
       rclcpp::QoS(100).transient_local());
 
     supported_types_pub_->publish(supported_type_map.get());
-    RCLCPP_INFO(node->get_logger(), "Ready to negotiate");
   }
 
 private:
