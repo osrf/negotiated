@@ -19,7 +19,7 @@
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/string.hpp"
 
-#include "negotiated/negotiated_subscriber.hpp"
+#include "negotiated/negotiated_subscription.hpp"
 
 int main(int argc, char ** argv)
 {
@@ -43,7 +43,7 @@ int main(int argc, char ** argv)
   supported_type_map.add_to_map<std_msgs::msg::Int32>(
     "std_msgs/msg/Int32", "b", 1.0, int_user_cb);
 
-  auto neg_sub = std::make_shared<negotiated::NegotiatedSubscriber>(
+  auto neg_sub = std::make_shared<negotiated::NegotiatedSubscription>(
     node,
     supported_type_map,
     "myneg");
