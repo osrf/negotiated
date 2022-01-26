@@ -45,7 +45,7 @@ NegotiatedPublisher::NegotiatedPublisher(
         supported_types.supported_types)
       {
         RCLCPP_INFO(node_->get_logger(), "Adding supported_types %s -> %f", type.name.c_str(), type.weight);
-        this->sub_supported_types_.supported_types.push_back(type);
+        subscription_names_to_weights_[type.ros_type_name].push_back(type.weight);
       }
 
       negotiate();
@@ -60,7 +60,7 @@ void NegotiatedPublisher::negotiate()
 {
   RCLCPP_INFO(node_->get_logger(), "Negotiating");
 
-  if (sub_supported_types_.supported_types.empty()) {
+  if (subscription_names_to_weights_.empty()) {
     RCLCPP_INFO(node_->get_logger(), "Skipping negotiation because of empty subscription supported types");
     return;
   }
@@ -70,32 +70,48 @@ void NegotiatedPublisher::negotiate()
     return;
   }
 
-  for (const negotiated_interfaces::msg::SupportedType & sub_type : sub_supported_types_.supported_types) {
-    RCLCPP_INFO(node_->get_logger(), "Saw sub supported type %s -> %f", sub_type.name.c_str(), sub_type.weight);
 
-    for (const negotiated_interfaces::msg::SupportedType & pub_type : supported_type_map_.get_types().supported_types) {
-      RCLCPP_INFO(node_->get_logger(), "  Saw pub supported type %s -> %f", pub_type.name.c_str(), pub_type.weight);
+  auto msg = std::make_unique<negotiated_interfaces::msg::NewTopicInfo>();
+
+  double max_weight = 0.0;
+  for (const negotiated_interfaces::msg::SupportedType & pub_type : supported_type_map_.get_types().supported_types) {
+    RCLCPP_INFO(node_->get_logger(), "  Saw pub supported type %s -> %f", pub_type.ros_type_name.c_str(), pub_type.weight);
+
+    std::unordered_map<std::string, std::vector<double>>::iterator it = subscription_names_to_weights_.find(pub_type.ros_type_name);
+    if (it != subscription_names_to_weights_.end()) {
+      double current_weight = 0.0;
+      for (double w : it->second) {
+        current_weight += w;
+      }
+      current_weight += pub_type.weight;
+
+      if (current_weight > max_weight) {
+        max_weight = current_weight;
+        RCLCPP_INFO(node_->get_logger(), "  Chose type %s", pub_type.ros_type_name.c_str());
+        msg->topic_name = topic_name_ + "/yuv422";
+        ros_type_name_ = pub_type.ros_type_name;
+        msg->ros_type_name = ros_type_name_;
+      }
     }
+
+#if 0
+    std::unordered_map<std::string, std::vector<double>>::iterator it = subscription_names_to_weights_.find(pub_type.ros_type_name);
+    // TODO(clalancette): This is just taking the first match and totally ignoring weights
+    if (it != subscription_names_to_weights_.end()) {
+      // TODO(clalancette): This is still hardcoded!
+      RCLCPP_INFO(node_->get_logger(), "  Chose type %s", pub_type.ros_type_name);
+      msg->topic_name = topic_name_ + "/yuv422";
+      ros_type_name_ = pub_type.ros_type_name;
+      msg->ros_type_name = ros_type_name_;
+    }
+#endif
   }
-
-  // TODO(clalancette): run the algorithm to choose the type
-
-  // TODO(clalancette): What happens if the subscription supported_types are empty?
-  // TODO(clalancette): What happens if the publisher supported_types are empty?
 
   // Now that we've run the algorithm and figured out what our actual publication
   // "type" is going to be, create the publisher and inform the subscriptions
   // the name of it.
 
-  std::string new_topic_name = topic_name_ + "/yuv422";
-  // TODO(clalancette): Make this the chosen type
-  ros_type_name_ = "std_msgs/msg/String";
-
-  auto msg = std::make_unique<negotiated_interfaces::msg::NewTopicInfo>();
-  msg->ros_type_name = ros_type_name_;
-  msg->topic_name = new_topic_name;
-
-  publisher_ = node_->create_generic_publisher(new_topic_name, ros_type_name_, final_qos_);
+  publisher_ = node_->create_generic_publisher(msg->topic_name, msg->ros_type_name, final_qos_);
 
   neg_publisher_->publish(std::move(msg));
 

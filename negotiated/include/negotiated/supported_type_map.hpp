@@ -18,7 +18,6 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
-#include <utility>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/serialization.hpp"

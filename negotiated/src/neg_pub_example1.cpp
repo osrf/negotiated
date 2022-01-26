@@ -16,6 +16,7 @@
 #include <memory>
 
 #include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/string.hpp"
 
 #include "negotiated_interfaces/msg/supported_type.hpp"
@@ -32,6 +33,8 @@ int main(int argc, char ** argv)
   negotiated::SupportedTypeMap supported_type_map;
   supported_type_map.add_supported_info<std_msgs::msg::String>(
     "std_msgs/msg/String", "a", 1.0);
+  supported_type_map.add_supported_info<std_msgs::msg::Int32>(
+    "std_msgs/msg/Int32", "a", 0.5);
 
   auto neg_pub = std::make_shared<negotiated::NegotiatedPublisher>(
     node,

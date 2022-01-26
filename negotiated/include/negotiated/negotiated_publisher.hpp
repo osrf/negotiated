@@ -67,7 +67,7 @@ private:
   rclcpp::Publisher<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_publisher_;
   std::shared_ptr<rclcpp::GenericPublisher> publisher_;
   rclcpp::Subscription<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_sub_;
-  negotiated_interfaces::msg::SupportedTypes sub_supported_types_;
+  std::unordered_map<std::string, std::vector<double>> subscription_names_to_weights_;
 };
 
 }  // namespace negotiated
