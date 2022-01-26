@@ -35,7 +35,7 @@ namespace negotiated
 class MessageContainerBase
 {
 public:
-  virtual void * get_msg_ptr() = 0;
+  virtual std::shared_ptr<void> get_msg_ptr() = 0;
 };
 
 template<typename MessageT>
@@ -47,9 +47,9 @@ public:
     message_storage = std::make_shared<MessageT>();
   }
 
-  void * get_msg_ptr() override
+  std::shared_ptr<void> get_msg_ptr() override
   {
-    return message_storage.get();
+    return message_storage;
   }
 
 private:
@@ -98,18 +98,15 @@ public:
     rclcpp::MessageInfo msg_info;
 
     std::shared_ptr<MessageContainerBase> msg_container = name_to_supported_types_.at(ros_type_name).message_container;
+    std::shared_ptr<void> msg_ptr = msg_container->get_msg_ptr();
     // TODO(clalancette): what happens if the name isn't in the map?
     std::shared_ptr<rclcpp::SerializationBase> serializer = name_to_supported_types_.at(ros_type_name).serializer;
-    serializer->deserialize_message(msg.get(), msg_container->get_msg_ptr());
+    serializer->deserialize_message(msg.get(), msg_ptr.get());
 
     // TODO(clalancette): what happens if the name isn't in the map?
     std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> asc = name_to_supported_types_.at(ros_type_name).callback;
 
-    //void * myptr = msg_container->get_msg_ptr();
-    //auto shrd = std::shared_ptr<void>();
-    //shrd.reset(myptr);
-    //auto myptr = std::make_shared<void>(msg_container->get_msg_ptr());
-    //asc->dispatch(std::shared_ptr<void>(msg_container->get_msg_ptr()), msg_info);
+    asc->dispatch(msg_ptr, msg_info);
   }
 
 private:
@@ -141,20 +138,6 @@ public:
         };
 
         this->subscription_ = node->create_generic_subscription(msg.topic_name, msg.ros_type_name, final_qos, cb);
-
-        //auto ts_lib = rclcpp::get_typesupport_library(
-        //  msg.ros_type_name, "rosidl_typesupport_cpp");
-        //const rosidl_message_type_support_t * type_support_handle = rclcpp::get_typesupport_handle(msg.ros_type_name, "rosidl_typesupport_cpp", *ts_lib);
-        //std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> cb = supported_type_map.name_to_supported_types_.at(msg.ros_type_name).callback;
-
-        //rclcpp::AnySubscriptionCallback * mycb = static_cast<rclcpp::AnySubscriptionCallback<std_msgs::msg::String>>(*cb.get());
-
-        //this->subscription_ = node->create_subscription<MessageT>(
-        //  msg.topic_name, final_qos, mycb);
-        //const SupportedTypeInfo & type_info = supported_type_map.name_to_supported_types_.at(typeid(std::string));
-        //auto cb = std::unique_ptr<AnySubscriptionCallback<MessageT>>(static_cast<AnySubscriptionCallback<int>*>(sti.callback.release()));
-        //this->subscription_ = node->create_subscription<std_msg::msg::String>(
-        //  msg.name, final_qos, type_info.callback);
       };
 
     neg_subscription_ = node->create_subscription<negotiated_interfaces::msg::NewTopicInfo>(
