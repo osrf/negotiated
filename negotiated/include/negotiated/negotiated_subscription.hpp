@@ -17,88 +17,22 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
-#include <utility>
 
 #include "rclcpp/rclcpp.hpp"
-#include "rclcpp/serialization.hpp"
 
 #include "negotiated_interfaces/msg/new_topic_info.hpp"
-#include "negotiated_interfaces/msg/supported_type.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
+
+#include "negotiated/supported_type_map.hpp"
 
 namespace negotiated
 {
 
-class MessageContainerBase
-{
-public:
-  virtual std::shared_ptr<void> get_msg_ptr() = 0;
-};
-
-template<typename MessageT>
-class MessageContainer final : public MessageContainerBase
-{
-public:
-  MessageContainer()
-  {
-    message_storage = std::make_shared<MessageT>();
-  }
-
-  std::shared_ptr<void> get_msg_ptr() override
-  {
-    return message_storage;
-  }
-
-private:
-  std::shared_ptr<MessageT> message_storage;
-};
-
-struct SupportedTypeInfo final
-{
-  negotiated_interfaces::msg::SupportedType supported_type;
-  std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> asc;
-  std::shared_ptr<rclcpp::SerializationBase> serializer;
-  std::shared_ptr<MessageContainerBase> message_container;
-};
-
-class SupportedTypeMap final
-{
-public:
-  template<typename MessageT, typename CallbackT>
-  void add_to_map(
-    const std::string & ros_type_name,
-    const std::string & name,
-    double weight,
-    CallbackT && callback)
-  {
-    // TODO(clalancette): What if the supported type is already in the map?
-    name_to_supported_types_.emplace(ros_type_name, SupportedTypeInfo());
-    name_to_supported_types_[ros_type_name].supported_type.ros_type_name = ros_type_name;
-    name_to_supported_types_[ros_type_name].supported_type.name = name;
-    name_to_supported_types_[ros_type_name].supported_type.weight = weight;
-    auto asc = std::make_shared<rclcpp::AnySubscriptionCallback<MessageT>>();
-    asc->set(callback);
-    name_to_supported_types_[ros_type_name].asc = asc;
-    name_to_supported_types_[ros_type_name].serializer =
-      std::make_shared<rclcpp::Serialization<MessageT>>();
-    name_to_supported_types_[ros_type_name].message_container =
-      std::make_shared<MessageContainer<MessageT>>();
-  }
-
-  negotiated_interfaces::msg::SupportedTypes get_types() const;
-
-  void dispatch_msg(
-    const std::string & ros_type_name,
-    std::shared_ptr<rclcpp::SerializedMessage> msg) const;
-
-private:
-  std::unordered_map<std::string, SupportedTypeInfo> name_to_supported_types_;
-};
-
 class NegotiatedSubscription
 {
 public:
+  RCLCPP_SMART_PTR_DEFINITIONS(NegotiatedSubscription)
+
   explicit NegotiatedSubscription(
     rclcpp::Node::SharedPtr node,
     const SupportedTypeMap & supported_type_map,

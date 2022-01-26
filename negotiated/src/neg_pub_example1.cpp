@@ -29,17 +29,13 @@ int main(int argc, char ** argv)
 
   auto node = std::make_shared<rclcpp::Node>("neg_pub_node");
 
-  negotiated_interfaces::msg::SupportedTypes supported_types;
+  negotiated::SupportedTypeMap supported_type_map;
+  supported_type_map.add_supported_info<std_msgs::msg::String>(
+    "std_msgs/msg/String", "a", 1.0);
 
-  negotiated_interfaces::msg::SupportedType supported_type_a;
-  supported_type_a.ros_type_name = "std_msgs/msg/String";
-  supported_type_a.name = "a";
-  supported_type_a.weight = 1.0;
-  supported_types.supported_types.push_back(supported_type_a);
-
-  auto neg_pub = std::make_shared<negotiated::NegotiatedPublisher<std_msgs::msg::String>>(
+  auto neg_pub = std::make_shared<negotiated::NegotiatedPublisher>(
     node,
-    supported_types,
+    supported_type_map,
     "myneg");
 
   neg_pub->negotiate();
@@ -47,9 +43,9 @@ int main(int argc, char ** argv)
   int count = 0;
   auto publish_message = [&count, &neg_pub]() -> void
     {
-      auto msg = std::make_unique<std_msgs::msg::String>();
-      msg->data = "Hello World: " + std::to_string(count++);
-      neg_pub->publish(std::move(msg));
+      auto msg = std_msgs::msg::String();
+      msg.data = "Hello World: " + std::to_string(count++);
+      neg_pub->publish(msg);
     };
 
   rclcpp::TimerBase::SharedPtr timer = node->create_wall_timer(
