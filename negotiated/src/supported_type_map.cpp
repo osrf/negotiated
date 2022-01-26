@@ -62,7 +62,9 @@ void SupportedTypeMap::dispatch_msg(
 
 std::shared_ptr<rclcpp::SerializationBase> SupportedTypeMap::get_serializer(const std::string & ros_type_name) const
 {
-  // TODO(clalancette): What happens if we can't find ros_type_name in the map?
+  if (name_to_supported_types_.count(ros_type_name) == 0) {
+    return nullptr;
+  }
   return name_to_supported_types_.at(ros_type_name).serializer;
 }
 

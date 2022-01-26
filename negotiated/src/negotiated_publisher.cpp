@@ -41,13 +41,14 @@ NegotiatedPublisher::NegotiatedPublisher(
 
   auto neg_cb = [this](const negotiated_interfaces::msg::SupportedTypes & supported_types)
     {
-      // TODO(clalancette): We have to consider renegotiation here
       for (const negotiated_interfaces::msg::SupportedType & type :
         supported_types.supported_types)
       {
         RCLCPP_INFO(node_->get_logger(), "Adding supported_types %s -> %f", type.name.c_str(), type.weight);
-        this->sub_supported_types_.push_back(type);
+        this->sub_supported_types_.supported_types.push_back(type);
       }
+
+      negotiate();
     };
 
   std::string supported_type_name = topic_name_ + "/supported_types";
@@ -55,10 +56,26 @@ NegotiatedPublisher::NegotiatedPublisher(
     supported_type_name, rclcpp::QoS(100).transient_local(), neg_cb);
 }
 
-bool NegotiatedPublisher::negotiate()
+void NegotiatedPublisher::negotiate()
 {
-  for (const negotiated_interfaces::msg::SupportedType & type : sub_supported_types_) {
-    RCLCPP_INFO(node_->get_logger(), "Saw supported type %s -> %f", type.name.c_str(), type.weight);
+  RCLCPP_INFO(node_->get_logger(), "Negotiating");
+
+  if (sub_supported_types_.supported_types.empty()) {
+    RCLCPP_INFO(node_->get_logger(), "Skipping negotiation because of empty subscription supported types");
+    return;
+  }
+
+  if (supported_type_map_.get_types().supported_types.empty()) {
+    RCLCPP_INFO(node_->get_logger(), "Skipping negotiation because of empty publisher supported types");
+    return;
+  }
+
+  for (const negotiated_interfaces::msg::SupportedType & sub_type : sub_supported_types_.supported_types) {
+    RCLCPP_INFO(node_->get_logger(), "Saw sub supported type %s -> %f", sub_type.name.c_str(), sub_type.weight);
+
+    for (const negotiated_interfaces::msg::SupportedType & pub_type : supported_type_map_.get_types().supported_types) {
+      RCLCPP_INFO(node_->get_logger(), "  Saw pub supported type %s -> %f", pub_type.name.c_str(), pub_type.weight);
+    }
   }
 
   // TODO(clalancette): run the algorithm to choose the type
@@ -82,7 +99,7 @@ bool NegotiatedPublisher::negotiate()
 
   neg_publisher_->publish(std::move(msg));
 
-  return true;
+  return;
 }
 
 }  // namespace negotiated

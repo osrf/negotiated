@@ -38,8 +38,6 @@ int main(int argc, char ** argv)
     supported_type_map,
     "myneg");
 
-  neg_pub->negotiate();
-
   int count = 0;
   auto publish_message = [&count, &neg_pub]() -> void
     {
