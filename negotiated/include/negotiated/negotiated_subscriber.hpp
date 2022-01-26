@@ -32,11 +32,36 @@
 namespace negotiated
 {
 
+class MessageContainerBase
+{
+public:
+  virtual void * get_msg_ptr() = 0;
+};
+
+template<typename MessageT>
+class MessageContainer : public MessageContainerBase
+{
+public:
+  MessageContainer()
+  {
+    message_storage = std::make_shared<MessageT>();
+  }
+
+  void * get_msg_ptr() override
+  {
+    return message_storage.get();
+  }
+
+private:
+  std::shared_ptr<MessageT> message_storage;
+};
+
 struct SupportedTypeInfo final
 {
   negotiated_interfaces::msg::SupportedType supported_type;
   std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> callback;
   std::shared_ptr<rclcpp::SerializationBase> serializer;
+  std::shared_ptr<MessageContainerBase> message_container;
 };
 
 class SupportedTypeMap final
@@ -54,6 +79,7 @@ public:
     any_sub_callback->set(callback);
     name_to_supported_types_[ros_type_name].callback = any_sub_callback;
     name_to_supported_types_[ros_type_name].serializer = std::make_shared<rclcpp::Serialization<MessageT>>();
+    name_to_supported_types_[ros_type_name].message_container = std::make_shared<MessageContainer<MessageT>>();
   }
 
   negotiated_interfaces::msg::SupportedTypes get() const
@@ -66,32 +92,24 @@ public:
     return ret;
   }
 
-  std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> get_callback_from_name(const std::string & name) const
-  {
-    // TODO(clalancette): what happens if the name isn't in the map?
-    return name_to_supported_types_.at(name).callback;
-  }
-
-  std::shared_ptr<rclcpp::SerializationBase> get_serializer_from_name(const std::string & name) const
-  {
-    // TODO(clalancette): what happens if the name isn't in the map?
-    return name_to_supported_types_.at(name).serializer;
-  }
-
   void dispatch_msg(const std::string & ros_type_name, std::shared_ptr<rclcpp::SerializedMessage> msg) const
   {
     // TODO(clalancette): This is bogus; what should we fill in?
     rclcpp::MessageInfo msg_info;
 
-    auto string_message = std::make_shared<std_msgs::msg::String>();
+    std::shared_ptr<MessageContainerBase> msg_container = name_to_supported_types_.at(ros_type_name).message_container;
     // TODO(clalancette): what happens if the name isn't in the map?
     std::shared_ptr<rclcpp::SerializationBase> serializer = name_to_supported_types_.at(ros_type_name).serializer;
-    serializer->deserialize_message(msg.get(), string_message.get());
+    serializer->deserialize_message(msg.get(), msg_container->get_msg_ptr());
 
     // TODO(clalancette): what happens if the name isn't in the map?
     std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> asc = name_to_supported_types_.at(ros_type_name).callback;
 
-    asc->dispatch(string_message, msg_info);
+    //void * myptr = msg_container->get_msg_ptr();
+    //auto shrd = std::shared_ptr<void>();
+    //shrd.reset(myptr);
+    //auto myptr = std::make_shared<void>(msg_container->get_msg_ptr());
+    //asc->dispatch(std::shared_ptr<void>(msg_container->get_msg_ptr()), msg_info);
   }
 
 private:
@@ -148,6 +166,7 @@ public:
       rclcpp::QoS(100).transient_local());
 
     supported_types_pub_->publish(supported_type_map.get());
+    RCLCPP_INFO(node->get_logger(), "Ready to negotiate");
   }
 
 private:
