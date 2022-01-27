@@ -17,7 +17,7 @@
 
 #include <memory>
 #include <string>
-#include <utility>
+#include <unordered_map>
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
@@ -38,14 +38,20 @@ public:
 
   explicit NegotiatedPublisher(
     rclcpp::Node::SharedPtr node,
-    const SupportedTypeMap & supported_type_map,
     const std::string & topic_name,
     const rclcpp::QoS final_qos = rclcpp::QoS(10));
 
   template<typename MessageT>
+  void add_supported_info(const std::string & ros_type, const std::string & name, double weight)
+  {
+    supported_type_map_.add_supported_info<MessageT>(ros_type, name, weight);
+  }
+
+  template<typename MessageT>
   void publish(const MessageT & msg)
   {
-    std::shared_ptr<rclcpp::SerializationBase> serializer = supported_type_map_.get_serializer(ros_type_name_);
+    std::shared_ptr<rclcpp::SerializationBase> serializer = supported_type_map_.get_serializer(
+      ros_type_name_);
     if (serializer == nullptr) {
       RCLCPP_INFO(node_->get_logger(), "Skipping publish since no registered type name");
       return;

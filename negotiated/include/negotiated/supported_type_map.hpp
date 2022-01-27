@@ -100,7 +100,8 @@ public:
 
   negotiated_interfaces::msg::SupportedTypes get_types() const;
 
-  std::shared_ptr<rclcpp::SerializationBase> get_serializer(const std::string & ros_type_name) const;
+  std::shared_ptr<rclcpp::SerializationBase> get_serializer(
+    const std::string & ros_type_name) const;
 
   void dispatch_msg(
     const std::string & ros_type_name,

@@ -30,16 +30,13 @@ int main(int argc, char ** argv)
 
   auto node = std::make_shared<rclcpp::Node>("neg_pub_node");
 
-  negotiated::SupportedTypeMap supported_type_map;
-  supported_type_map.add_supported_info<std_msgs::msg::String>(
-    "std_msgs/msg/String", "a", 1.0);
-  supported_type_map.add_supported_info<std_msgs::msg::Int32>(
-    "std_msgs/msg/Int32", "a", 0.5);
-
   auto neg_pub = std::make_shared<negotiated::NegotiatedPublisher>(
     node,
-    supported_type_map,
     "myneg");
+  neg_pub->add_supported_info<std_msgs::msg::String>(
+    "std_msgs/msg/String", "a", 1.0);
+  neg_pub->add_supported_info<std_msgs::msg::Int32>(
+    "std_msgs/msg/Int32", "a", 0.5);
 
   int count = 0;
   auto publish_message = [&count, &neg_pub]() -> void

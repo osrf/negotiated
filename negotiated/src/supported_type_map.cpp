@@ -60,7 +60,8 @@ void SupportedTypeMap::dispatch_msg(
   asc->dispatch(msg_ptr, msg_info);
 }
 
-std::shared_ptr<rclcpp::SerializationBase> SupportedTypeMap::get_serializer(const std::string & ros_type_name) const
+std::shared_ptr<rclcpp::SerializationBase> SupportedTypeMap::get_serializer(
+  const std::string & ros_type_name) const
 {
   if (name_to_supported_types_.count(ros_type_name) == 0) {
     return nullptr;

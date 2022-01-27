@@ -28,11 +28,9 @@ namespace negotiated
 {
 NegotiatedPublisher::NegotiatedPublisher(
   rclcpp::Node::SharedPtr node,
-  const SupportedTypeMap & supported_type_map,
   const std::string & topic_name,
   const rclcpp::QoS final_qos)
 : node_(node),
-  supported_type_map_(supported_type_map),
   topic_name_(topic_name),
   final_qos_(final_qos)
 {
@@ -44,8 +42,11 @@ NegotiatedPublisher::NegotiatedPublisher(
       for (const negotiated_interfaces::msg::SupportedType & type :
         supported_types.supported_types)
       {
-        RCLCPP_INFO(node_->get_logger(), "Adding supported_types %s -> %f", type.name.c_str(), type.weight);
+        RCLCPP_INFO(
+          node_->get_logger(), "Adding supported_types %s -> %f",
+          type.name.c_str(), type.weight);
         subscription_names_to_weights_[type.ros_type_name].push_back(type.weight);
+
       }
 
       negotiate();
@@ -61,24 +62,33 @@ void NegotiatedPublisher::negotiate()
   RCLCPP_INFO(node_->get_logger(), "Negotiating");
 
   if (subscription_names_to_weights_.empty()) {
-    RCLCPP_INFO(node_->get_logger(), "Skipping negotiation because of empty subscription supported types");
+    RCLCPP_INFO(
+      node_->get_logger(), "Skipping negotiation because of empty subscription supported types");
     return;
   }
 
   if (supported_type_map_.get_types().supported_types.empty()) {
-    RCLCPP_INFO(node_->get_logger(), "Skipping negotiation because of empty publisher supported types");
+    RCLCPP_INFO(
+      node_->get_logger(), "Skipping negotiation because of empty publisher supported types");
     return;
   }
 
 
   auto msg = std::make_unique<negotiated_interfaces::msg::NewTopicInfo>();
 
-  // TODO(clalancette): This is a stupid negotiation algorithm that just computes the highest weight.  Needs work.
+  // TODO(clalancette): This is a stupid negotiation algorithm that just computes the
+  // highest weight.  Needs work.
   double max_weight = 0.0;
-  for (const negotiated_interfaces::msg::SupportedType & pub_type : supported_type_map_.get_types().supported_types) {
-    RCLCPP_INFO(node_->get_logger(), "  Saw pub supported type %s -> %f", pub_type.ros_type_name.c_str(), pub_type.weight);
+  for (const negotiated_interfaces::msg::SupportedType & pub_type :
+    supported_type_map_.get_types().supported_types)
+  {
+    RCLCPP_INFO(
+      node_->get_logger(), "  Saw pub supported type %s -> %f",
+      pub_type.ros_type_name.c_str(), pub_type.weight);
 
-    std::unordered_map<std::string, std::vector<double>>::iterator it = subscription_names_to_weights_.find(pub_type.ros_type_name);
+    std::unordered_map<std::string,
+      std::vector<double>>::iterator it = subscription_names_to_weights_.find(
+      pub_type.ros_type_name);
     if (it != subscription_names_to_weights_.end()) {
       double current_weight = 0.0;
       for (double w : it->second) {

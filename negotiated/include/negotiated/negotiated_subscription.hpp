@@ -35,11 +35,24 @@ public:
 
   explicit NegotiatedSubscription(
     rclcpp::Node::SharedPtr node,
-    const SupportedTypeMap & supported_type_map,
     const std::string & topic_name,
     rclcpp::QoS final_qos = rclcpp::QoS(10));
 
+  template<typename MessageT, typename CallbackT>
+  void add_supported_callback(
+    const std::string & ros_type, const std::string & name, double weight,
+    CallbackT && callback)
+  {
+    supported_type_map_.add_supported_callback<MessageT, CallbackT>(
+      ros_type, name, weight, callback);
+  }
+
+  void start();
+
 private:
+  rclcpp::Node::SharedPtr node_;
+  std::string topic_name_;
+  SupportedTypeMap supported_type_map_;
   rclcpp::Subscription<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_subscription_;
   std::shared_ptr<rclcpp::GenericSubscription> subscription_;
   rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_pub_;

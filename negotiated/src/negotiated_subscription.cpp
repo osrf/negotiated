@@ -29,21 +29,20 @@ namespace negotiated
 
 NegotiatedSubscription::NegotiatedSubscription(
   rclcpp::Node::SharedPtr node,
-  const SupportedTypeMap & supported_type_map,
   const std::string & topic_name,
   rclcpp::QoS final_qos)
+: node_(node),
+  topic_name_(topic_name)
 {
   auto sub_cb =
-    [this, node, supported_type_map,
-      final_qos](const negotiated_interfaces::msg::NewTopicInfo & msg)
+    [this, node, final_qos](const negotiated_interfaces::msg::NewTopicInfo & msg)
     {
       std::string new_topic_ros_type_name = msg.ros_type_name;
 
       auto serialized_cb =
-        [this, node, supported_type_map,
-          new_topic_ros_type_name](std::shared_ptr<rclcpp::SerializedMessage> msg)
+        [this, node, new_topic_ros_type_name](std::shared_ptr<rclcpp::SerializedMessage> msg)
         {
-          supported_type_map.dispatch_msg(new_topic_ros_type_name, msg);
+          supported_type_map_.dispatch_msg(new_topic_ros_type_name, msg);
         };
 
       this->subscription_ = node->create_generic_subscription(
@@ -52,13 +51,16 @@ NegotiatedSubscription::NegotiatedSubscription(
 
   neg_subscription_ = node->create_subscription<negotiated_interfaces::msg::NewTopicInfo>(
     topic_name, rclcpp::QoS(10), sub_cb);
+}
 
+void NegotiatedSubscription::start()
+{
   // TODO(clalancette): Is this the topic name we want to use?
-  supported_types_pub_ = node->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
-    topic_name + "/supported_types",
+  supported_types_pub_ = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    topic_name_ + "/supported_types",
     rclcpp::QoS(100).transient_local());
 
-  supported_types_pub_->publish(supported_type_map.get_types());
+  supported_types_pub_->publish(supported_type_map_.get_types());
 }
 
 }  // namespace negotiated
