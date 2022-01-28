@@ -20,7 +20,6 @@
 #include "std_msgs/msg/string.hpp"
 
 #include "negotiated/negotiated_subscription.hpp"
-#include "negotiated/supported_type_map.hpp"
 
 #include "example_type_info.hpp"
 

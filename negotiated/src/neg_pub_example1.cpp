@@ -19,9 +19,6 @@
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/string.hpp"
 
-#include "negotiated_interfaces/msg/supported_type.hpp"
-#include "negotiated_interfaces/msg/supported_types.hpp"
-
 #include "negotiated/negotiated_publisher.hpp"
 
 #include "example_type_info.hpp"

@@ -22,7 +22,6 @@
 #include "negotiated_interfaces/msg/supported_types.hpp"
 
 #include "negotiated/negotiated_subscription.hpp"
-#include "negotiated/supported_type_map.hpp"
 
 namespace negotiated
 {

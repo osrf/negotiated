@@ -23,7 +23,6 @@
 #include "rclcpp/rclcpp.hpp"
 
 #include "negotiated_interfaces/msg/new_topic_info.hpp"
-#include "negotiated_interfaces/msg/supported_type.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
 
 #include "negotiated/supported_type_map.hpp"

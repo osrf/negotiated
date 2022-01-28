@@ -23,6 +23,9 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/serialization.hpp"
 
+#include "negotiated_interfaces/msg/supported_type.hpp"
+#include "negotiated_interfaces/msg/supported_types.hpp"
+
 namespace negotiated
 {
 
