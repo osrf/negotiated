@@ -101,8 +101,12 @@ void NegotiatedPublisher::negotiate()
         RCLCPP_INFO(node_->get_logger(), "  Chose type %s", pub_type.ros_type_name.c_str());
         // TODO(clalancette): What if the sub names don't match the pub name?
         msg->topic_name = topic_name_ + "/" + pub_type.name;
+
         ros_type_name_ = pub_type.ros_type_name;
         msg->ros_type_name = ros_type_name_;
+
+        name_ = pub_type.name;
+        msg->name = name_;
       }
     }
   }

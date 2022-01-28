@@ -63,41 +63,45 @@ public:
   template<typename T, typename CallbackT>
   void add_supported_callback(double weight, CallbackT && callback)
   {
+    std::string key_name = T::ros_type + "+" + T::name;
     // TODO(clalancette): What if the supported type is already in the map?
-    name_to_supported_types_.emplace(T::ros_type, SupportedTypeInfo());
-    name_to_supported_types_[T::ros_type].supported_type.ros_type_name = T::ros_type;
-    name_to_supported_types_[T::ros_type].supported_type.name = T::name;
-    name_to_supported_types_[T::ros_type].supported_type.weight = weight;
+    name_to_supported_types_.emplace(key_name, SupportedTypeInfo());
+    name_to_supported_types_[key_name].supported_type.ros_type_name = T::ros_type;
+    name_to_supported_types_[key_name].supported_type.name = T::name;
+    name_to_supported_types_[key_name].supported_type.weight = weight;
     auto asc = std::make_shared<rclcpp::AnySubscriptionCallback<typename T::MsgT>>();
     asc->set(callback);
-    name_to_supported_types_[T::ros_type].asc = asc;
-    name_to_supported_types_[T::ros_type].serializer =
+    name_to_supported_types_[key_name].asc = asc;
+    name_to_supported_types_[key_name].serializer =
       std::make_shared<rclcpp::Serialization<typename T::MsgT>>();
-    name_to_supported_types_[T::ros_type].message_container =
+    name_to_supported_types_[key_name].message_container =
       std::make_shared<MessageContainer<typename T::MsgT>>();
   }
 
   template<typename T>
   void add_supported_info(double weight)
   {
+    std::string key_name = T::ros_type + "+" + T::name;
     // TODO(clalancette): What if the supported type is already in the map?
-    name_to_supported_types_.emplace(T::ros_type, SupportedTypeInfo());
-    name_to_supported_types_[T::ros_type].supported_type.ros_type_name = T::ros_type;
-    name_to_supported_types_[T::ros_type].supported_type.name = T::name;
-    name_to_supported_types_[T::ros_type].supported_type.weight = weight;
-    name_to_supported_types_[T::ros_type].serializer =
+    name_to_supported_types_.emplace(key_name, SupportedTypeInfo());
+    name_to_supported_types_[key_name].supported_type.ros_type_name = T::ros_type;
+    name_to_supported_types_[key_name].supported_type.name = T::name;
+    name_to_supported_types_[key_name].supported_type.weight = weight;
+    name_to_supported_types_[key_name].serializer =
       std::make_shared<rclcpp::Serialization<typename T::MsgT>>();
-    name_to_supported_types_[T::ros_type].message_container =
+    name_to_supported_types_[key_name].message_container =
       std::make_shared<MessageContainer<typename T::MsgT>>();
   }
 
   negotiated_interfaces::msg::SupportedTypes get_types() const;
 
   std::shared_ptr<rclcpp::SerializationBase> get_serializer(
-    const std::string & ros_type_name) const;
+    const std::string & ros_type_name,
+    const std::string & name) const;
 
   void dispatch_msg(
     const std::string & ros_type_name,
+    const std::string & name,
     std::shared_ptr<rclcpp::SerializedMessage> msg) const;
 
 private:

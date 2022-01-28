@@ -51,7 +51,7 @@ public:
   void publish(const MessageT & msg)
   {
     std::shared_ptr<rclcpp::SerializationBase> serializer = supported_type_map_.get_serializer(
-      ros_type_name_);
+      ros_type_name_, name_);
     if (serializer == nullptr) {
       RCLCPP_INFO(node_->get_logger(), "Skipping publish since no registered type name");
       return;
@@ -69,6 +69,7 @@ private:
   negotiated_interfaces::msg::SupportedTypes pub_supported_types_;
   std::string topic_name_;
   std::string ros_type_name_;
+  std::string name_;
   rclcpp::QoS final_qos_;
   rclcpp::Publisher<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_publisher_;
   std::shared_ptr<rclcpp::GenericPublisher> publisher_;
