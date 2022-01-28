@@ -60,42 +60,35 @@ struct SupportedTypeInfo final
 class SupportedTypeMap final
 {
 public:
-  template<typename MessageT, typename CallbackT>
-  void add_supported_callback(
-    const std::string & ros_type_name,
-    const std::string & name,
-    double weight,
-    CallbackT && callback)
+  template<typename T, typename CallbackT>
+  void add_supported_callback(double weight, CallbackT && callback)
   {
     // TODO(clalancette): What if the supported type is already in the map?
-    name_to_supported_types_.emplace(ros_type_name, SupportedTypeInfo());
-    name_to_supported_types_[ros_type_name].supported_type.ros_type_name = ros_type_name;
-    name_to_supported_types_[ros_type_name].supported_type.name = name;
-    name_to_supported_types_[ros_type_name].supported_type.weight = weight;
-    auto asc = std::make_shared<rclcpp::AnySubscriptionCallback<MessageT>>();
+    name_to_supported_types_.emplace(T::ros_type, SupportedTypeInfo());
+    name_to_supported_types_[T::ros_type].supported_type.ros_type_name = T::ros_type;
+    name_to_supported_types_[T::ros_type].supported_type.name = T::name;
+    name_to_supported_types_[T::ros_type].supported_type.weight = weight;
+    auto asc = std::make_shared<rclcpp::AnySubscriptionCallback<typename T::MsgT>>();
     asc->set(callback);
-    name_to_supported_types_[ros_type_name].asc = asc;
-    name_to_supported_types_[ros_type_name].serializer =
-      std::make_shared<rclcpp::Serialization<MessageT>>();
-    name_to_supported_types_[ros_type_name].message_container =
-      std::make_shared<MessageContainer<MessageT>>();
+    name_to_supported_types_[T::ros_type].asc = asc;
+    name_to_supported_types_[T::ros_type].serializer =
+      std::make_shared<rclcpp::Serialization<typename T::MsgT>>();
+    name_to_supported_types_[T::ros_type].message_container =
+      std::make_shared<MessageContainer<typename T::MsgT>>();
   }
 
-  template<typename MessageT>
-  void add_supported_info(
-    const std::string & ros_type_name,
-    const std::string & name,
-    double weight)
+  template<typename T>
+  void add_supported_info(double weight)
   {
     // TODO(clalancette): What if the supported type is already in the map?
-    name_to_supported_types_.emplace(ros_type_name, SupportedTypeInfo());
-    name_to_supported_types_[ros_type_name].supported_type.ros_type_name = ros_type_name;
-    name_to_supported_types_[ros_type_name].supported_type.name = name;
-    name_to_supported_types_[ros_type_name].supported_type.weight = weight;
-    name_to_supported_types_[ros_type_name].serializer =
-      std::make_shared<rclcpp::Serialization<MessageT>>();
-    name_to_supported_types_[ros_type_name].message_container =
-      std::make_shared<MessageContainer<MessageT>>();
+    name_to_supported_types_.emplace(T::ros_type, SupportedTypeInfo());
+    name_to_supported_types_[T::ros_type].supported_type.ros_type_name = T::ros_type;
+    name_to_supported_types_[T::ros_type].supported_type.name = T::name;
+    name_to_supported_types_[T::ros_type].supported_type.weight = weight;
+    name_to_supported_types_[T::ros_type].serializer =
+      std::make_shared<rclcpp::Serialization<typename T::MsgT>>();
+    name_to_supported_types_[T::ros_type].message_container =
+      std::make_shared<MessageContainer<typename T::MsgT>>();
   }
 
   negotiated_interfaces::msg::SupportedTypes get_types() const;

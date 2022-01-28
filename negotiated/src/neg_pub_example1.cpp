@@ -24,6 +24,20 @@
 
 #include "negotiated/negotiated_publisher.hpp"
 
+struct StringT
+{
+  using MsgT = std_msgs::msg::String;
+  const static inline std::string ros_type = "std_msgs/msg/String";
+  const static inline std::string name = "a";
+};
+
+struct Int32T
+{
+  using MsgT = std_msgs::msg::Int32;
+  const static inline std::string ros_type = "std_msgs/msg/Int32";
+  const static inline std::string name = "b";
+};
+
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
@@ -33,10 +47,8 @@ int main(int argc, char ** argv)
   auto neg_pub = std::make_shared<negotiated::NegotiatedPublisher>(
     node,
     "myneg");
-  neg_pub->add_supported_info<std_msgs::msg::String>(
-    "std_msgs/msg/String", "a", 1.0);
-  neg_pub->add_supported_info<std_msgs::msg::Int32>(
-    "std_msgs/msg/Int32", "a", 0.5);
+  neg_pub->add_supported_info<StringT>(1.0);
+  neg_pub->add_supported_info<Int32T>(0.5);
 
   int count = 0;
   auto publish_message = [&count, &neg_pub]() -> void

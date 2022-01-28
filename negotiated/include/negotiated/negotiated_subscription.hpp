@@ -38,13 +38,10 @@ public:
     const std::string & topic_name,
     rclcpp::QoS final_qos = rclcpp::QoS(10));
 
-  template<typename MessageT, typename CallbackT>
-  void add_supported_callback(
-    const std::string & ros_type, const std::string & name, double weight,
-    CallbackT && callback)
+  template<typename T, typename CallbackT>
+  void add_supported_callback(double weight, CallbackT && callback)
   {
-    supported_type_map_.add_supported_callback<MessageT, CallbackT>(
-      ros_type, name, weight, callback);
+    supported_type_map_.add_supported_callback<T, CallbackT>(weight, callback);
   }
 
   void start();

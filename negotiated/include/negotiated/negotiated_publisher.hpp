@@ -41,10 +41,10 @@ public:
     const std::string & topic_name,
     const rclcpp::QoS final_qos = rclcpp::QoS(10));
 
-  template<typename MessageT>
-  void add_supported_info(const std::string & ros_type, const std::string & name, double weight)
+  template<typename T>
+  void add_supported_info(double weight)
   {
-    supported_type_map_.add_supported_info<MessageT>(ros_type, name, weight);
+    supported_type_map_.add_supported_info<T>(weight);
   }
 
   template<typename MessageT>
