@@ -16,6 +16,7 @@
 #define NEGOTIATED__SUPPORTED_TYPE_MAP_HPP_
 
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 
@@ -63,8 +64,10 @@ public:
   template<typename T, typename CallbackT>
   void add_supported_callback(double weight, CallbackT && callback)
   {
-    // TODO(clalancette): What if the supported type is already in the map?
     std::string key_name = T::ros_type + "+" + T::name;
+    if (name_to_supported_types_.count(key_name) != 0) {
+      throw std::runtime_error("Cannot add duplicate key to supported types");
+    }
 
     add_common_info<T>(key_name, weight);
 
@@ -79,8 +82,10 @@ public:
   template<typename T>
   void add_supported_info(double weight)
   {
-    // TODO(clalancette): What if the supported type is already in the map?
     std::string key_name = T::ros_type + "+" + T::name;
+    if (name_to_supported_types_.count(key_name) != 0) {
+      throw std::runtime_error("Cannot add duplicate key to supported types");
+    }
 
     add_common_info<T>(key_name, weight);
   }

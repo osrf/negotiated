@@ -46,7 +46,6 @@ NegotiatedPublisher::NegotiatedPublisher(
           node_->get_logger(), "Adding supported_types %s -> %f",
           type.name.c_str(), type.weight);
         subscription_names_to_weights_[type.ros_type_name].push_back(type.weight);
-
       }
 
       negotiate();

@@ -41,7 +41,8 @@ NegotiatedSubscription::NegotiatedSubscription(
       std::string new_topic_name = msg.name;
 
       auto serialized_cb =
-        [this, node, new_topic_ros_type_name, new_topic_name](std::shared_ptr<rclcpp::SerializedMessage> msg)
+        [this, node, new_topic_ros_type_name,
+          new_topic_name](std::shared_ptr<rclcpp::SerializedMessage> msg)
         {
           supported_type_map_.dispatch_msg(new_topic_ros_type_name, new_topic_name, msg);
         };

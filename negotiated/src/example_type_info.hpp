@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NEGOTIATED__EXAMPLE_TYPE_INFO_HPP_
-#define NEGOTIATED__EXAMPLE_TYPE_INFO_HPP_
+#ifndef EXAMPLE_TYPE_INFO_HPP_
+#define EXAMPLE_TYPE_INFO_HPP_
 
 #include <string>
 
@@ -26,17 +26,17 @@ namespace negotiated_examples
 struct StringT
 {
   using MsgT = std_msgs::msg::String;
-  const static inline std::string ros_type = "std_msgs/msg/String";
-  const static inline std::string name = "a";
+  static const inline std::string ros_type = "std_msgs/msg/String";
+  static const inline std::string name = "a";
 };
 
 struct Int32T
 {
   using MsgT = std_msgs::msg::Int32;
-  const static inline std::string ros_type = "std_msgs/msg/Int32";
-  const static inline std::string name = "b";
+  static const inline std::string ros_type = "std_msgs/msg/Int32";
+  static const inline std::string name = "b";
 };
 
 }  // namespace negotiated_examples
 
-#endif  // NEGOTIATED__EXAMPLE_TYPE_INFO_HPP_
+#endif  // EXAMPLE_TYPE_INFO_HPP_
