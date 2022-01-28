@@ -24,19 +24,7 @@
 
 #include "negotiated/negotiated_publisher.hpp"
 
-struct StringT
-{
-  using MsgT = std_msgs::msg::String;
-  const static inline std::string ros_type = "std_msgs/msg/String";
-  const static inline std::string name = "a";
-};
-
-struct Int32T
-{
-  using MsgT = std_msgs::msg::Int32;
-  const static inline std::string ros_type = "std_msgs/msg/Int32";
-  const static inline std::string name = "b";
-};
+#include "example_type_info.hpp"
 
 int main(int argc, char ** argv)
 {
@@ -47,8 +35,8 @@ int main(int argc, char ** argv)
   auto neg_pub = std::make_shared<negotiated::NegotiatedPublisher>(
     node,
     "myneg");
-  neg_pub->add_supported_info<StringT>(1.0);
-  neg_pub->add_supported_info<Int32T>(0.5);
+  neg_pub->add_supported_info<negotiated_examples::StringT>(1.0);
+  neg_pub->add_supported_info<negotiated_examples::Int32T>(0.5);
 
   int count = 0;
   auto publish_message = [&count, &neg_pub]() -> void

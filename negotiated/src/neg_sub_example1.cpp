@@ -22,19 +22,7 @@
 #include "negotiated/negotiated_subscription.hpp"
 #include "negotiated/supported_type_map.hpp"
 
-struct StringT
-{
-  using MsgT = std_msgs::msg::String;
-  const static inline std::string ros_type = "std_msgs/msg/String";
-  const static inline std::string name = "a";
-};
-
-struct Int32T
-{
-  using MsgT = std_msgs::msg::Int32;
-  const static inline std::string ros_type = "std_msgs/msg/Int32";
-  const static inline std::string name = "b";
-};
+#include "example_type_info.hpp"
 
 int main(int argc, char ** argv)
 {
@@ -55,8 +43,8 @@ int main(int argc, char ** argv)
   auto neg_sub = std::make_shared<negotiated::NegotiatedSubscription>(
     node,
     "myneg");
-  neg_sub->add_supported_callback<StringT>(1.0, string_user_cb);
-  neg_sub->add_supported_callback<Int32T>(0.5, int_user_cb);
+  neg_sub->add_supported_callback<negotiated_examples::StringT>(1.0, string_user_cb);
+  neg_sub->add_supported_callback<negotiated_examples::Int32T>(0.5, int_user_cb);
   neg_sub->start();
 
   rclcpp::spin(node);
