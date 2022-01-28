@@ -96,10 +96,13 @@ public:
     const std::string & ros_type_name,
     const std::string & name) const;
 
-  void dispatch_msg(
+  std::shared_ptr<MessageContainerBase> get_msg_container(
     const std::string & ros_type_name,
-    const std::string & name,
-    std::shared_ptr<rclcpp::SerializedMessage> msg) const;
+    const std::string & name) const;
+
+  std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> get_any_subscription_callback(
+    const std::string & ros_type_name,
+    const std::string & name) const;
 
 private:
   template<typename T>

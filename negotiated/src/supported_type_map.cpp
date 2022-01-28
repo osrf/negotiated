@@ -36,32 +36,6 @@ negotiated_interfaces::msg::SupportedTypes SupportedTypeMap::get_types() const
   return ret;
 }
 
-void SupportedTypeMap::dispatch_msg(
-  const std::string & ros_type_name,
-  const std::string & name,
-  std::shared_ptr<rclcpp::SerializedMessage> msg) const
-{
-  std::string key_name = ros_type_name + "+" + name;
-  if (name_to_supported_types_.count(key_name) == 0) {
-    // We were asked to dispatch for a type that we don't have, so skip
-    return;
-  }
-
-  // TODO(clalancette): This is bogus; what should we fill in?
-  rclcpp::MessageInfo msg_info;
-
-  SupportedTypeInfo type_info = name_to_supported_types_.at(key_name);
-
-  std::shared_ptr<MessageContainerBase> msg_container = type_info.message_container;
-  std::shared_ptr<void> msg_ptr = msg_container->get_msg_ptr();
-
-  std::shared_ptr<rclcpp::SerializationBase> serializer = type_info.serializer;
-  serializer->deserialize_message(msg.get(), msg_ptr.get());
-
-  std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> asc = type_info.asc;
-  asc->dispatch(msg_ptr, msg_info);
-}
-
 std::shared_ptr<rclcpp::SerializationBase> SupportedTypeMap::get_serializer(
   const std::string & ros_type_name,
   const std::string & name) const
@@ -71,6 +45,29 @@ std::shared_ptr<rclcpp::SerializationBase> SupportedTypeMap::get_serializer(
     return nullptr;
   }
   return name_to_supported_types_.at(key_name).serializer;
+}
+
+std::shared_ptr<MessageContainerBase> SupportedTypeMap::get_msg_container(
+  const std::string & ros_type_name,
+  const std::string & name) const
+{
+  std::string key_name = ros_type_name + "+" + name;
+  if (name_to_supported_types_.count(key_name) == 0) {
+    return nullptr;
+  }
+  return name_to_supported_types_.at(key_name).message_container;
+}
+
+std::shared_ptr<rclcpp::AnySubscriptionCallbackBase>
+SupportedTypeMap::get_any_subscription_callback(
+  const std::string & ros_type_name,
+  const std::string & name) const
+{
+  std::string key_name = ros_type_name + "+" + name;
+  if (name_to_supported_types_.count(key_name) == 0) {
+    return nullptr;
+  }
+  return name_to_supported_types_.at(key_name).asc;
 }
 
 }  // namespace negotiated

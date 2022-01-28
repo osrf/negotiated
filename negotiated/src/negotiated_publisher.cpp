@@ -72,7 +72,6 @@ void NegotiatedPublisher::negotiate()
     return;
   }
 
-
   auto msg = std::make_unique<negotiated_interfaces::msg::NewTopicInfo>();
 
   // TODO(clalancette): This is a stupid negotiation algorithm that just computes the

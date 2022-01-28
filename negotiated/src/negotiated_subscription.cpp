@@ -41,10 +41,25 @@ NegotiatedSubscription::NegotiatedSubscription(
       std::string new_topic_name = msg.name;
 
       auto serialized_cb =
-        [this, node, new_topic_ros_type_name,
+        [this, new_topic_ros_type_name,
           new_topic_name](std::shared_ptr<rclcpp::SerializedMessage> msg)
         {
-          supported_type_map_.dispatch_msg(new_topic_ros_type_name, new_topic_name, msg);
+          // TODO(clalancette): This is bogus; what should we fill in?
+          rclcpp::MessageInfo msg_info;
+
+          std::shared_ptr<MessageContainerBase> msg_container =
+            supported_type_map_.get_msg_container(new_topic_ros_type_name, new_topic_name);
+          std::shared_ptr<void> msg_ptr = msg_container->get_msg_ptr();
+
+          std::shared_ptr<rclcpp::SerializationBase> serializer =
+            supported_type_map_.get_serializer(new_topic_ros_type_name, new_topic_name);
+          serializer->deserialize_message(msg.get(), msg_ptr.get());
+
+          std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> asc =
+            supported_type_map_.get_any_subscription_callback(
+            new_topic_ros_type_name,
+            new_topic_name);
+          asc->dispatch(msg_ptr, msg_info);
         };
 
       this->subscription_ = node->create_generic_subscription(
