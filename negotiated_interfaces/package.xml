@@ -3,7 +3,7 @@
 <package format="3">
   <name>negotiated_interfaces</name>
   <version>0.1.0</version>
-  <description>A package containing the negotiation message and service definitions.</description>
+  <description>A package containing the negotiation message definitions.</description>
 
   <maintainer email="clalancette@openrobotics.org">Chris Lalancette</maintainer>
 
