@@ -34,6 +34,7 @@ int main(int argc, char ** argv)
     "myneg");
   neg_pub->add_supported_info<negotiated_examples::StringT>(1.0);
   neg_pub->add_supported_info<negotiated_examples::Int32T>(0.5);
+  neg_pub->start();
 
   int count = 0;
   auto publish_message = [&count, &neg_pub]() -> void

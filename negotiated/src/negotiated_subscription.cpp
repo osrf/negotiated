@@ -71,7 +71,6 @@ NegotiatedSubscription::NegotiatedSubscription(
 
 void NegotiatedSubscription::start()
 {
-  // TODO(clalancette): Is this the topic name we want to use?
   supported_types_pub_ = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
     topic_name_ + "/supported_types",
     rclcpp::QoS(100).transient_local());

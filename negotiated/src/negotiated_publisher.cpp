@@ -38,7 +38,10 @@ NegotiatedPublisher::NegotiatedPublisher(
 {
   neg_publisher_ = node_->create_publisher<negotiated_interfaces::msg::NewTopicInfo>(
     topic_name_, rclcpp::QoS(10));
+}
 
+void NegotiatedPublisher::start()
+{
   auto neg_cb = [this](const negotiated_interfaces::msg::SupportedTypes & supported_types)
     {
       for (const negotiated_interfaces::msg::SupportedType & type :

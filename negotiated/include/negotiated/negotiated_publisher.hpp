@@ -46,6 +46,8 @@ public:
     supported_type_map_.add_supported_info<T>(weight);
   }
 
+  void start();
+
   template<typename MessageT>
   void publish(const MessageT & msg)
   {
