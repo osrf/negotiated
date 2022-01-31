@@ -36,11 +36,9 @@ namespace negotiated
 {
 NegotiatedPublisher::NegotiatedPublisher(
   rclcpp::Node::SharedPtr node,
-  const std::string & topic_name,
-  const rclcpp::QoS final_qos)
+  const std::string & topic_name)
 : node_(node),
-  topic_name_(topic_name),
-  final_qos_(final_qos)
+  topic_name_(topic_name)
 {
   negotiated_subscription_type_gids_ = std::make_shared<std::map<std::array<uint8_t,
       RMW_GID_STORAGE_SIZE>, negotiated_interfaces::msg::SupportedTypes>>();

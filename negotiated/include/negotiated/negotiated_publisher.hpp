@@ -39,13 +39,12 @@ public:
 
   explicit NegotiatedPublisher(
     rclcpp::Node::SharedPtr node,
-    const std::string & topic_name,
-    const rclcpp::QoS final_qos = rclcpp::QoS(10));
+    const std::string & topic_name);
 
   template<typename T>
-  void add_supported_info(double weight)
+  void add_supported_info(double weight, const rclcpp::QoS & qos)
   {
-    supported_type_map_.add_supported_info<T>(node_, weight);
+    supported_type_map_.add_supported_info<T>(node_, weight, qos);
   }
 
   void start();
@@ -68,7 +67,6 @@ private:
   std::string topic_name_;
   std::string ros_type_name_;
   std::string name_;
-  rclcpp::QoS final_qos_;
   rclcpp::Publisher<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_publisher_;
   std::shared_ptr<rclcpp::PublisherBase> publisher_;
   rclcpp::Subscription<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_sub_;

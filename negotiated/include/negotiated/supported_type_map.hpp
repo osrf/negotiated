@@ -58,7 +58,7 @@ public:
   }
 
   template<typename T>
-  void add_supported_info(rclcpp::Node::SharedPtr node, double weight)
+  void add_supported_info(rclcpp::Node::SharedPtr node, double weight, const rclcpp::QoS & qos)
   {
     std::string key_name = T::ros_type + "+" + T::name;
     if (name_to_supported_types_.count(key_name) != 0) {
@@ -68,9 +68,9 @@ public:
     add_common_info<T>(key_name, weight);
 
     auto factory =
-      [node](const std::string & topic_name) -> rclcpp::PublisherBase::SharedPtr
+      [node, qos](const std::string & topic_name) -> rclcpp::PublisherBase::SharedPtr
       {
-        return node->create_publisher<typename T::MsgT>(topic_name, rclcpp::QoS(1));
+        return node->create_publisher<typename T::MsgT>(topic_name, qos);
       };
 
     name_to_supported_types_[key_name].pub_factory = factory;
