@@ -20,7 +20,6 @@
 #include <memory>
 #include <mutex>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
@@ -80,11 +79,11 @@ private:
   rclcpp::Publisher<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_publisher_;
   std::shared_ptr<rclcpp::GenericPublisher> publisher_;
   rclcpp::Subscription<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_sub_;
-  std::unordered_map<std::string, std::vector<double>> subscription_names_to_weights_;
   rclcpp::TimerBase::SharedPtr graph_change_timer_;
   rclcpp::Event::SharedPtr graph_event_;
-  std::mutex negotiated_subscriber_type_mutex_;
-  std::shared_ptr<std::map<std::array<uint8_t, RMW_GID_STORAGE_SIZE>, negotiated_interfaces::msg::SupportedTypes>> negotiated_subscriber_type_gids_;
+  std::mutex negotiated_subscription_type_mutex_;
+  std::shared_ptr<std::map<std::array<uint8_t, RMW_GID_STORAGE_SIZE>,
+    negotiated_interfaces::msg::SupportedTypes>> negotiated_subscription_type_gids_;
 };
 
 }  // namespace negotiated
