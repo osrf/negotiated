@@ -39,9 +39,17 @@ int main(int argc, char ** argv)
   int count = 0;
   auto publish_message = [&count, &neg_pub]() -> void
     {
-      auto msg = std_msgs::msg::String();
-      msg.data = "Hello World: " + std::to_string(count++);
-      neg_pub->publish(msg);
+      if (neg_pub->type_was_negotiated<negotiated_examples::StringT>()) {
+        auto msg = std_msgs::msg::String();
+        msg.data = "Hello World: " + std::to_string(count++);
+        neg_pub->publish(msg);
+      }
+
+      if (neg_pub->type_was_negotiated<negotiated_examples::Int32T>()) {
+        auto msg = std_msgs::msg::Int32();
+        msg.data = count++;
+        neg_pub->publish(msg);
+      }
     };
 
   rclcpp::TimerBase::SharedPtr timer = node->create_wall_timer(

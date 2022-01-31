@@ -150,7 +150,7 @@ void NegotiatedPublisher::negotiate()
     publisher_types.supported_types)
   {
     size_t num_subs_supported = 0;
-    double sum_of_weights = 0.0;
+    double sum_of_weights = pub_type.weight;
 
     std::string pub_ros_type = pub_type.ros_type_name;
     std::string pub_name = pub_type.name;

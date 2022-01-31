@@ -49,9 +49,22 @@ public:
 
   void start();
 
+  template<typename T>
+  bool type_was_negotiated()
+  {
+    return ros_type_name_ == T::ros_type && name_ == T::name;
+  }
+
   template<typename MessageT>
   void publish(const MessageT & msg)
   {
+    if (publisher_ == nullptr) {
+      RCLCPP_INFO(node_->get_logger(), "Negotiation hasn't happened yet, skipping publish");
+      return;
+    }
+
+    // TODO(clalancette): What if this is a publish for a type we didn't negotiate for?
+
     auto pub = static_cast<rclcpp::Publisher<MessageT>*>(publisher_.get());
     pub->publish(msg);
   }
@@ -68,7 +81,7 @@ private:
   std::string ros_type_name_;
   std::string name_;
   rclcpp::Publisher<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_publisher_;
-  std::shared_ptr<rclcpp::PublisherBase> publisher_;
+  std::shared_ptr<rclcpp::PublisherBase> publisher_{nullptr};
   rclcpp::Subscription<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_sub_;
   rclcpp::TimerBase::SharedPtr graph_change_timer_;
   rclcpp::Event::SharedPtr graph_event_;
