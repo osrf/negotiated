@@ -146,6 +146,7 @@ void NegotiatedPublisher::negotiate()
   auto msg = std::make_unique<negotiated_interfaces::msg::NewTopicInfo>();
 
   double max_weight = 0.0;
+  bool changed = false;
 
   for (const negotiated_interfaces::msg::SupportedType & pub_type :
     publisher_types.supported_types)
@@ -180,10 +181,13 @@ void NegotiatedPublisher::negotiate()
       // TODO(clalancette): What if the sub names don't match the pub name?
       msg->topic_name = topic_name_ + "/" + pub_type.name;
 
-      ros_type_name_ = pub_type.ros_type_name;
-      msg->ros_type_name = ros_type_name_;
+      if (ros_type_name_ != pub_type.ros_type_name || name_ != pub_type.name) {
+        changed = true;
+        ros_type_name_ = pub_type.ros_type_name;
+        name_ = pub_type.name;
+      }
 
-      name_ = pub_type.name;
+      msg->ros_type_name = ros_type_name_;
       msg->name = name_;
     }
   }
@@ -200,7 +204,14 @@ void NegotiatedPublisher::negotiate()
   // "type" is going to be, create the publisher and inform the subscriptions
   // the name of it.
 
-  publisher_ = node_->create_generic_publisher(msg->topic_name, msg->ros_type_name, final_qos_);
+  // Note that we only recreate the publisher if we need to, e.g. it is different than
+  // last time we negotiated.  This keeps us from unnecessarily tearing down and recreating
+  // the publisher if it is going to be exactly the same as last time.  In all cases, though,
+  // we send out the information to the subscriptions so they can act accordingly (even new ones).
+
+  if (changed) {
+    publisher_ = node_->create_generic_publisher(msg->topic_name, msg->ros_type_name, final_qos_);
+  }
 
   neg_publisher_->publish(std::move(msg));
 }

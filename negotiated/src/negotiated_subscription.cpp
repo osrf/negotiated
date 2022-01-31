@@ -36,33 +36,34 @@ NegotiatedSubscription::NegotiatedSubscription(
   auto sub_cb =
     [this, node, final_qos](const negotiated_interfaces::msg::NewTopicInfo & msg)
     {
-      std::string new_topic_ros_type_name = msg.ros_type_name;
-      std::string new_topic_name = msg.name;
-
       auto serialized_cb =
-        [this, new_topic_ros_type_name,
-          new_topic_name](std::shared_ptr<rclcpp::SerializedMessage> msg)
+        [this](std::shared_ptr<rclcpp::SerializedMessage> msg)
         {
           // TODO(clalancette): This is bogus; what should we fill in?
           rclcpp::MessageInfo msg_info;
 
           std::shared_ptr<MessageContainerBase> msg_container =
-            supported_type_map_.get_msg_container(new_topic_ros_type_name, new_topic_name);
+            supported_type_map_.get_msg_container(ros_type_name_, name_);
           std::shared_ptr<void> msg_ptr = msg_container->get_msg_ptr();
 
           std::shared_ptr<rclcpp::SerializationBase> serializer =
-            supported_type_map_.get_serializer(new_topic_ros_type_name, new_topic_name);
+            supported_type_map_.get_serializer(ros_type_name_, name_);
           serializer->deserialize_message(msg.get(), msg_ptr.get());
 
           std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> asc =
             supported_type_map_.get_any_subscription_callback(
-            new_topic_ros_type_name,
-            new_topic_name);
+            ros_type_name_,
+            name_);
           asc->dispatch(msg_ptr, msg_info);
         };
 
-      this->subscription_ = node->create_generic_subscription(
-        msg.topic_name, msg.ros_type_name, final_qos, serialized_cb);
+      // Only recreate the subscription if it is different than before
+      if (msg.ros_type_name != ros_type_name_ || msg.name != name_) {
+        ros_type_name_ = msg.ros_type_name;
+        name_ = msg.name;
+        this->subscription_ = node->create_generic_subscription(
+          msg.topic_name, msg.ros_type_name, final_qos, serialized_cb);
+      }
     };
 
   neg_subscription_ = node->create_subscription<negotiated_interfaces::msg::NewTopicInfo>(
