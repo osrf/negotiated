@@ -210,7 +210,8 @@ void NegotiatedPublisher::negotiate()
   // we send out the information to the subscriptions so they can act accordingly (even new ones).
 
   if (changed) {
-    publisher_ = node_->create_generic_publisher(msg->topic_name, msg->ros_type_name, final_qos_);
+    auto pub_factory = supported_type_map_.get_pub_factory(ros_type_name_, name_);
+    publisher_ = pub_factory(msg->topic_name);
   }
 
   neg_publisher_->publish(std::move(msg));

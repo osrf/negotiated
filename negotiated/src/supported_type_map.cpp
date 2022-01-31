@@ -36,28 +36,6 @@ negotiated_interfaces::msg::SupportedTypes SupportedTypeMap::get_types() const
   return ret;
 }
 
-std::shared_ptr<rclcpp::SerializationBase> SupportedTypeMap::get_serializer(
-  const std::string & ros_type_name,
-  const std::string & name) const
-{
-  std::string key_name = ros_type_name + "+" + name;
-  if (name_to_supported_types_.count(key_name) == 0) {
-    return nullptr;
-  }
-  return name_to_supported_types_.at(key_name).serializer;
-}
-
-std::shared_ptr<MessageContainerBase> SupportedTypeMap::get_msg_container(
-  const std::string & ros_type_name,
-  const std::string & name) const
-{
-  std::string key_name = ros_type_name + "+" + name;
-  if (name_to_supported_types_.count(key_name) == 0) {
-    return nullptr;
-  }
-  return name_to_supported_types_.at(key_name).message_container;
-}
-
 std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)>
 SupportedTypeMap::get_sub_factory(
   const std::string & ros_type_name,
@@ -68,6 +46,18 @@ SupportedTypeMap::get_sub_factory(
     return nullptr;
   }
   return name_to_supported_types_.at(key_name).sub_factory;
+}
+
+std::function<rclcpp::PublisherBase::SharedPtr(const std::string &)>
+SupportedTypeMap::get_pub_factory(
+  const std::string & ros_type_name,
+  const std::string & name) const
+{
+  std::string key_name = ros_type_name + "+" + name;
+  if (name_to_supported_types_.count(key_name) == 0) {
+    return nullptr;
+  }
+  return name_to_supported_types_.at(key_name).pub_factory;
 }
 
 }  // namespace negotiated

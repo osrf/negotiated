@@ -21,7 +21,6 @@
 #include <unordered_map>
 
 #include "rclcpp/rclcpp.hpp"
-#include "rclcpp/serialization.hpp"
 
 #include "negotiated_interfaces/msg/supported_type.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
@@ -29,36 +28,11 @@
 namespace negotiated
 {
 
-class MessageContainerBase
-{
-public:
-  virtual std::shared_ptr<void> get_msg_ptr() = 0;
-};
-
-template<typename MessageT>
-class MessageContainer final : public MessageContainerBase
-{
-public:
-  MessageContainer()
-  {
-    message_storage = std::make_shared<MessageT>();
-  }
-
-  std::shared_ptr<void> get_msg_ptr() override
-  {
-    return message_storage;
-  }
-
-private:
-  std::shared_ptr<MessageT> message_storage;
-};
-
 struct SupportedTypeInfo final
 {
   negotiated_interfaces::msg::SupportedType supported_type;
-  std::shared_ptr<rclcpp::SerializationBase> serializer;
-  std::shared_ptr<MessageContainerBase> message_container;
   std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)> sub_factory;
+  std::function<rclcpp::PublisherBase::SharedPtr(const std::string &)> pub_factory;
 };
 
 class SupportedTypeMap final
@@ -81,13 +55,10 @@ public:
       };
 
     name_to_supported_types_[key_name].sub_factory = factory;
-
-    name_to_supported_types_[key_name].message_container =
-      std::make_shared<MessageContainer<typename T::MsgT>>();
   }
 
   template<typename T>
-  void add_supported_info(double weight)
+  void add_supported_info(rclcpp::Node::SharedPtr node, double weight)
   {
     std::string key_name = T::ros_type + "+" + T::name;
     if (name_to_supported_types_.count(key_name) != 0) {
@@ -95,19 +66,23 @@ public:
     }
 
     add_common_info<T>(key_name, weight);
+
+    auto factory =
+      [node](const std::string & topic_name) -> rclcpp::PublisherBase::SharedPtr
+      {
+        return node->create_publisher<typename T::MsgT>(topic_name, rclcpp::QoS(1));
+      };
+
+    name_to_supported_types_[key_name].pub_factory = factory;
   }
 
   negotiated_interfaces::msg::SupportedTypes get_types() const;
 
-  std::shared_ptr<rclcpp::SerializationBase> get_serializer(
-    const std::string & ros_type_name,
-    const std::string & name) const;
-
-  std::shared_ptr<MessageContainerBase> get_msg_container(
-    const std::string & ros_type_name,
-    const std::string & name) const;
-
   std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)> get_sub_factory(
+    const std::string & ros_type_name,
+    const std::string & name) const;
+
+  std::function<rclcpp::PublisherBase::SharedPtr(const std::string &)> get_pub_factory(
     const std::string & ros_type_name,
     const std::string & name) const;
 
@@ -119,8 +94,6 @@ private:
     name_to_supported_types_[key_name].supported_type.ros_type_name = T::ros_type;
     name_to_supported_types_[key_name].supported_type.name = T::name;
     name_to_supported_types_[key_name].supported_type.weight = weight;
-    name_to_supported_types_[key_name].serializer =
-      std::make_shared<rclcpp::Serialization<typename T::MsgT>>();
   }
 
   std::unordered_map<std::string, SupportedTypeInfo> name_to_supported_types_;

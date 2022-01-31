@@ -45,7 +45,7 @@ public:
   template<typename T>
   void add_supported_info(double weight)
   {
-    supported_type_map_.add_supported_info<T>(weight);
+    supported_type_map_.add_supported_info<T>(node_, weight);
   }
 
   void start();
@@ -53,15 +53,8 @@ public:
   template<typename MessageT>
   void publish(const MessageT & msg)
   {
-    std::shared_ptr<rclcpp::SerializationBase> serializer = supported_type_map_.get_serializer(
-      ros_type_name_, name_);
-    if (serializer == nullptr) {
-      RCLCPP_INFO(node_->get_logger(), "Skipping publish since no registered type name");
-      return;
-    }
-    rclcpp::SerializedMessage serialized_message;
-    serializer->serialize_message(&msg, &serialized_message);
-    publisher_->publish(serialized_message);
+    auto pub = static_cast<rclcpp::Publisher<MessageT>*>(publisher_.get());
+    pub->publish(msg);
   }
 
 private:
@@ -77,7 +70,7 @@ private:
   std::string name_;
   rclcpp::QoS final_qos_;
   rclcpp::Publisher<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_publisher_;
-  std::shared_ptr<rclcpp::GenericPublisher> publisher_;
+  std::shared_ptr<rclcpp::PublisherBase> publisher_;
   rclcpp::Subscription<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_sub_;
   rclcpp::TimerBase::SharedPtr graph_change_timer_;
   rclcpp::Event::SharedPtr graph_event_;
