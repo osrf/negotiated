@@ -28,13 +28,12 @@ namespace negotiated
 
 NegotiatedSubscription::NegotiatedSubscription(
   rclcpp::Node::SharedPtr node,
-  const std::string & topic_name,
-  rclcpp::QoS final_qos)
+  const std::string & topic_name)
 : node_(node),
   topic_name_(topic_name)
 {
   auto sub_cb =
-    [this, node, final_qos](const negotiated_interfaces::msg::NewTopicInfo & msg)
+    [this, node](const negotiated_interfaces::msg::NewTopicInfo & msg)
     {
       // Only recreate the subscription if it is different than before
       if (msg.ros_type_name != ros_type_name_ || msg.name != name_) {

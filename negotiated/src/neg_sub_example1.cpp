@@ -42,8 +42,8 @@ int main(int argc, char ** argv)
   auto neg_sub = std::make_shared<negotiated::NegotiatedSubscription>(
     node,
     "myneg");
-  neg_sub->add_supported_callback<negotiated_examples::StringT>(1.0, string_user_cb);
-  neg_sub->add_supported_callback<negotiated_examples::Int32T>(0.5, int_user_cb);
+  neg_sub->add_supported_callback<negotiated_examples::StringT>(1.0, string_user_cb, rclcpp::QoS(1));
+  neg_sub->add_supported_callback<negotiated_examples::Int32T>(0.5, int_user_cb, rclcpp::QoS(1));
   neg_sub->start();
 
   rclcpp::spin(node);

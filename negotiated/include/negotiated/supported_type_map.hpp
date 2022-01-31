@@ -65,7 +65,7 @@ class SupportedTypeMap final
 {
 public:
   template<typename T, typename CallbackT>
-  void add_supported_callback(rclcpp::Node::SharedPtr node, double weight, CallbackT callback)
+  void add_supported_callback(rclcpp::Node::SharedPtr node, double weight, CallbackT callback, const rclcpp::QoS & qos)
   {
     std::string key_name = T::ros_type + "+" + T::name;
     if (name_to_supported_types_.count(key_name) != 0) {
@@ -75,10 +75,9 @@ public:
     add_common_info<T>(key_name, weight);
 
     auto factory =
-      [node, callback](const std::string & topic_name) -> rclcpp::SubscriptionBase::SharedPtr
+      [node, callback, qos](const std::string & topic_name) -> rclcpp::SubscriptionBase::SharedPtr
       {
-        // TODO(clalancette): Pass the QoS in here (probably from the user)
-        return node->create_subscription<typename T::MsgT>(topic_name, rclcpp::QoS(1), callback);
+        return node->create_subscription<typename T::MsgT>(topic_name, qos, callback);
       };
 
     name_to_supported_types_[key_name].sub_factory = factory;
