@@ -31,7 +31,7 @@ target_include_directories(neg_sub_example1 PRIVATE
 )
 target_link_libraries(neg_sub_example1
   rclcpp::rclcpp
-  ${std_msg_LIBRARIES}
+  ${std_msgs_TARGETS}
   ${PROJECT_NAME}
 )
 
@@ -43,7 +43,7 @@ target_include_directories(neg_pub_example1 PRIVATE
 )
 target_link_libraries(neg_pub_example1
   rclcpp::rclcpp
-  ${std_msg_LIBRARIES}
+  ${std_msgs_TARGETS}
   ${PROJECT_NAME}
 )
 
