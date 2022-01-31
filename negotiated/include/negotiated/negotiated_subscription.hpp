@@ -39,9 +39,9 @@ public:
     rclcpp::QoS final_qos = rclcpp::QoS(10));
 
   template<typename T, typename CallbackT>
-  void add_supported_callback(double weight, CallbackT && callback)
+  void add_supported_callback(double weight, CallbackT callback)
   {
-    supported_type_map_.add_supported_callback<T, CallbackT>(weight, callback);
+    supported_type_map_.add_supported_callback<T, CallbackT>(node_, weight, callback);
   }
 
   void start();
@@ -51,7 +51,7 @@ private:
   std::string topic_name_;
   SupportedTypeMap supported_type_map_;
   rclcpp::Subscription<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_subscription_;
-  std::shared_ptr<rclcpp::GenericSubscription> subscription_;
+  std::shared_ptr<rclcpp::SubscriptionBase> subscription_;
   rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_pub_;
   std::string ros_type_name_;
   std::string name_;

@@ -58,8 +58,8 @@ std::shared_ptr<MessageContainerBase> SupportedTypeMap::get_msg_container(
   return name_to_supported_types_.at(key_name).message_container;
 }
 
-std::shared_ptr<rclcpp::AnySubscriptionCallbackBase>
-SupportedTypeMap::get_any_subscription_callback(
+std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)>
+SupportedTypeMap::get_sub_factory(
   const std::string & ros_type_name,
   const std::string & name) const
 {
@@ -67,7 +67,7 @@ SupportedTypeMap::get_any_subscription_callback(
   if (name_to_supported_types_.count(key_name) == 0) {
     return nullptr;
   }
-  return name_to_supported_types_.at(key_name).asc;
+  return name_to_supported_types_.at(key_name).sub_factory;
 }
 
 }  // namespace negotiated

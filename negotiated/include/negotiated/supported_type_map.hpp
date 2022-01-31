@@ -56,16 +56,16 @@ private:
 struct SupportedTypeInfo final
 {
   negotiated_interfaces::msg::SupportedType supported_type;
-  std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> asc{nullptr};
   std::shared_ptr<rclcpp::SerializationBase> serializer;
   std::shared_ptr<MessageContainerBase> message_container;
+  std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)> sub_factory;
 };
 
 class SupportedTypeMap final
 {
 public:
   template<typename T, typename CallbackT>
-  void add_supported_callback(double weight, CallbackT && callback)
+  void add_supported_callback(rclcpp::Node::SharedPtr node, double weight, CallbackT callback)
   {
     std::string key_name = T::ros_type + "+" + T::name;
     if (name_to_supported_types_.count(key_name) != 0) {
@@ -74,9 +74,14 @@ public:
 
     add_common_info<T>(key_name, weight);
 
-    auto asc = std::make_shared<rclcpp::AnySubscriptionCallback<typename T::MsgT>>();
-    asc->set(callback);
-    name_to_supported_types_[key_name].asc = asc;
+    auto factory =
+      [node, callback](const std::string & topic_name) -> rclcpp::SubscriptionBase::SharedPtr
+      {
+        // TODO(clalancette): Pass the QoS in here (probably from the user)
+        return node->create_subscription<typename T::MsgT>(topic_name, rclcpp::QoS(1), callback);
+      };
+
+    name_to_supported_types_[key_name].sub_factory = factory;
 
     name_to_supported_types_[key_name].message_container =
       std::make_shared<MessageContainer<typename T::MsgT>>();
@@ -103,7 +108,7 @@ public:
     const std::string & ros_type_name,
     const std::string & name) const;
 
-  std::shared_ptr<rclcpp::AnySubscriptionCallbackBase> get_any_subscription_callback(
+  std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)> get_sub_factory(
     const std::string & ros_type_name,
     const std::string & name) const;
 
