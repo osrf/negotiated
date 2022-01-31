@@ -15,7 +15,10 @@
 #ifndef NEGOTIATED__NEGOTIATED_PUBLISHER_HPP_
 #define NEGOTIATED__NEGOTIATED_PUBLISHER_HPP_
 
+#include <array>
+#include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -65,6 +68,8 @@ public:
 private:
   void negotiate();
 
+  void timer_callback();
+
   rclcpp::Node::SharedPtr node_;
   SupportedTypeMap supported_type_map_;
   negotiated_interfaces::msg::SupportedTypes pub_supported_types_;
@@ -76,6 +81,10 @@ private:
   std::shared_ptr<rclcpp::GenericPublisher> publisher_;
   rclcpp::Subscription<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_sub_;
   std::unordered_map<std::string, std::vector<double>> subscription_names_to_weights_;
+  rclcpp::TimerBase::SharedPtr graph_change_timer_;
+  rclcpp::Event::SharedPtr graph_event_;
+  std::mutex negotiated_subscriber_type_mutex_;
+  std::shared_ptr<std::map<std::array<uint8_t, RMW_GID_STORAGE_SIZE>, negotiated_interfaces::msg::SupportedTypes>> negotiated_subscriber_type_gids_;
 };
 
 }  // namespace negotiated

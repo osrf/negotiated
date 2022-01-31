@@ -12,12 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
+#include <array>
+#include <chrono>
+#include <functional>
+#include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "rclcpp/node_interfaces/node_graph.hpp"
 #include "rclcpp/rclcpp.hpp"
 
 #include "negotiated_interfaces/msg/new_topic_info.hpp"
@@ -36,13 +43,61 @@ NegotiatedPublisher::NegotiatedPublisher(
   topic_name_(topic_name),
   final_qos_(final_qos)
 {
+  negotiated_subscriber_type_gids_ = std::make_shared<std::map<std::array<uint8_t, RMW_GID_STORAGE_SIZE>, negotiated_interfaces::msg::SupportedTypes>>();
+
   neg_publisher_ = node_->create_publisher<negotiated_interfaces::msg::NewTopicInfo>(
     topic_name_, rclcpp::QoS(10));
+
+  graph_event_ = node_->get_graph_event();
+
+  graph_change_timer_ = node_->create_wall_timer(std::chrono::milliseconds(100), std::bind(&NegotiatedPublisher::timer_callback, this));
+}
+
+void NegotiatedPublisher::timer_callback()
+{
+  // What we are doing here is checking the graph for any changes.
+  // If the graph has changed, then we iterate over all of the publishers on
+  // the "/supported_types" topic, which will tell us which NegotiatedSubscribers
+  // to this topic are still around.  We save each of those off into a new map,
+  // and replace the existing map if needed.
+  //
+  // If any NegotiatedSubscribers did disappear, there are two different ways we can handle it:
+  // 1.  Always renegotiate, as we may be able to get something more efficient
+  // 2.  Don't renegotiate, as we should just let the system continue working
+  //
+  // We probably want to eventually make this configurable, but for now we don't renegotiate
+
+  node_->wait_for_graph_change(graph_event_, std::chrono::milliseconds(0));
+  if (graph_event_->check_and_clear()) {
+    auto new_negotiated_subscriber_gids = std::make_shared<std::map<std::array<uint8_t, RMW_GID_STORAGE_SIZE>, negotiated_interfaces::msg::SupportedTypes>>();
+    rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph = node_->get_node_graph_interface();
+    std::vector<rclcpp::TopicEndpointInfo> endpoints = node_graph->get_publishers_info_by_topic(topic_name_ + "/supported_types");
+
+    for (const rclcpp::TopicEndpointInfo & endpoint : endpoints) {
+      if (endpoint.endpoint_type() != rclcpp::EndpointType::Publisher) {
+        // This should never happen, but just be safe
+        continue;
+      }
+
+      // We only want to add GIDs to the new map if they were already in the existing map.
+      // That way we avoid potential race conditions where the graph contains the information,
+      // but we have not yet gotten a publication of supported types from it.
+      if (negotiated_subscriber_type_gids_->count(endpoint.endpoint_gid()) > 0) {
+        negotiated_interfaces::msg::SupportedTypes old_type = negotiated_subscriber_type_gids_->at(endpoint.endpoint_gid());
+        new_negotiated_subscriber_gids->emplace(endpoint.endpoint_gid(), old_type);
+      }
+    }
+
+    {
+      std::lock_guard<std::mutex> lg(negotiated_subscriber_type_mutex_);
+      negotiated_subscriber_type_gids_ = new_negotiated_subscriber_gids;
+    }
+  }
 }
 
 void NegotiatedPublisher::start()
 {
-  auto neg_cb = [this](const negotiated_interfaces::msg::SupportedTypes & supported_types)
+  auto neg_cb = [this](const negotiated_interfaces::msg::SupportedTypes & supported_types, const rclcpp::MessageInfo & msg_info)
     {
       for (const negotiated_interfaces::msg::SupportedType & type :
         supported_types.supported_types)
@@ -51,6 +106,14 @@ void NegotiatedPublisher::start()
           node_->get_logger(), "Adding supported_types %s -> %f",
           type.name.c_str(), type.weight);
         subscription_names_to_weights_[type.ros_type_name].push_back(type.weight);
+      }
+
+      std::array<uint8_t, RMW_GID_STORAGE_SIZE> gid_key;
+      std::copy(std::begin(msg_info.get_rmw_message_info().publisher_gid.data), std::end(msg_info.get_rmw_message_info().publisher_gid.data), std::begin(gid_key));
+
+      {
+        std::lock_guard<std::mutex> lg(negotiated_subscriber_type_mutex_);
+        negotiated_subscriber_type_gids_->emplace(gid_key, supported_types);
       }
 
       negotiate();
