@@ -13,8 +13,7 @@ find_package(std_msgs REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED
   src/negotiated_publisher.cpp
-  src/negotiated_subscription.cpp
-  src/supported_type_map.cpp)
+  src/negotiated_subscription.cpp)
 target_include_directories(${PROJECT_NAME} PUBLIC
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
   "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>")

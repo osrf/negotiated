@@ -33,8 +33,8 @@ int main(int argc, char ** argv)
   auto neg_pub = std::make_shared<negotiated::NegotiatedPublisher>(
     node,
     "myneg");
-  neg_pub->add_supported_info<negotiated_examples::StringT>(1.0, rclcpp::QoS(1));
-  neg_pub->add_supported_info<negotiated_examples::Int32T>(0.5, rclcpp::QoS(1));
+  neg_pub->add_supported_type<negotiated_examples::StringT>(1.0, rclcpp::QoS(1));
+  neg_pub->add_supported_type<negotiated_examples::Int32T>(0.5, rclcpp::QoS(1));
   neg_pub->start();
 
   int count = 0;

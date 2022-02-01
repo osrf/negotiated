@@ -99,6 +99,11 @@ void NegotiatedPublisher::timer_callback()
   }
 }
 
+std::string NegotiatedPublisher::generate_key(const std::string & ros_type_name, const std::string & format_match)
+{
+  return ros_type_name + "+" + format_match;
+}
+
 void NegotiatedPublisher::start()
 {
   auto neg_cb =
@@ -134,7 +139,10 @@ void NegotiatedPublisher::negotiate()
     return;
   }
 
-  negotiated_interfaces::msg::SupportedTypes publisher_types = supported_type_map_.get_types();
+  auto publisher_types = negotiated_interfaces::msg::SupportedTypes();
+  for (const std::pair<const std::string, SupportedTypeInfo> & pair : key_to_supported_types_) {
+    publisher_types.supported_types.push_back(pair.second.supported_type);
+  }
   if (publisher_types.supported_types.empty()) {
     RCLCPP_INFO(
       node_->get_logger(), "Skipping negotiation because of empty publisher supported types");
@@ -207,7 +215,11 @@ void NegotiatedPublisher::negotiate()
   // we send out the information to the subscriptions so they can act accordingly (even new ones).
 
   if (changed) {
-    auto pub_factory = supported_type_map_.get_pub_factory(ros_type_name_, format_match_);
+    std::string key_name = generate_key(ros_type_name_, format_match_);
+    // TODO(clalancette): It should never, ever be the case that the key
+    // we created here is something that isn't in key_to_supported_types_.
+    // But to be extra cautious we should probably check.
+    auto pub_factory = key_to_supported_types_[key_name].pub_factory;
     publisher_ = pub_factory(msg->topic_name);
   }
 

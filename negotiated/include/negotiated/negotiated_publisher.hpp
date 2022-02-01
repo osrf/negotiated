@@ -16,20 +16,27 @@
 #define NEGOTIATED__NEGOTIATED_PUBLISHER_HPP_
 
 #include <array>
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 
 #include "rclcpp/rclcpp.hpp"
 
 #include "negotiated_interfaces/msg/negotiated_topics_info.hpp"
+#include "negotiated_interfaces/msg/supported_type.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
-
-#include "negotiated/supported_type_map.hpp"
 
 namespace negotiated
 {
+
+struct SupportedTypeInfo final
+{
+  negotiated_interfaces::msg::SupportedType supported_type;
+  std::function<rclcpp::PublisherBase::SharedPtr(const std::string &)> pub_factory;
+};
 
 class NegotiatedPublisher
 {
@@ -41,9 +48,26 @@ public:
     const std::string & topic_name);
 
   template<typename T>
-  void add_supported_info(double weight, const rclcpp::QoS & qos)
+  void add_supported_type(double weight, const rclcpp::QoS & qos)
   {
-    supported_type_map_.add_supported_info<T>(node_, weight, qos);
+    std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
+    std::string key_name = generate_key(ros_type_name, T::format_match);
+    if (key_to_supported_types_.count(key_name) != 0) {
+      throw std::runtime_error("Cannot add duplicate key to supported types");
+    }
+
+    key_to_supported_types_.emplace(key_name, SupportedTypeInfo());
+    key_to_supported_types_[key_name].supported_type.ros_type_name = ros_type_name;
+    key_to_supported_types_[key_name].supported_type.format_match = T::format_match;
+    key_to_supported_types_[key_name].supported_type.weight = weight;
+
+    auto factory =
+      [this, qos](const std::string & topic_name) -> rclcpp::PublisherBase::SharedPtr
+      {
+        return node_->create_publisher<typename T::MsgT>(topic_name, qos);
+      };
+
+    key_to_supported_types_[key_name].pub_factory = factory;
   }
 
   void start();
@@ -74,9 +98,10 @@ private:
 
   void timer_callback();
 
+  std::string generate_key(const std::string & ros_type_name, const std::string & format_match);
+
   rclcpp::Node::SharedPtr node_;
-  SupportedTypeMap supported_type_map_;
-  negotiated_interfaces::msg::SupportedTypes pub_supported_types_;
+  std::unordered_map<std::string, SupportedTypeInfo> key_to_supported_types_;
   std::string topic_name_;
   std::string ros_type_name_;
   std::string format_match_;

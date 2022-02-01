@@ -37,13 +37,19 @@ NegotiatedSubscription::NegotiatedSubscription(
       if (msg.ros_type_name != ros_type_name_ || msg.format_match != format_match_) {
         ros_type_name_ = msg.ros_type_name;
         format_match_ = msg.format_match;
-        auto factory = supported_type_map_.get_sub_factory(ros_type_name_, format_match_);
-        this->subscription_ = factory(msg.topic_name);
+        std::string key = generate_key(ros_type_name_, format_match_);
+        auto sub_factory = key_to_supported_types_[key].sub_factory;
+        this->subscription_ = sub_factory(msg.topic_name);
       }
     };
 
   neg_subscription_ = node->create_subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
     topic_name, rclcpp::QoS(10), sub_cb);
+}
+
+std::string NegotiatedSubscription::generate_key(const std::string & ros_type_name, const std::string & format_match)
+{
+  return ros_type_name + "+" + format_match;
 }
 
 void NegotiatedSubscription::start()
@@ -52,7 +58,12 @@ void NegotiatedSubscription::start()
     topic_name_ + "/supported_types",
     rclcpp::QoS(100).transient_local());
 
-  supported_types_pub_->publish(supported_type_map_.get_types());
+  auto supported_types = negotiated_interfaces::msg::SupportedTypes();
+  for (const std::pair<const std::string, SupportedTypeInfo> & pair : key_to_supported_types_) {
+    supported_types.supported_types.push_back(pair.second.supported_type);
+  }
+
+  supported_types_pub_->publish(supported_types);
 }
 
 }  // namespace negotiated
