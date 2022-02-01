@@ -199,28 +199,39 @@ void NegotiatedPublisher::negotiate()
     return;
   }
 
-  double max_weight = 0.0;
+  // This is the negotiation algorithm.  It works like the following:
+  //
+  // * On the first pass through, it looks through all of the [ros_type,format_match] keys and the
+  //   map of subscriptions attached to them.  It then chooses the key that matches *all* of the
+  //   current NegotiatedSubscriptions.  If there is more than one, then the one with the highest
+  //   weight is chosen.  If there is at least one of these, the algorithm is done after this.
+  //
+  // * Right now, the algorithm fails if that first step fails.  In the future, we will want to
+  //   choose the least number of publications that satisfy all of the current subscriptions.
 
+  double max_weight = 0.0;
   negotiated_interfaces::msg::SupportedType matched_sub;
-  size_t num_subs_matched = 0;
 
   for (const std::pair<std::string, SupportedTypeInfo> & supported_info : key_to_supported_types_) {
-    size_t num_subs_supported = -1;  // start at -1 since the publisher is also in the list
+    // It is size - 1 because the publisher is in the list
+    if (supported_info.second.gid_to_weight.size() - 1 != negotiated_subscription_type_gids_->size()) {
+      // Not all of the subscriptions can use this type, so skip it to try to find one that does
+      continue;
+    }
+
     double sum_of_weights = 0.0;
 
     for (const std::pair<PublisherGid, double> & gid_to_weight :
       supported_info.second.gid_to_weight)
     {
-      num_subs_supported += 1;
       sum_of_weights += gid_to_weight.second;
     }
 
     // TODO(clalancette): We should probably prefer to keep using what we were already connected to.
     // This is probably something that we should allow the user to override, though.
-    if (num_subs_supported >= num_subs_matched && sum_of_weights > max_weight) {
+    if (sum_of_weights > max_weight) {
       RCLCPP_INFO(
         node_->get_logger(), "  Chose type %s", supported_info.second.ros_type_name.c_str());
-      num_subs_matched = num_subs_supported;
       max_weight = sum_of_weights;
 
       matched_sub.ros_type_name = supported_info.second.ros_type_name;
@@ -228,13 +239,13 @@ void NegotiatedPublisher::negotiate()
     }
   }
 
-  if (num_subs_matched < negotiated_subscription_type_gids_->size() ||
-    (matched_sub.ros_type_name.empty() && matched_sub.format_match.empty()))
+  if (matched_sub.ros_type_name.empty() && matched_sub.format_match.empty())
   {
     // We couldn't find any match, so don't setup anything
     // TODO(clalancette): This is too naive; we need to be able to deal with the case when
     // multiple subscriptions would work
     RCLCPP_INFO(node_->get_logger(), "Could not negotiate");
+    publisher_.reset();
     return;
   }
 
