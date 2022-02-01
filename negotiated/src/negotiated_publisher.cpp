@@ -191,8 +191,6 @@ void NegotiatedPublisher::negotiate()
     return;
   }
 
-  auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
-
   double max_weight = 0.0;
   bool changed = false;
 
@@ -210,8 +208,6 @@ void NegotiatedPublisher::negotiate()
         RCLCPP_INFO(node_->get_logger(), "  Chose type %s", supported_info.second.ros_type_name.c_str());
         max_weight = sum_of_weights;
 
-        msg->topic_name = topic_name_ + "/" + supported_info.second.format_match;
-
         // TODO(clalancette): We should probably prefer to keep on what we were already connected to, if we can.
         // This is probably something that we should allow the user to override, though.
 
@@ -221,8 +217,6 @@ void NegotiatedPublisher::negotiate()
           format_match_ = supported_info.second.format_match;
         }
 
-        msg->ros_type_name = ros_type_name_;
-        msg->format_match = format_match_;
       }
     } else {
       // TODO(clalancette): Deal with the case where we can't satisify everyone with a single publication
@@ -245,6 +239,11 @@ void NegotiatedPublisher::negotiate()
   // last time we negotiated.  This keeps us from unnecessarily tearing down and recreating
   // the publisher if it is going to be exactly the same as last time.  In all cases, though,
   // we send out the information to the subscriptions so they can act accordingly (even new ones).
+
+  auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
+  msg->ros_type_name = ros_type_name_;
+  msg->format_match = format_match_;
+  msg->topic_name = topic_name_ + "/" + format_match_;
 
   if (changed) {
     std::string key_name = generate_key(ros_type_name_, format_match_);
