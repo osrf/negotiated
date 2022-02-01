@@ -23,7 +23,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-#include "negotiated_interfaces/msg/new_topic_info.hpp"
+#include "negotiated_interfaces/msg/negotiated_topics_info.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
 
 #include "negotiated/supported_type_map.hpp"
@@ -80,7 +80,7 @@ private:
   std::string topic_name_;
   std::string ros_type_name_;
   std::string format_match_;
-  rclcpp::Publisher<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_publisher_;
+  rclcpp::Publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr neg_publisher_;
   std::shared_ptr<rclcpp::PublisherBase> publisher_{nullptr};
   rclcpp::Subscription<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_sub_;
   rclcpp::TimerBase::SharedPtr graph_change_timer_;

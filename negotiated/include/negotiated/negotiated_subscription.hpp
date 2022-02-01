@@ -20,7 +20,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-#include "negotiated_interfaces/msg/new_topic_info.hpp"
+#include "negotiated_interfaces/msg/negotiated_topics_info.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
 
 #include "negotiated/supported_type_map.hpp"
@@ -49,7 +49,7 @@ private:
   rclcpp::Node::SharedPtr node_;
   std::string topic_name_;
   SupportedTypeMap supported_type_map_;
-  rclcpp::Subscription<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_subscription_;
+  rclcpp::Subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr neg_subscription_;
   std::shared_ptr<rclcpp::SubscriptionBase> subscription_;
   rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_pub_;
   std::string ros_type_name_;

@@ -16,7 +16,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-#include "negotiated_interfaces/msg/new_topic_info.hpp"
+#include "negotiated_interfaces/msg/negotiated_topics_info.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
 
 #include "negotiated/negotiated_subscription.hpp"
@@ -31,7 +31,7 @@ NegotiatedSubscription::NegotiatedSubscription(
   topic_name_(topic_name)
 {
   auto sub_cb =
-    [this, node](const negotiated_interfaces::msg::NewTopicInfo & msg)
+    [this, node](const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)
     {
       // Only recreate the subscription if it is different than before
       if (msg.ros_type_name != ros_type_name_ || msg.format_match != format_match_) {
@@ -42,7 +42,7 @@ NegotiatedSubscription::NegotiatedSubscription(
       }
     };
 
-  neg_subscription_ = node->create_subscription<negotiated_interfaces::msg::NewTopicInfo>(
+  neg_subscription_ = node->create_subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
     topic_name, rclcpp::QoS(10), sub_cb);
 }
 

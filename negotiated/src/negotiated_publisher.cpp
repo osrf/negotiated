@@ -26,7 +26,7 @@
 #include "rclcpp/node_interfaces/node_graph.hpp"
 #include "rclcpp/rclcpp.hpp"
 
-#include "negotiated_interfaces/msg/new_topic_info.hpp"
+#include "negotiated_interfaces/msg/negotiated_topics_info.hpp"
 #include "negotiated_interfaces/msg/supported_type.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
 
@@ -43,7 +43,7 @@ NegotiatedPublisher::NegotiatedPublisher(
   negotiated_subscription_type_gids_ = std::make_shared<std::map<std::array<uint8_t,
       RMW_GID_STORAGE_SIZE>, negotiated_interfaces::msg::SupportedTypes>>();
 
-  neg_publisher_ = node_->create_publisher<negotiated_interfaces::msg::NewTopicInfo>(
+  neg_publisher_ = node_->create_publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
     topic_name_, rclcpp::QoS(10));
 
   graph_event_ = node_->get_graph_event();
@@ -141,7 +141,7 @@ void NegotiatedPublisher::negotiate()
     return;
   }
 
-  auto msg = std::make_unique<negotiated_interfaces::msg::NewTopicInfo>();
+  auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
 
   double max_weight = 0.0;
   bool changed = false;
