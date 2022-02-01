@@ -39,7 +39,11 @@ class SupportedTypeMap final
 {
 public:
   template<typename T, typename CallbackT>
-  void add_supported_callback(rclcpp::Node::SharedPtr node, double weight, CallbackT callback, const rclcpp::QoS & qos)
+  void add_supported_callback(
+    rclcpp::Node::SharedPtr node,
+    double weight,
+    CallbackT callback,
+    const rclcpp::QoS & qos)
   {
     std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
     std::string key_name = ros_type_name + "+" + T::name;
@@ -90,7 +94,10 @@ public:
 
 private:
   template<typename T>
-  void add_common_info(const std::string & key_name, const std::string & ros_type_name, double weight)
+  void add_common_info(
+    const std::string & key_name,
+    const std::string & ros_type_name,
+    double weight)
   {
     name_to_supported_types_.emplace(key_name, SupportedTypeInfo());
     name_to_supported_types_[key_name].supported_type.ros_type_name = ros_type_name;

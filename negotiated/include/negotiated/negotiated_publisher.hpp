@@ -66,7 +66,7 @@ public:
 
     // TODO(clalancette): What if this is a publish for a type we didn't negotiate for?
 
-    auto pub = static_cast<rclcpp::Publisher<MessageT>*>(publisher_.get());
+    auto pub = static_cast<rclcpp::Publisher<MessageT> *>(publisher_.get());
     pub->publish(msg);
   }
 
