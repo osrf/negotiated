@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <algorithm>
-#include <array>
 #include <chrono>
 #include <functional>
 #include <map>
@@ -40,8 +39,8 @@ NegotiatedPublisher::NegotiatedPublisher(
 : node_(node),
   topic_name_(topic_name)
 {
-  negotiated_subscription_type_gids_ = std::make_shared<std::map<std::array<uint8_t,
-      RMW_GID_STORAGE_SIZE>, negotiated_interfaces::msg::SupportedTypes>>();
+  negotiated_subscription_type_gids_ = std::make_shared<std::map<PublisherGid,
+      negotiated_interfaces::msg::SupportedTypes>>();
 
   neg_publisher_ = node_->create_publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
     topic_name_, rclcpp::QoS(10));
@@ -69,8 +68,8 @@ void NegotiatedPublisher::timer_callback()
 
   node_->wait_for_graph_change(graph_event_, std::chrono::milliseconds(0));
   if (graph_event_->check_and_clear()) {
-    auto new_negotiated_subscription_gids = std::make_shared<std::map<std::array<uint8_t,
-        RMW_GID_STORAGE_SIZE>, negotiated_interfaces::msg::SupportedTypes>>();
+    auto new_negotiated_subscription_gids = std::make_shared<std::map<PublisherGid,
+        negotiated_interfaces::msg::SupportedTypes>>();
     rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph =
       node_->get_node_graph_interface();
     std::vector<rclcpp::TopicEndpointInfo> endpoints = node_graph->get_publishers_info_by_topic(
@@ -99,7 +98,9 @@ void NegotiatedPublisher::timer_callback()
   }
 }
 
-std::string NegotiatedPublisher::generate_key(const std::string & ros_type_name, const std::string & format_match)
+std::string NegotiatedPublisher::generate_key(
+  const std::string & ros_type_name,
+  const std::string & format_match)
 {
   return ros_type_name + "+" + format_match;
 }
@@ -110,7 +111,7 @@ void NegotiatedPublisher::start()
     [this](const negotiated_interfaces::msg::SupportedTypes & supported_types,
       const rclcpp::MessageInfo & msg_info)
     {
-      std::array<uint8_t, RMW_GID_STORAGE_SIZE> gid_key;
+      PublisherGid gid_key;
       std::copy(
         std::begin(msg_info.get_rmw_message_info().publisher_gid.data),
         std::end(msg_info.get_rmw_message_info().publisher_gid.data),
@@ -163,7 +164,7 @@ void NegotiatedPublisher::negotiate()
     std::string pub_ros_type = pub_type.ros_type_name;
     std::string pub_format_match = pub_type.format_match;
 
-    for (const std::pair<std::array<uint8_t, RMW_GID_STORAGE_SIZE>,
+    for (const std::pair<PublisherGid,
       negotiated_interfaces::msg::SupportedTypes> & sub : *negotiated_subscription_type_gids_)
     {
       for (const negotiated_interfaces::msg::SupportedType & sub_type :

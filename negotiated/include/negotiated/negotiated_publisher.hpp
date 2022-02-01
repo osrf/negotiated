@@ -111,7 +111,8 @@ private:
   rclcpp::TimerBase::SharedPtr graph_change_timer_;
   rclcpp::Event::SharedPtr graph_event_;
   std::mutex negotiated_subscription_type_mutex_;
-  std::shared_ptr<std::map<std::array<uint8_t, RMW_GID_STORAGE_SIZE>,
+  using PublisherGid = std::array<uint8_t, RMW_GID_STORAGE_SIZE>;
+  std::shared_ptr<std::map<PublisherGid,
     negotiated_interfaces::msg::SupportedTypes>> negotiated_subscription_type_gids_;
 };
 

@@ -47,7 +47,9 @@ NegotiatedSubscription::NegotiatedSubscription(
     topic_name, rclcpp::QoS(10), sub_cb);
 }
 
-std::string NegotiatedSubscription::generate_key(const std::string & ros_type_name, const std::string & format_match)
+std::string NegotiatedSubscription::generate_key(
+  const std::string & ros_type_name,
+  const std::string & format_match)
 {
   return ros_type_name + "+" + format_match;
 }
