@@ -52,7 +52,8 @@ public:
   template<typename T>
   bool type_was_negotiated()
   {
-    return ros_type_name_ == T::ros_type && name_ == T::name;
+    std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
+    return ros_type_name_ == ros_type_name && name_ == T::name;
   }
 
   template<typename MessageT>

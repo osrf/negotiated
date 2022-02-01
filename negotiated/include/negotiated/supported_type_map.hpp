@@ -41,12 +41,13 @@ public:
   template<typename T, typename CallbackT>
   void add_supported_callback(rclcpp::Node::SharedPtr node, double weight, CallbackT callback, const rclcpp::QoS & qos)
   {
-    std::string key_name = T::ros_type + "+" + T::name;
+    std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
+    std::string key_name = ros_type_name + "+" + T::name;
     if (name_to_supported_types_.count(key_name) != 0) {
       throw std::runtime_error("Cannot add duplicate key to supported types");
     }
 
-    add_common_info<T>(key_name, weight);
+    add_common_info<T>(key_name, ros_type_name, weight);
 
     auto factory =
       [node, callback, qos](const std::string & topic_name) -> rclcpp::SubscriptionBase::SharedPtr
@@ -60,12 +61,13 @@ public:
   template<typename T>
   void add_supported_info(rclcpp::Node::SharedPtr node, double weight, const rclcpp::QoS & qos)
   {
-    std::string key_name = T::ros_type + "+" + T::name;
+    std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
+    std::string key_name = ros_type_name + "+" + T::name;
     if (name_to_supported_types_.count(key_name) != 0) {
       throw std::runtime_error("Cannot add duplicate key to supported types");
     }
 
-    add_common_info<T>(key_name, weight);
+    add_common_info<T>(key_name, ros_type_name, weight);
 
     auto factory =
       [node, qos](const std::string & topic_name) -> rclcpp::PublisherBase::SharedPtr
@@ -88,10 +90,10 @@ public:
 
 private:
   template<typename T>
-  void add_common_info(const std::string & key_name, double weight)
+  void add_common_info(const std::string & key_name, const std::string & ros_type_name, double weight)
   {
     name_to_supported_types_.emplace(key_name, SupportedTypeInfo());
-    name_to_supported_types_[key_name].supported_type.ros_type_name = T::ros_type;
+    name_to_supported_types_[key_name].supported_type.ros_type_name = ros_type_name;
     name_to_supported_types_[key_name].supported_type.name = T::name;
     name_to_supported_types_[key_name].supported_type.weight = weight;
   }

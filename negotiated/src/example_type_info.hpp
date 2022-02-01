@@ -26,14 +26,12 @@ namespace negotiated_examples
 struct StringT
 {
   using MsgT = std_msgs::msg::String;
-  static const inline std::string ros_type = "std_msgs/msg/String";
   static const inline std::string name = "a";
 };
 
 struct Int32T
 {
   using MsgT = std_msgs::msg::Int32;
-  static const inline std::string ros_type = "std_msgs/msg/Int32";
   static const inline std::string name = "b";
 };
 
