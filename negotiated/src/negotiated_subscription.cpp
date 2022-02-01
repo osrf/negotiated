@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <memory>
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
-#include "rclcpp/serialization.hpp"
 
 #include "negotiated_interfaces/msg/new_topic_info.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"

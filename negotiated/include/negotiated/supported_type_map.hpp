@@ -15,7 +15,7 @@
 #ifndef NEGOTIATED__SUPPORTED_TYPE_MAP_HPP_
 #define NEGOTIATED__SUPPORTED_TYPE_MAP_HPP_
 
-#include <memory>
+#include <functional>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>

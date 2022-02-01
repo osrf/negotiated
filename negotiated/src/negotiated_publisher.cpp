@@ -20,8 +20,8 @@
 #include <memory>
 #include <mutex>
 #include <string>
-#include <utility>
 #include <vector>
+#include <utility>
 
 #include "rclcpp/node_interfaces/node_graph.hpp"
 #include "rclcpp/rclcpp.hpp"

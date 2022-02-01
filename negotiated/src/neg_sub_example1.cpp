@@ -15,7 +15,6 @@
 #include <memory>
 
 #include "rclcpp/rclcpp.hpp"
-
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/string.hpp"
 
