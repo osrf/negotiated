@@ -192,7 +192,8 @@ void NegotiatedPublisher::negotiate()
   }
 
   double max_weight = 0.0;
-  bool changed = false;
+
+  negotiated_interfaces::msg::SupportedType matches_all_subs;
 
   for (const std::pair<std::string, SupportedTypeInfo> & supported_info : key_to_supported_types_) {
     size_t num_subs_supported = -1;  // start at negative one since the publisher is also in the list
@@ -208,28 +209,24 @@ void NegotiatedPublisher::negotiate()
         RCLCPP_INFO(node_->get_logger(), "  Chose type %s", supported_info.second.ros_type_name.c_str());
         max_weight = sum_of_weights;
 
-        // TODO(clalancette): We should probably prefer to keep on what we were already connected to, if we can.
-        // This is probably something that we should allow the user to override, though.
-
-        if (ros_type_name_ != supported_info.second.ros_type_name || format_match_ != supported_info.second.format_match) {
-          changed = true;
-          ros_type_name_ = supported_info.second.ros_type_name;
-          format_match_ = supported_info.second.format_match;
-        }
-
+        matches_all_subs.ros_type_name = supported_info.second.ros_type_name;
+        matches_all_subs.format_match = supported_info.second.format_match;
       }
     } else {
       // TODO(clalancette): Deal with the case where we can't satisify everyone with a single publication
     }
   }
 
-  if (max_weight == 0.0) {
+  if (matches_all_subs.ros_type_name.empty() && matches_all_subs.format_match.empty()) {
     // We couldn't find any match, so don't setup anything
     // TODO(clalancette): This is too naive; we need to be able to deal with the case when
     // multiple subscriptions would work
     RCLCPP_INFO(node_->get_logger(), "Could not negotiate");
     return;
   }
+
+  // TODO(clalancette): We should probably prefer to keep on what we were already connected to, if we can.
+  // This is probably something that we should allow the user to override, though.
 
   // Now that we've run the algorithm and figured out what our actual publication
   // "type" is going to be, create the publisher and inform the subscriptions
@@ -240,19 +237,24 @@ void NegotiatedPublisher::negotiate()
   // the publisher if it is going to be exactly the same as last time.  In all cases, though,
   // we send out the information to the subscriptions so they can act accordingly (even new ones).
 
-  auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
-  msg->ros_type_name = ros_type_name_;
-  msg->format_match = format_match_;
-  msg->topic_name = topic_name_ + "/" + format_match_;
+  std::string new_topic_name = topic_name_ + "/" + matches_all_subs.format_match;
 
-  if (changed) {
+  if (ros_type_name_ != matches_all_subs.ros_type_name || format_match_ != matches_all_subs.format_match) {
+    ros_type_name_ = matches_all_subs.ros_type_name;
+    format_match_ = matches_all_subs.format_match;
+
     std::string key_name = generate_key(ros_type_name_, format_match_);
     // TODO(clalancette): It should never, ever be the case that the key
     // we created here is something that isn't in key_to_supported_types_.
     // But to be extra cautious we should probably check.
     auto pub_factory = key_to_supported_types_[key_name].pub_factory;
-    publisher_ = pub_factory(msg->topic_name);
+    publisher_ = pub_factory(new_topic_name);
   }
+
+  auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
+  msg->ros_type_name = ros_type_name_;
+  msg->format_match = format_match_;
+  msg->topic_name = new_topic_name;
 
   neg_publisher_->publish(std::move(msg));
 }
