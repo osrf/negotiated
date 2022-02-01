@@ -39,7 +39,8 @@ NegotiatedPublisher::NegotiatedPublisher(
 : node_(node),
   topic_name_(topic_name)
 {
-  negotiated_subscription_type_gids_ = std::make_shared<std::map<PublisherGid, std::vector<std::string>>>();
+  negotiated_subscription_type_gids_ = std::make_shared<std::map<PublisherGid,
+      std::vector<std::string>>>();
 
   neg_publisher_ = node_->create_publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
     topic_name_, rclcpp::QoS(10));
@@ -67,7 +68,8 @@ void NegotiatedPublisher::timer_callback()
 
   node_->wait_for_graph_change(graph_event_, std::chrono::milliseconds(0));
   if (graph_event_->check_and_clear()) {
-    auto new_negotiated_subscription_gids = std::make_shared<std::map<PublisherGid, std::vector<std::string>>>();
+    auto new_negotiated_subscription_gids = std::make_shared<std::map<PublisherGid,
+        std::vector<std::string>>>();
     rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph =
       node_->get_node_graph_interface();
     std::vector<rclcpp::TopicEndpointInfo> endpoints = node_graph->get_publishers_info_by_topic(
@@ -94,25 +96,29 @@ void NegotiatedPublisher::timer_callback()
 
     // OK, now that we have built up a new map, we need to go through the new and old map together.
     // This is so we can reduce counts and weights on entries that have gone away.
-    for (const std::pair<PublisherGid, std::vector<std::string>> & gid_to_key : *negotiated_subscription_type_gids_) {
+    for (const std::pair<PublisherGid,
+      std::vector<std::string>> & gid_to_key : *negotiated_subscription_type_gids_)
+    {
       if (new_negotiated_subscription_gids->count(gid_to_key.first) > 0) {
         // The key from the old is in the new one, so no need to do any work here
         continue;
       }
 
-      // The key from the old is *not* in the new one, so we need to go through and remove the weights
-      // from the key_to_supported_types_ map.
+      // The key from the old is *not* in the new one, so we need to go through and remove the
+      // weights from the key_to_supported_types_ map.
 
       for (const std::string & key : gid_to_key.second) {
         if (key_to_supported_types_.count(key) == 0) {
           // This should never happen, but just be careful
-          RCLCPP_INFO(node_->get_logger(), "Could not find key in supported_types, this shouldn't happen");
+          RCLCPP_INFO(
+            node_->get_logger(), "Could not find key in supported_types, this shouldn't happen");
           continue;
         }
 
         if (key_to_supported_types_[key].gid_to_weight.count(gid_to_key.first) == 0) {
           // This should also never happen, but just be careful.
-          RCLCPP_INFO(node_->get_logger(), "Could not find gid in supported_types, this shouldn't happen");
+          RCLCPP_INFO(
+            node_->get_logger(), "Could not find gid in supported_types, this shouldn't happen");
           continue;
         }
 
@@ -120,8 +126,9 @@ void NegotiatedPublisher::timer_callback()
       }
     }
 
-    // TODO(clalancette): Theoretically if the graph changed, we may want to renegotiate to something
-    // more efficient.  For now we don't do this, but we probably want to make this an option.
+    // TODO(clalancette): Theoretically if the graph changed, we may want to renegotiate to
+    // something more efficient.  For now we don't do this, but we probably want to make this an
+    // option.
 
     negotiated_subscription_type_gids_ = new_negotiated_subscription_gids;
   }
@@ -148,7 +155,8 @@ void NegotiatedPublisher::start()
 
       std::vector<std::string> key_list;
 
-      for (const negotiated_interfaces::msg::SupportedType & supported_type : supported_types.supported_types)
+      for (const negotiated_interfaces::msg::SupportedType & supported_type :
+        supported_types.supported_types)
       {
         std::string key = generate_key(supported_type.ros_type_name, supported_type.format_match);
         if (key_to_supported_types_.count(key) == 0) {
@@ -193,40 +201,42 @@ void NegotiatedPublisher::negotiate()
 
   double max_weight = 0.0;
 
-  negotiated_interfaces::msg::SupportedType matches_all_subs;
+  negotiated_interfaces::msg::SupportedType matched_sub;
+  size_t num_subs_matched = 0;
 
   for (const std::pair<std::string, SupportedTypeInfo> & supported_info : key_to_supported_types_) {
-    size_t num_subs_supported = -1;  // start at negative one since the publisher is also in the list
+    size_t num_subs_supported = -1;  // start at -1 since the publisher is also in the list
     double sum_of_weights = 0.0;
 
-    for (const std::pair<PublisherGid, double> & gid_to_weight : supported_info.second.gid_to_weight) {
+    for (const std::pair<PublisherGid, double> & gid_to_weight :
+      supported_info.second.gid_to_weight)
+    {
       num_subs_supported += 1;
       sum_of_weights += gid_to_weight.second;
     }
 
-    if (num_subs_supported == negotiated_subscription_type_gids_->size()) {
-      if (sum_of_weights > max_weight) {
-        RCLCPP_INFO(node_->get_logger(), "  Chose type %s", supported_info.second.ros_type_name.c_str());
-        max_weight = sum_of_weights;
+    // TODO(clalancette): We should probably prefer to keep using what we were already connected to.
+    // This is probably something that we should allow the user to override, though.
+    if (num_subs_supported >= num_subs_matched && sum_of_weights > max_weight) {
+      RCLCPP_INFO(
+        node_->get_logger(), "  Chose type %s", supported_info.second.ros_type_name.c_str());
+      num_subs_matched = num_subs_supported;
+      max_weight = sum_of_weights;
 
-        matches_all_subs.ros_type_name = supported_info.second.ros_type_name;
-        matches_all_subs.format_match = supported_info.second.format_match;
-      }
-    } else {
-      // TODO(clalancette): Deal with the case where we can't satisify everyone with a single publication
+      matched_sub.ros_type_name = supported_info.second.ros_type_name;
+      matched_sub.format_match = supported_info.second.format_match;
     }
   }
 
-  if (matches_all_subs.ros_type_name.empty() && matches_all_subs.format_match.empty()) {
+  if (num_subs_matched < negotiated_subscription_type_gids_->size() ||
+    (matched_sub.ros_type_name.empty() && matched_sub.format_match.empty()))
+  {
     // We couldn't find any match, so don't setup anything
     // TODO(clalancette): This is too naive; we need to be able to deal with the case when
     // multiple subscriptions would work
     RCLCPP_INFO(node_->get_logger(), "Could not negotiate");
     return;
   }
-
-  // TODO(clalancette): We should probably prefer to keep on what we were already connected to, if we can.
-  // This is probably something that we should allow the user to override, though.
 
   // Now that we've run the algorithm and figured out what our actual publication
   // "type" is going to be, create the publisher and inform the subscriptions
@@ -237,11 +247,11 @@ void NegotiatedPublisher::negotiate()
   // the publisher if it is going to be exactly the same as last time.  In all cases, though,
   // we send out the information to the subscriptions so they can act accordingly (even new ones).
 
-  std::string new_topic_name = topic_name_ + "/" + matches_all_subs.format_match;
+  std::string new_topic_name = topic_name_ + "/" + matched_sub.format_match;
 
-  if (ros_type_name_ != matches_all_subs.ros_type_name || format_match_ != matches_all_subs.format_match) {
-    ros_type_name_ = matches_all_subs.ros_type_name;
-    format_match_ = matches_all_subs.format_match;
+  if (ros_type_name_ != matched_sub.ros_type_name || format_match_ != matched_sub.format_match) {
+    ros_type_name_ = matched_sub.ros_type_name;
+    format_match_ = matched_sub.format_match;
 
     std::string key_name = generate_key(ros_type_name_, format_match_);
     // TODO(clalancette): It should never, ever be the case that the key

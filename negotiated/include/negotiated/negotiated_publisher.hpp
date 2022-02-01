@@ -117,7 +117,8 @@ private:
   rclcpp::TimerBase::SharedPtr graph_change_timer_;
   rclcpp::Event::SharedPtr graph_event_;
   std::mutex negotiated_subscription_type_mutex_;
-  std::shared_ptr<std::map<PublisherGid, std::vector<std::string>>> negotiated_subscription_type_gids_;
+  std::shared_ptr<std::map<PublisherGid,
+    std::vector<std::string>>> negotiated_subscription_type_gids_;
 };
 
 }  // namespace negotiated
