@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <string>
+#include <utility>
 
 #include "rclcpp/rclcpp.hpp"
 
@@ -27,24 +28,35 @@ namespace negotiated
 NegotiatedSubscription::NegotiatedSubscription(
   rclcpp::Node::SharedPtr node,
   const std::string & topic_name)
-: node_(node),
-  topic_name_(topic_name)
+: node_(node)
 {
   auto sub_cb =
     [this, node](const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)
     {
-      // Only recreate the subscription if it is different than before
-      if (msg.ros_type_name != ros_type_name_ || msg.format_match != format_match_) {
-        ros_type_name_ = msg.ros_type_name;
-        format_match_ = msg.format_match;
-        std::string key = generate_key(ros_type_name_, format_match_);
-        auto sub_factory = key_to_supported_types_[key].sub_factory;
-        this->subscription_ = sub_factory(msg.topic_name);
+      // Only (re)create the subscription if it is different than before
+      if (msg.ros_type_name == ros_type_name_ && msg.format_match == format_match_) {
+        return;
       }
+
+      std::string key = generate_key(msg.ros_type_name, msg.format_match);
+      if (key_to_supported_types_.count(key) == 0) {
+        // This is not a combination we support, so don't subscribe
+        return;
+      }
+
+      ros_type_name_ = msg.ros_type_name;
+      format_match_ = msg.format_match;
+
+      auto sub_factory = key_to_supported_types_[key].sub_factory;
+      this->subscription_ = sub_factory(msg.topic_name);
     };
 
   neg_subscription_ = node->create_subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
     topic_name, rclcpp::QoS(10), sub_cb);
+
+  supported_types_pub_ = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    topic_name + "/supported_types",
+    rclcpp::QoS(100).transient_local());
 }
 
 std::string NegotiatedSubscription::generate_key(
@@ -56,10 +68,6 @@ std::string NegotiatedSubscription::generate_key(
 
 void NegotiatedSubscription::start()
 {
-  supported_types_pub_ = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
-    topic_name_ + "/supported_types",
-    rclcpp::QoS(100).transient_local());
-
   auto supported_types = negotiated_interfaces::msg::SupportedTypes();
   for (const std::pair<const std::string, SupportedTypeInfo> & pair : key_to_supported_types_) {
     supported_types.supported_types.push_back(pair.second.supported_type);

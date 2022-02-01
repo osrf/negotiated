@@ -17,6 +17,7 @@
 
 #include <functional>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 
@@ -76,7 +77,6 @@ private:
   std::string generate_key(const std::string & ros_type_name, const std::string & format_match);
 
   rclcpp::Node::SharedPtr node_;
-  std::string topic_name_;
   std::unordered_map<std::string, SupportedTypeInfo> key_to_supported_types_;
   rclcpp::Subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr
     neg_subscription_;
