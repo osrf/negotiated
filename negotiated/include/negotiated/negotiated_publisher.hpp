@@ -22,6 +22,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "rclcpp/rclcpp.hpp"
 
@@ -31,12 +32,6 @@
 
 namespace negotiated
 {
-
-struct SupportedTypeInfo final
-{
-  negotiated_interfaces::msg::SupportedType supported_type;
-  std::function<rclcpp::PublisherBase::SharedPtr(const std::string &)> pub_factory;
-};
 
 class NegotiatedPublisher
 {
@@ -57,17 +52,18 @@ public:
     }
 
     key_to_supported_types_.emplace(key_name, SupportedTypeInfo());
-    key_to_supported_types_[key_name].supported_type.ros_type_name = ros_type_name;
-    key_to_supported_types_[key_name].supported_type.format_match = T::format_match;
-    key_to_supported_types_[key_name].supported_type.weight = weight;
 
     auto factory =
       [this, qos](const std::string & topic_name) -> rclcpp::PublisherBase::SharedPtr
       {
         return node_->create_publisher<typename T::MsgT>(topic_name, qos);
       };
-
     key_to_supported_types_[key_name].pub_factory = factory;
+
+    PublisherGid gid{0};
+    key_to_supported_types_[key_name].gid_to_weight[gid] = weight;
+    key_to_supported_types_[key_name].ros_type_name = ros_type_name;
+    key_to_supported_types_[key_name].format_match = T::format_match;
   }
 
   void start();
@@ -94,6 +90,16 @@ public:
   }
 
 private:
+  using PublisherGid = std::array<uint8_t, RMW_GID_STORAGE_SIZE>;
+
+  struct SupportedTypeInfo final
+  {
+    std::map<PublisherGid, double> gid_to_weight;
+    std::string ros_type_name;
+    std::string format_match;
+    std::function<rclcpp::PublisherBase::SharedPtr(const std::string &)> pub_factory;
+  };
+
   void negotiate();
 
   void timer_callback();
@@ -111,9 +117,7 @@ private:
   rclcpp::TimerBase::SharedPtr graph_change_timer_;
   rclcpp::Event::SharedPtr graph_event_;
   std::mutex negotiated_subscription_type_mutex_;
-  using PublisherGid = std::array<uint8_t, RMW_GID_STORAGE_SIZE>;
-  std::shared_ptr<std::map<PublisherGid,
-    negotiated_interfaces::msg::SupportedTypes>> negotiated_subscription_type_gids_;
+  std::shared_ptr<std::map<PublisherGid, std::vector<std::string>>> negotiated_subscription_type_gids_;
 };
 
 }  // namespace negotiated
