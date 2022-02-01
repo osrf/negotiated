@@ -36,10 +36,10 @@ NegotiatedSubscription::NegotiatedSubscription(
     [this, node](const negotiated_interfaces::msg::NewTopicInfo & msg)
     {
       // Only recreate the subscription if it is different than before
-      if (msg.ros_type_name != ros_type_name_ || msg.name != name_) {
+      if (msg.ros_type_name != ros_type_name_ || msg.format_match != format_match_) {
         ros_type_name_ = msg.ros_type_name;
-        name_ = msg.name;
-        auto factory = supported_type_map_.get_sub_factory(ros_type_name_, name_);
+        format_match_ = msg.format_match;
+        auto factory = supported_type_map_.get_sub_factory(ros_type_name_, format_match_);
         this->subscription_ = factory(msg.topic_name);
       }
     };

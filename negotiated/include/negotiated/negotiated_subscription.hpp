@@ -53,7 +53,7 @@ private:
   std::shared_ptr<rclcpp::SubscriptionBase> subscription_;
   rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_pub_;
   std::string ros_type_name_;
-  std::string name_;
+  std::string format_match_;
 };
 
 }  // namespace negotiated

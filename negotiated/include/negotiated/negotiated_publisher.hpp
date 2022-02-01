@@ -53,7 +53,7 @@ public:
   bool type_was_negotiated()
   {
     std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
-    return ros_type_name_ == ros_type_name && name_ == T::name;
+    return ros_type_name_ == ros_type_name && format_match_ == T::format_match;
   }
 
   template<typename MessageT>
@@ -80,7 +80,7 @@ private:
   negotiated_interfaces::msg::SupportedTypes pub_supported_types_;
   std::string topic_name_;
   std::string ros_type_name_;
-  std::string name_;
+  std::string format_match_;
   rclcpp::Publisher<negotiated_interfaces::msg::NewTopicInfo>::SharedPtr neg_publisher_;
   std::shared_ptr<rclcpp::PublisherBase> publisher_{nullptr};
   rclcpp::Subscription<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_sub_;

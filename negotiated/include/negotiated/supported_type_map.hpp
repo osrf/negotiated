@@ -46,7 +46,7 @@ public:
     const rclcpp::QoS & qos)
   {
     std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
-    std::string key_name = ros_type_name + "+" + T::name;
+    std::string key_name = ros_type_name + "+" + T::format_match;
     if (name_to_supported_types_.count(key_name) != 0) {
       throw std::runtime_error("Cannot add duplicate key to supported types");
     }
@@ -66,7 +66,7 @@ public:
   void add_supported_info(rclcpp::Node::SharedPtr node, double weight, const rclcpp::QoS & qos)
   {
     std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
-    std::string key_name = ros_type_name + "+" + T::name;
+    std::string key_name = ros_type_name + "+" + T::format_match;
     if (name_to_supported_types_.count(key_name) != 0) {
       throw std::runtime_error("Cannot add duplicate key to supported types");
     }
@@ -86,11 +86,11 @@ public:
 
   std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)> get_sub_factory(
     const std::string & ros_type_name,
-    const std::string & name) const;
+    const std::string & format_match) const;
 
   std::function<rclcpp::PublisherBase::SharedPtr(const std::string &)> get_pub_factory(
     const std::string & ros_type_name,
-    const std::string & name) const;
+    const std::string & format_match) const;
 
 private:
   template<typename T>
@@ -101,7 +101,7 @@ private:
   {
     name_to_supported_types_.emplace(key_name, SupportedTypeInfo());
     name_to_supported_types_[key_name].supported_type.ros_type_name = ros_type_name;
-    name_to_supported_types_[key_name].supported_type.name = T::name;
+    name_to_supported_types_[key_name].supported_type.format_match = T::format_match;
     name_to_supported_types_[key_name].supported_type.weight = weight;
   }
 

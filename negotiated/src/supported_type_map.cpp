@@ -39,9 +39,9 @@ negotiated_interfaces::msg::SupportedTypes SupportedTypeMap::get_types() const
 std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)>
 SupportedTypeMap::get_sub_factory(
   const std::string & ros_type_name,
-  const std::string & name) const
+  const std::string & format_match) const
 {
-  std::string key_name = ros_type_name + "+" + name;
+  std::string key_name = ros_type_name + "+" + format_match;
   if (name_to_supported_types_.count(key_name) == 0) {
     return nullptr;
   }
@@ -51,9 +51,9 @@ SupportedTypeMap::get_sub_factory(
 std::function<rclcpp::PublisherBase::SharedPtr(const std::string &)>
 SupportedTypeMap::get_pub_factory(
   const std::string & ros_type_name,
-  const std::string & name) const
+  const std::string & format_match) const
 {
-  std::string key_name = ros_type_name + "+" + name;
+  std::string key_name = ros_type_name + "+" + format_match;
   if (name_to_supported_types_.count(key_name) == 0) {
     return nullptr;
   }

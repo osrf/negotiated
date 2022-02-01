@@ -153,7 +153,7 @@ void NegotiatedPublisher::negotiate()
     double sum_of_weights = pub_type.weight;
 
     std::string pub_ros_type = pub_type.ros_type_name;
-    std::string pub_name = pub_type.name;
+    std::string pub_format_match = pub_type.format_match;
 
     for (const std::pair<std::array<uint8_t, RMW_GID_STORAGE_SIZE>,
       negotiated_interfaces::msg::SupportedTypes> & sub : *negotiated_subscription_type_gids_)
@@ -162,8 +162,8 @@ void NegotiatedPublisher::negotiate()
         sub.second.supported_types)
       {
         // TODO(clalancette): What happens if the subscription has multiple supported types
-        // with the same ros_type and name?
-        if (sub_type.ros_type_name == pub_ros_type && sub_type.name == pub_name) {
+        // with the same ros_type and format_match?
+        if (sub_type.ros_type_name == pub_ros_type && sub_type.format_match == pub_format_match) {
           num_subs_supported += 1;
           sum_of_weights += sub_type.weight;
           break;
@@ -176,17 +176,16 @@ void NegotiatedPublisher::negotiate()
     {
       max_weight = sum_of_weights;
       RCLCPP_INFO(node_->get_logger(), "  Chose type %s", pub_type.ros_type_name.c_str());
-      // TODO(clalancette): What if the sub names don't match the pub name?
-      msg->topic_name = topic_name_ + "/" + pub_type.name;
+      msg->topic_name = topic_name_ + "/" + pub_type.format_match;
 
-      if (ros_type_name_ != pub_type.ros_type_name || name_ != pub_type.name) {
+      if (ros_type_name_ != pub_type.ros_type_name || format_match_ != pub_type.format_match) {
         changed = true;
         ros_type_name_ = pub_type.ros_type_name;
-        name_ = pub_type.name;
+        format_match_ = pub_type.format_match;
       }
 
       msg->ros_type_name = ros_type_name_;
-      msg->name = name_;
+      msg->format_match = format_match_;
     }
   }
 
@@ -208,7 +207,7 @@ void NegotiatedPublisher::negotiate()
   // we send out the information to the subscriptions so they can act accordingly (even new ones).
 
   if (changed) {
-    auto pub_factory = supported_type_map_.get_pub_factory(ros_type_name_, name_);
+    auto pub_factory = supported_type_map_.get_pub_factory(ros_type_name_, format_match_);
     publisher_ = pub_factory(msg->topic_name);
   }
 
