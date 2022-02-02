@@ -273,59 +273,59 @@ void NegotiatedPublisher::negotiate()
     }
   }
 
-  if (!matched_subs.empty()) {
-    // Now that we've run the algorithm and figured out what our actual publication
-    // "type" is going to be, create the publisher(s) and inform the subscriptions
-    // the name(s) of them.
-
-    // Note that we only recreate the publishers if the new list of publishers is different from
-    // the old list, e.g. it is different than the last time we negotiated.  This keeps us from
-    // unnecessarily tearing down and recreating the publishers if the set is going to be exactly
-    // the same as last time.  In all cases, though, we send out the information to the
-    // subscriptions so they can act accordingly (even new ones).
-
-    std::set<std::string> keys_to_preserve;
-    auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
-
-    for (const negotiated_interfaces::msg::SupportedType & type : matched_subs) {
-      negotiated_interfaces::msg::NegotiatedTopicInfo info;
-      info.ros_type_name = type.ros_type_name;
-      info.format_match = type.format_match;
-      info.topic_name = topic_name_ + "/" + type.format_match;
-      msg->negotiated_topics.push_back(info);
-
-      std::string key = generate_key(type.ros_type_name, type.format_match);
-      keys_to_preserve.insert(key);
-      if (key_to_publisher_.count(key) == 0) {
-        // This particular subscription is not yet in the map, so we need to create it.
-
-        // TODO(clalancette): It should never, ever be the case that the key
-        // we created here is something that isn't in key_to_supported_types_.
-        // But to be extra cautious we should probably check.
-        auto pub_factory = key_to_supported_types_[key].pub_factory;
-        key_to_publisher_[key] = pub_factory(info.topic_name);
-      }
-    }
-
-    // Now go through and remove any publishers that are no longer needed.
-    for (std::map<std::string, std::shared_ptr<rclcpp::PublisherBase>>::iterator it =
-      key_to_publisher_.begin(); it != key_to_publisher_.end(); )
-    {
-      if (keys_to_preserve.count(it->first) == 0) {
-        key_to_publisher_.erase(it++);
-      } else {
-        ++it;
-      }
-    }
-
-    neg_publisher_->publish(std::move(msg));
+  if (matched_subs.empty()) {
+    // We couldn't find any match, so don't setup anything
+    RCLCPP_INFO(node_->get_logger(), "Could not negotiate");
+    key_to_publisher_.clear();
 
     return;
   }
 
-  // We couldn't find any match, so don't setup anything
-  RCLCPP_INFO(node_->get_logger(), "Could not negotiate");
-  key_to_publisher_.clear();
+  // Now that we've run the algorithm and figured out what our actual publication
+  // "type" is going to be, create the publisher(s) and inform the subscriptions
+  // the name(s) of them.
+
+  // Note that we only recreate the publishers if the new list of publishers is different from
+  // the old list, e.g. it is different than the last time we negotiated.  This keeps us from
+  // unnecessarily tearing down and recreating the publishers if the set is going to be exactly
+  // the same as last time.  In all cases, though, we send out the information to the
+  // subscriptions so they can act accordingly (even new ones).
+
+  std::set<std::string> keys_to_preserve;
+  auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
+
+  for (const negotiated_interfaces::msg::SupportedType & type : matched_subs) {
+    negotiated_interfaces::msg::NegotiatedTopicInfo info;
+    info.ros_type_name = type.ros_type_name;
+    info.format_match = type.format_match;
+    info.topic_name = topic_name_ + "/" + type.format_match;
+    msg->negotiated_topics.push_back(info);
+
+    std::string key = generate_key(type.ros_type_name, type.format_match);
+    keys_to_preserve.insert(key);
+    if (key_to_publisher_.count(key) == 0) {
+      // This particular subscription is not yet in the map, so we need to create it.
+
+      // TODO(clalancette): It should never, ever be the case that the key
+      // we created here is something that isn't in key_to_supported_types_.
+      // But to be extra cautious we should probably check.
+      auto pub_factory = key_to_supported_types_[key].pub_factory;
+      key_to_publisher_[key] = pub_factory(info.topic_name);
+    }
+  }
+
+  // Now go through and remove any publishers that are no longer needed.
+  for (std::map<std::string, std::shared_ptr<rclcpp::PublisherBase>>::iterator it =
+    key_to_publisher_.begin(); it != key_to_publisher_.end(); )
+  {
+    if (keys_to_preserve.count(it->first) == 0) {
+      key_to_publisher_.erase(it++);
+    } else {
+      ++it;
+    }
+  }
+
+  neg_publisher_->publish(std::move(msg));
 }
 
 }  // namespace negotiated
