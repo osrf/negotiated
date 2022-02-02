@@ -37,8 +37,8 @@ int main(int argc, char ** argv)
     "myneg");
   neg_sub->add_supported_callback<negotiated_examples::StringT2>(
     1.0,
-    string_user_cb,
-    rclcpp::QoS(1));
+    rclcpp::QoS(1),
+    string_user_cb);
   neg_sub->start();
 
   rclcpp::spin(node);
