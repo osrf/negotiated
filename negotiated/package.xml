@@ -6,6 +6,7 @@
   <description>A package containing a negotiating publisher and subscription.</description>
   <maintainer email="clalancette@openrobotics.org">Chris Lalancette</maintainer>
   <license>Apache-2.0</license>
+  <license>Boost</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

@@ -71,71 +71,73 @@ void NegotiatedPublisher::timer_callback()
   // We probably want to eventually make this configurable, but for now we don't renegotiate
 
   node_->wait_for_graph_change(graph_event_, std::chrono::milliseconds(0));
-  if (graph_event_->check_and_clear()) {
-    auto new_negotiated_subscription_gids = std::make_shared<std::map<PublisherGid,
-        std::vector<std::string>>>();
-    rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph =
-      node_->get_node_graph_interface();
-    std::vector<rclcpp::TopicEndpointInfo> endpoints = node_graph->get_publishers_info_by_topic(
-      topic_name_ + "/supported_types");
-
-    // We need to hold the lock across this entire operation
-    std::lock_guard<std::mutex> lg(negotiated_subscription_type_mutex_);
-
-    for (const rclcpp::TopicEndpointInfo & endpoint : endpoints) {
-      if (endpoint.endpoint_type() != rclcpp::EndpointType::Publisher) {
-        // This should never happen, but just be safe
-        continue;
-      }
-
-      // We only want to add GIDs to the new map if they were already in the existing map.
-      // That way we avoid potential race conditions where the graph contains the information,
-      // but we have not yet gotten a publication of supported types from it.
-      if (negotiated_subscription_type_gids_->count(endpoint.endpoint_gid()) > 0) {
-        std::vector<std::string> old_type =
-          negotiated_subscription_type_gids_->at(endpoint.endpoint_gid());
-        new_negotiated_subscription_gids->emplace(endpoint.endpoint_gid(), old_type);
-      }
-    }
-
-    // OK, now that we have built up a new map, we need to go through the new and old map together.
-    // This is so we can reduce counts and weights on entries that have gone away.
-    for (const std::pair<PublisherGid,
-      std::vector<std::string>> & gid_to_key : *negotiated_subscription_type_gids_)
-    {
-      if (new_negotiated_subscription_gids->count(gid_to_key.first) > 0) {
-        // The key from the old is in the new one, so no need to do any work here
-        continue;
-      }
-
-      // The key from the old is *not* in the new one, so we need to go through and remove the
-      // weights from the key_to_supported_types_ map.
-
-      for (const std::string & key : gid_to_key.second) {
-        if (key_to_supported_types_.count(key) == 0) {
-          // This should never happen, but just be careful
-          RCLCPP_INFO(
-            node_->get_logger(), "Could not find key in supported_types, this shouldn't happen");
-          continue;
-        }
-
-        if (key_to_supported_types_[key].gid_to_weight.count(gid_to_key.first) == 0) {
-          // This should also never happen, but just be careful.
-          RCLCPP_INFO(
-            node_->get_logger(), "Could not find gid in supported_types, this shouldn't happen");
-          continue;
-        }
-
-        key_to_supported_types_[key].gid_to_weight.erase(gid_to_key.first);
-      }
-    }
-
-    // TODO(clalancette): Theoretically if the graph changed, we may want to renegotiate to
-    // something more efficient.  For now we don't do this, but we probably want to make this an
-    // option.
-
-    negotiated_subscription_type_gids_ = new_negotiated_subscription_gids;
+  if (!graph_event_->check_and_clear()) {
+    return;
   }
+
+  auto new_negotiated_subscription_gids = std::make_shared<std::map<PublisherGid,
+      std::vector<std::string>>>();
+  rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph =
+    node_->get_node_graph_interface();
+  std::vector<rclcpp::TopicEndpointInfo> endpoints = node_graph->get_publishers_info_by_topic(
+    topic_name_ + "/supported_types");
+
+  // We need to hold the lock across this entire operation
+  std::lock_guard<std::mutex> lg(negotiated_subscription_type_mutex_);
+
+  for (const rclcpp::TopicEndpointInfo & endpoint : endpoints) {
+    if (endpoint.endpoint_type() != rclcpp::EndpointType::Publisher) {
+      // This should never happen, but just be safe
+      continue;
+    }
+
+    // We only want to add GIDs to the new map if they were already in the existing map.
+    // That way we avoid potential race conditions where the graph contains the information,
+    // but we have not yet gotten a publication of supported types from it.
+    if (negotiated_subscription_type_gids_->count(endpoint.endpoint_gid()) > 0) {
+      std::vector<std::string> old_type =
+        negotiated_subscription_type_gids_->at(endpoint.endpoint_gid());
+      new_negotiated_subscription_gids->emplace(endpoint.endpoint_gid(), old_type);
+    }
+  }
+
+  // OK, now that we have built up a new map, we need to go through the new and old map together.
+  // This is so we can reduce counts and weights on entries that have gone away.
+  for (const std::pair<PublisherGid,
+    std::vector<std::string>> & gid_to_key : *negotiated_subscription_type_gids_)
+  {
+    if (new_negotiated_subscription_gids->count(gid_to_key.first) > 0) {
+      // The key from the old is in the new one, so no need to do any work here
+      continue;
+    }
+
+    // The key from the old is *not* in the new one, so we need to go through and remove the
+    // weights from the key_to_supported_types_ map.
+
+    for (const std::string & key : gid_to_key.second) {
+      if (key_to_supported_types_.count(key) == 0) {
+        // This should never happen, but just be careful
+        RCLCPP_INFO(
+          node_->get_logger(), "Could not find key in supported_types, this shouldn't happen");
+        continue;
+      }
+
+      if (key_to_supported_types_[key].gid_to_weight.count(gid_to_key.first) == 0) {
+        // This should also never happen, but just be careful.
+        RCLCPP_INFO(
+          node_->get_logger(), "Could not find gid in supported_types, this shouldn't happen");
+        continue;
+      }
+
+      key_to_supported_types_[key].gid_to_weight.erase(gid_to_key.first);
+    }
+  }
+
+  // TODO(clalancette): Theoretically if the graph changed, we may want to renegotiate to
+  // something more efficient.  For now we don't do this, but we probably want to make this an
+  // option.
+
+  negotiated_subscription_type_gids_ = new_negotiated_subscription_gids;
 }
 
 std::string NegotiatedPublisher::generate_key(
