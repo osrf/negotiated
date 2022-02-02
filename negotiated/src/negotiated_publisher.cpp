@@ -18,6 +18,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 #include <vector>
 #include <utility>
@@ -30,6 +31,8 @@
 #include "negotiated_interfaces/msg/supported_types.hpp"
 
 #include "negotiated/negotiated_publisher.hpp"
+
+#include "combinations.hpp"
 
 namespace negotiated
 {
@@ -199,49 +202,63 @@ void NegotiatedPublisher::negotiate()
     return;
   }
 
-  // This is the negotiation algorithm.  It works like the following:
-  //
-  // * On the first pass through, it looks through all of the [ros_type,format_match] keys and the
-  //   map of subscriptions attached to them.  It then chooses the key that matches *all* of the
-  //   current NegotiatedSubscriptions.  If there is more than one, then the one with the highest
-  //   weight is chosen.  If there is at least one of these, the algorithm is done after this.
-  //
-  // * Right now, the algorithm fails if that first step fails.  In the future, we will want to
-  //   choose the least number of publications that satisfy all of the current subscriptions.
+  std::vector<std::string> keys;
+  for (const std::pair<const std::string, SupportedTypeInfo> & supported_info : key_to_supported_types_) {
+    keys.push_back(supported_info.first);
+  }
 
-  double max_weight = 0.0;
+  bool found_solution = false;
   negotiated_interfaces::msg::SupportedType matched_sub;
+  for (size_t i = 1; i <= key_to_supported_types_.size(); ++i) {
+    double max_weight = 0.0;
 
-  for (const std::pair<std::string, SupportedTypeInfo> & supported_info : key_to_supported_types_) {
-    // It is size - 1 because the publisher is in the list
-    if (supported_info.second.gid_to_weight.size() - 1 !=
-      negotiated_subscription_type_gids_->size())
+    auto check_combination = [this, &found_solution, &max_weight, &matched_sub](std::vector<std::string>::iterator first, std::vector<std::string>::iterator last) -> bool
     {
-      // Not all of the subscriptions can use this type, so skip it to try to find one that does
-      continue;
-    }
+      std::set<PublisherGid> gids_needed;
+      for (const std::pair<PublisherGid, std::vector<std::string>> & gid : *negotiated_subscription_type_gids_) {
+        gids_needed.insert(gid.first);
+      }
 
-    double sum_of_weights = 0.0;
+      double sum_of_weights = 0.0;
 
-    for (const std::pair<PublisherGid, double> & gid_to_weight :
-      supported_info.second.gid_to_weight)
-    {
-      sum_of_weights += gid_to_weight.second;
-    }
+      for (std::vector<std::string>::iterator it = first; it != last; ++it) {
+        // TODO(clalancette): what if the *it is not in the key_to_supported_types_ map?
+        SupportedTypeInfo supported_type_info = key_to_supported_types_[*it];
 
-    // TODO(clalancette): We should probably prefer to keep using what we were already connected to.
-    // This is probably something that we should allow the user to override, though.
-    if (sum_of_weights > max_weight) {
-      RCLCPP_INFO(
-        node_->get_logger(), "  Chose type %s", supported_info.second.ros_type_name.c_str());
-      max_weight = sum_of_weights;
+        for (const std::pair<PublisherGid, double> gid_to_weight : supported_type_info.gid_to_weight) {
+          sum_of_weights += gid_to_weight.second;
 
-      matched_sub.ros_type_name = supported_info.second.ros_type_name;
-      matched_sub.format_match = supported_info.second.format_match;
+          // TODO(clalancette): What if the gid_to_weight.first is not in the gids_needed map?
+          gids_needed.erase(gid_to_weight.first);
+        }
+      }
+
+      if (gids_needed.empty()) {
+        // Hooray!  We found a solution at this level.  We don't interrupt processing at this
+        // level because there may be another combination that is more favorable, but we know
+        // we don't need to descend to further levels.
+        found_solution = true;
+
+        if (sum_of_weights > max_weight) {
+          max_weight = sum_of_weights;
+
+          // TODO(clalancette): This is not enough if there are multiple items in this list
+          matched_sub.ros_type_name = key_to_supported_types_[*first].ros_type_name;
+          matched_sub.format_match = key_to_supported_types_[*first].format_match;
+        }
+      }
+
+      return false;
+    };
+
+    for_each_combination(keys.begin(), keys.begin() + i, keys.end(), check_combination);
+
+    if (found_solution) {
+      break;
     }
   }
 
-  if (!matched_sub.ros_type_name.empty() || !matched_sub.format_match.empty()) {
+  if (found_solution) {
     // Now that we've run the algorithm and figured out what our actual publication
     // "type" is going to be, create the publisher and inform the subscriptions
     // the name of it.
@@ -250,6 +267,8 @@ void NegotiatedPublisher::negotiate()
     // last time we negotiated.  This keeps us from unnecessarily tearing down and recreating
     // the publisher if it is going to be exactly the same as last time.  In all cases, though,
     // we send out the information to the subscriptions so they can act accordingly (even new ones).
+
+    // TODO(clalancette): We may have to create multiple publishers here
 
     std::string new_topic_name = topic_name_ + "/" + matched_sub.format_match;
 
@@ -276,8 +295,6 @@ void NegotiatedPublisher::negotiate()
   }
 
   // We couldn't find any match, so don't setup anything
-  // TODO(clalancette): This is too naive; we need to be able to deal with the case when
-  // multiple subscriptions would work
   RCLCPP_INFO(node_->get_logger(), "Could not negotiate");
   publisher_.reset();
 }
