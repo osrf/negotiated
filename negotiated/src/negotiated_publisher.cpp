@@ -203,62 +203,76 @@ void NegotiatedPublisher::negotiate()
   }
 
   std::vector<std::string> keys;
-  for (const std::pair<const std::string, SupportedTypeInfo> & supported_info : key_to_supported_types_) {
+  for (const std::pair<const std::string,
+    SupportedTypeInfo> & supported_info : key_to_supported_types_)
+  {
     keys.push_back(supported_info.first);
   }
 
-  bool found_solution = false;
-  negotiated_interfaces::msg::SupportedType matched_sub;
+  std::vector<negotiated_interfaces::msg::SupportedType> matched_subs;
   for (size_t i = 1; i <= key_to_supported_types_.size(); ++i) {
     double max_weight = 0.0;
 
-    auto check_combination = [this, &found_solution, &max_weight, &matched_sub](std::vector<std::string>::iterator first, std::vector<std::string>::iterator last) -> bool
-    {
-      std::set<PublisherGid> gids_needed;
-      for (const std::pair<PublisherGid, std::vector<std::string>> & gid : *negotiated_subscription_type_gids_) {
-        gids_needed.insert(gid.first);
-      }
-
-      double sum_of_weights = 0.0;
-
-      for (std::vector<std::string>::iterator it = first; it != last; ++it) {
-        // TODO(clalancette): what if the *it is not in the key_to_supported_types_ map?
-        SupportedTypeInfo supported_type_info = key_to_supported_types_[*it];
-
-        for (const std::pair<PublisherGid, double> gid_to_weight : supported_type_info.gid_to_weight) {
-          sum_of_weights += gid_to_weight.second;
-
-          // TODO(clalancette): What if the gid_to_weight.first is not in the gids_needed map?
-          gids_needed.erase(gid_to_weight.first);
+    auto check_combination =
+      [this, &max_weight, &matched_subs](std::vector<std::string>::iterator first,
+        std::vector<std::string>::iterator last) -> bool
+      {
+        std::set<PublisherGid> gids_needed;
+        for (const std::pair<PublisherGid,
+          std::vector<std::string>> & gid : *negotiated_subscription_type_gids_)
+        {
+          gids_needed.insert(gid.first);
         }
-      }
 
-      if (gids_needed.empty()) {
-        // Hooray!  We found a solution at this level.  We don't interrupt processing at this
-        // level because there may be another combination that is more favorable, but we know
-        // we don't need to descend to further levels.
-        found_solution = true;
+        double sum_of_weights = 0.0;
 
-        if (sum_of_weights > max_weight) {
-          max_weight = sum_of_weights;
+        for (std::vector<std::string>::iterator it = first; it != last; ++it) {
+          // TODO(clalancette): what if the *it is not in the key_to_supported_types_ map?
+          SupportedTypeInfo supported_type_info = key_to_supported_types_[*it];
 
-          // TODO(clalancette): This is not enough if there are multiple items in this list
-          matched_sub.ros_type_name = key_to_supported_types_[*first].ros_type_name;
-          matched_sub.format_match = key_to_supported_types_[*first].format_match;
+          for (const std::pair<PublisherGid,
+            double> gid_to_weight : supported_type_info.gid_to_weight)
+          {
+            sum_of_weights += gid_to_weight.second;
+
+            // TODO(clalancette): What if the gid_to_weight.first is not in the gids_needed map?
+            gids_needed.erase(gid_to_weight.first);
+          }
         }
-      }
 
-      return false;
-    };
+        if (gids_needed.empty()) {
+          // Hooray!  We found a solution at this level.  We don't interrupt processing at this
+          // level because there may be another combination that is more favorable, but we know
+          // we don't need to descend to further levels.
+
+          if (sum_of_weights > max_weight) {
+            max_weight = sum_of_weights;
+
+            matched_subs.clear();
+            // TODO(clalancette): We could avoid yet another loop if we speculatively collected
+            // these as we were computing weights.  The trade-off is that we would then often be
+            // allocating memory that we would throw away.  Not sure if it is worth it.
+            for (std::vector<std::string>::iterator it = first; it != last; ++it) {
+              SupportedTypeInfo supported_type_info = key_to_supported_types_[*it];
+              negotiated_interfaces::msg::SupportedType match;
+              match.ros_type_name = supported_type_info.ros_type_name;
+              match.format_match = supported_type_info.format_match;
+              matched_subs.push_back(match);
+            }
+          }
+        }
+
+        return false;
+      };
 
     for_each_combination(keys.begin(), keys.begin() + i, keys.end(), check_combination);
 
-    if (found_solution) {
+    if (!matched_subs.empty()) {
       break;
     }
   }
 
-  if (found_solution) {
+  if (!matched_subs.empty()) {
     // Now that we've run the algorithm and figured out what our actual publication
     // "type" is going to be, create the publisher and inform the subscriptions
     // the name of it.
@@ -270,11 +284,13 @@ void NegotiatedPublisher::negotiate()
 
     // TODO(clalancette): We may have to create multiple publishers here
 
-    std::string new_topic_name = topic_name_ + "/" + matched_sub.format_match;
+    std::string new_topic_name = topic_name_ + "/" + matched_subs[0].format_match;
 
-    if (ros_type_name_ != matched_sub.ros_type_name || format_match_ != matched_sub.format_match) {
-      ros_type_name_ = matched_sub.ros_type_name;
-      format_match_ = matched_sub.format_match;
+    if (ros_type_name_ != matched_subs[0].ros_type_name ||
+      format_match_ != matched_subs[0].format_match)
+    {
+      ros_type_name_ = matched_subs[0].ros_type_name;
+      format_match_ = matched_subs[0].format_match;
 
       std::string key_name = generate_key(ros_type_name_, format_match_);
       // TODO(clalancette): It should never, ever be the case that the key
