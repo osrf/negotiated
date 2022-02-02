@@ -284,6 +284,7 @@ void NegotiatedPublisher::negotiate()
     // the same as last time.  In all cases, though, we send out the information to the
     // subscriptions so they can act accordingly (even new ones).
 
+    std::set<std::string> keys_to_preserve;
     auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
 
     for (const negotiated_interfaces::msg::SupportedType & type : matched_subs) {
@@ -294,6 +295,7 @@ void NegotiatedPublisher::negotiate()
       msg->negotiated_topics.push_back(info);
 
       std::string key = generate_key(type.ros_type_name, type.format_match);
+      keys_to_preserve.insert(key);
       if (key_to_publisher_.count(key) == 0) {
         // This particular subscription is not yet in the map, so we need to create it.
 
@@ -305,8 +307,16 @@ void NegotiatedPublisher::negotiate()
       }
     }
 
-    // TODO(clalancette): Above we added new publishers into the map, but we didn't
-    // remove any potentially stale ones.  We need to do that.
+    // Now go through and remove any publishers that are no longer needed.
+    for (std::map<std::string, std::shared_ptr<rclcpp::PublisherBase>>::iterator it =
+      key_to_publisher_.begin(); it != key_to_publisher_.end(); )
+    {
+      if (keys_to_preserve.count(it->first) == 0) {
+        key_to_publisher_.erase(it++);
+      } else {
+        ++it;
+      }
+    }
 
     neg_publisher_->publish(std::move(msg));
 

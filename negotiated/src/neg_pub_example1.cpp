@@ -43,21 +43,23 @@ int main(int argc, char ** argv)
     {
       if (neg_pub->type_was_negotiated<negotiated_examples::StringT>()) {
         auto msg = std_msgs::msg::String();
-        msg.data = "Hello World: " + std::to_string(count++);
+        msg.data = "Hello World: " + std::to_string(count);
         neg_pub->publish<negotiated_examples::StringT>(msg);
       }
 
       if (neg_pub->type_was_negotiated<negotiated_examples::Int32T>()) {
         auto msg = std_msgs::msg::Int32();
-        msg.data = count++;
+        msg.data = count;
         neg_pub->publish<negotiated_examples::Int32T>(msg);
       }
 
       if (neg_pub->type_was_negotiated<negotiated_examples::StringT2>()) {
         auto msg = std_msgs::msg::String();
-        msg.data = "Hello Universe: " + std::to_string(count++);
+        msg.data = "Hello Universe: " + std::to_string(count);
         neg_pub->publish<negotiated_examples::StringT2>(msg);
       }
+
+      count++;
     };
 
   rclcpp::TimerBase::SharedPtr timer = node->create_wall_timer(
