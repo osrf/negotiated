@@ -14,6 +14,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 set(msg_files
+  "msg/NegotiatedTopicInfo.msg"
   "msg/NegotiatedTopicsInfo.msg"
   "msg/SupportedType.msg"
   "msg/SupportedTypes.msg"

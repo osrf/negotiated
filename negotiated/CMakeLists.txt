@@ -34,6 +34,18 @@ target_link_libraries(neg_sub_example1
   ${PROJECT_NAME}
 )
 
+add_executable(neg_sub_example2
+  src/neg_sub_example2.cpp
+)
+target_include_directories(neg_sub_example2 PRIVATE
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+)
+target_link_libraries(neg_sub_example2
+  rclcpp::rclcpp
+  ${std_msgs_TARGETS}
+  ${PROJECT_NAME}
+)
+
 add_executable(neg_pub_example1
   src/neg_pub_example1.cpp
 )
@@ -61,6 +73,7 @@ ament_export_dependencies(negotiated_interfaces rclcpp)
 
 install(TARGETS
   neg_sub_example1
+  neg_sub_example2
   neg_pub_example1
   DESTINATION lib/${PROJECT_NAME}
 )

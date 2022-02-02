@@ -26,6 +26,7 @@
 #include "rclcpp/node_interfaces/node_graph.hpp"
 #include "rclcpp/rclcpp.hpp"
 
+#include "negotiated_interfaces/msg/negotiated_topic_info.hpp"
 #include "negotiated_interfaces/msg/negotiated_topics_info.hpp"
 #include "negotiated_interfaces/msg/supported_type.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
@@ -283,35 +284,29 @@ void NegotiatedPublisher::negotiate()
     // the same as last time.  In all cases, though, we send out the information to the
     // subscriptions so they can act accordingly (even new ones).
 
-    std::string ros_type_name;
-    std::string format_match;
-    std::string new_topic_name;
+    auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
 
     for (const negotiated_interfaces::msg::SupportedType & type : matched_subs) {
+      negotiated_interfaces::msg::NegotiatedTopicInfo info;
+      info.ros_type_name = type.ros_type_name;
+      info.format_match = type.format_match;
+      info.topic_name = topic_name_ + "/" + type.format_match;
+      msg->negotiated_topics.push_back(info);
+
       std::string key = generate_key(type.ros_type_name, type.format_match);
       if (key_to_publisher_.count(key) == 0) {
         // This particular subscription is not yet in the map, so we need to create it.
-
-        ros_type_name = type.ros_type_name;
-        format_match = type.format_match;
-        new_topic_name = topic_name_ + "/" + type.format_match;
 
         // TODO(clalancette): It should never, ever be the case that the key
         // we created here is something that isn't in key_to_supported_types_.
         // But to be extra cautious we should probably check.
         auto pub_factory = key_to_supported_types_[key].pub_factory;
-        key_to_publisher_[key] = pub_factory(new_topic_name);
+        key_to_publisher_[key] = pub_factory(info.topic_name);
       }
     }
 
     // TODO(clalancette): Above we added new publishers into the map, but we didn't
     // remove any potentially stale ones.  We need to do that.
-
-    // TODO(clalancette): This is wrong, this needs to be a vector
-    auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
-    msg->ros_type_name = ros_type_name;
-    msg->format_match = format_match;
-    msg->topic_name = new_topic_name;
 
     neg_publisher_->publish(std::move(msg));
 

@@ -29,10 +29,16 @@ struct StringT
   static const inline std::string format_match = "a";
 };
 
+struct StringT2
+{
+  using MsgT = std_msgs::msg::String;
+  static const inline std::string format_match = "b";
+};
+
 struct Int32T
 {
   using MsgT = std_msgs::msg::Int32;
-  static const inline std::string format_match = "b";
+  static const inline std::string format_match = "c";
 };
 
 }  // namespace negotiated_examples

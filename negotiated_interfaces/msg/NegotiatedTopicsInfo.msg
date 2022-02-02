@@ -1,3 +1,1 @@
-string ros_type_name
-string format_match
-string topic_name
+NegotiatedTopicInfo[] negotiated_topics

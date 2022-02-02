@@ -17,6 +17,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 
+#include "negotiated_interfaces/msg/negotiated_topic_info.hpp"
 #include "negotiated_interfaces/msg/negotiated_topics_info.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
 
@@ -33,22 +34,39 @@ NegotiatedSubscription::NegotiatedSubscription(
   auto sub_cb =
     [this, node](const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)
     {
-      // Only (re)create the subscription if it is different than before
-      if (msg.ros_type_name == ros_type_name_ && msg.format_match == format_match_) {
+      negotiated_interfaces::msg::NegotiatedTopicInfo matched_info;
+      std::string key;
+
+      for (const negotiated_interfaces::msg::NegotiatedTopicInfo & info : msg.negotiated_topics) {
+        if (info.ros_type_name == ros_type_name_ && info.format_match == format_match_) {
+          // The publisher renegotiated, but still supports the one we were already
+          // connected to.  No more work to be done here.
+          return;
+        }
+
+        std::string tmp_key = generate_key(info.ros_type_name, info.format_match);
+        if (key_to_supported_types_.count(tmp_key) == 0) {
+          // This is not a combination we support, so we can't subscribe
+          continue;
+        }
+
+        // Otherwise, this is one that we can support, so just choose it
+        matched_info = info;
+        key = tmp_key;
+        break;
+      }
+
+      if (key.empty()) {
+        // The publisher didn't give us anything that we can successfully subscribe to,
+        // so just don't try.
         return;
       }
 
-      std::string key = generate_key(msg.ros_type_name, msg.format_match);
-      if (key_to_supported_types_.count(key) == 0) {
-        // This is not a combination we support, so don't subscribe
-        return;
-      }
-
-      ros_type_name_ = msg.ros_type_name;
-      format_match_ = msg.format_match;
+      ros_type_name_ = matched_info.ros_type_name;
+      format_match_ = matched_info.format_match;
 
       auto sub_factory = key_to_supported_types_[key].sub_factory;
-      this->subscription_ = sub_factory(msg.topic_name);
+      this->subscription_ = sub_factory(matched_info.topic_name);
     };
 
   neg_subscription_ = node->create_subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>(

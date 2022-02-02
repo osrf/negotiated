@@ -35,6 +35,7 @@ int main(int argc, char ** argv)
     "myneg");
   neg_pub->add_supported_type<negotiated_examples::StringT>(1.0, rclcpp::QoS(1));
   neg_pub->add_supported_type<negotiated_examples::Int32T>(0.5, rclcpp::QoS(1));
+  neg_pub->add_supported_type<negotiated_examples::StringT2>(0.1, rclcpp::QoS(1));
   neg_pub->start();
 
   int count = 0;
@@ -50,6 +51,12 @@ int main(int argc, char ** argv)
         auto msg = std_msgs::msg::Int32();
         msg.data = count++;
         neg_pub->publish<negotiated_examples::Int32T>(msg);
+      }
+
+      if (neg_pub->type_was_negotiated<negotiated_examples::StringT2>()) {
+        auto msg = std_msgs::msg::String();
+        msg.data = "Hello Universe: " + std::to_string(count++);
+        neg_pub->publish<negotiated_examples::StringT2>(msg);
       }
     };
 
