@@ -103,6 +103,8 @@ void NegotiatedPublisher::timer_callback()
 
   // OK, now that we have built up a new map, we need to go through the new and old map together.
   // This is so we can reduce counts and weights on entries that have gone away.
+  bool different_maps = false;
+
   for (const std::pair<PublisherGid,
     std::vector<std::string>> & gid_to_key : *negotiated_subscription_type_gids_)
   {
@@ -110,6 +112,8 @@ void NegotiatedPublisher::timer_callback()
       // The key from the old is in the new one, so no need to do any work here
       continue;
     }
+
+    different_maps = true;
 
     // The key from the old is *not* in the new one, so we need to go through and remove the
     // weights from the key_to_supported_types_ map.
@@ -133,11 +137,12 @@ void NegotiatedPublisher::timer_callback()
     }
   }
 
-  // TODO(clalancette): Theoretically if the graph changed, we may want to renegotiate to
-  // something more efficient.  For now we don't do this, but we probably want to make this an
-  // option.
-
   negotiated_subscription_type_gids_ = new_negotiated_subscription_gids;
+
+  if (different_maps) {
+    // TODO(clalancette): We probably want a user option to change this behavior
+    negotiate();
+  }
 }
 
 std::string NegotiatedPublisher::generate_key(
