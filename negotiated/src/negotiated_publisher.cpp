@@ -203,6 +203,53 @@ void NegotiatedPublisher::negotiate()
     return;
   }
 
+  // The negotiation algorithm starts here.  In short, what it does is to try to find the minimum
+  // number of publishers with the maximum amount of weight to satisifes all of the subscriptions.
+  // This is approximately equivalent to the Cutting-stock problem
+  // (https://en.wikipedia.org/wiki/Cutting_stock_problem).  To do this, we examine all combinations
+  // at every level (a level being the number of publishers to choose), finding the highest weight
+  // one.  If there is at least one at that level, we stop processing.  If there are no solutions
+  // at that level, we increment the number of publishers to choose by one and try again at the
+  // next level.  If we exhaust all levels, then we have failed to find a match and negotiation
+  // fails.
+  //
+  // Some examples will help illustrate the process.
+  //
+  // Scenario 1:
+  //   Assume there are 3 subscribers, S1, S2, and S3.
+  //   Further assume that all 3 subscribers support one ros_type/format_match combination, and
+  //    that combination (F1) is the same across all 3.
+  //   Finally assume that the publisher also supports the same ros_type/format_match
+  //    combination (F1)
+  //   When negotiation happens the publisher will try to find a solution that can satisify all of
+  //    S1, S2, and S3.  It starts by examining all of the solutions that involve one publisher.
+  //    Since all of the subscriptions and the publisher support F1, then a "level 1" solution
+  //    exists, and the algorithm chooses that.
+  //
+  // Scenario 2:
+  //   Assume there are 3 subscribers, S1, S2, and S3.
+  //   Further assume that S1 and S2 support one ros_type/format_match combination (F1), and
+  //    S3 supports a different ros_type/format_match combination (F2).
+  //   Finally assume that the publisher supports both F1 and F2 ros_type/format_match combinations.
+  //   When negotiation happens the publisher will try to find a solution that can satisify all of
+  //    S1, S2, and S3.  It starts by examining all of the solutions that involve one publisher.
+  //    The publisher and S1 and S2 support F1, but S3 does not, so there is no one publisher
+  //    solution.  Next the algorithm tries all combinations of 2 publisher solutions.  In this
+  //    case we can make 2 publishers, one to satisify F1 and F2, so that algorithm chooses that.
+  //
+  // Scenario 3:
+  //   Assume there are 3 subscribers, S1, S2, and S3.
+  //   Further assume that S1 and S2 support one ros_type/format_match combination (F1), and
+  //    S3 supports a different ros_type/format_match combination (F2).
+  //   Finally assume that the publisher supports only the F1 ros_type/format_match combinations.
+  //   When negotiation happens the publisher will try to find a solution that can satisify all of
+  //    S1, S2, and S3.  It starts by examining all of the solutions that involve one publisher.
+  //    The publisher and S1 and S2 support F1, but S3 does not, so there is no one publisher
+  //    solution.  Next the algorithm tries all combinations of 2 publisher solutions.  Since the
+  //    publisher doesn't support F2, there are no 2 publisher solutions.  Finally the algorithm
+  //    tries the 3 publisher solution, but since the publisher doesn't support F2 this can't
+  //    work either.  So the negotiation fails in this case.
+
   std::vector<std::string> keys;
   for (const std::pair<const std::string,
     SupportedTypeInfo> & supported_info : key_to_supported_types_)
@@ -228,15 +275,16 @@ void NegotiatedPublisher::negotiate()
         double sum_of_weights = 0.0;
 
         for (std::vector<std::string>::iterator it = first; it != last; ++it) {
-          // TODO(clalancette): what if the *it is not in the key_to_supported_types_ map?
-          SupportedTypeInfo supported_type_info = key_to_supported_types_[*it];
+          // The iterator should *always* be available in the key_to_supported_types_
+          // map, since we are iterating over that same map.  But we use .at just
+          // to be safe.
+          SupportedTypeInfo supported_type_info = key_to_supported_types_.at(*it);
 
           for (const std::pair<PublisherGid,
             double> gid_to_weight : supported_type_info.gid_to_weight)
           {
             sum_of_weights += gid_to_weight.second;
 
-            // TODO(clalancette): What if the gid_to_weight.first is not in the gids_needed map?
             gids_needed.erase(gid_to_weight.first);
           }
         }
@@ -250,11 +298,8 @@ void NegotiatedPublisher::negotiate()
             max_weight = sum_of_weights;
 
             matched_subs.clear();
-            // TODO(clalancette): We could avoid yet another loop if we speculatively collected
-            // these as we were computing weights.  The trade-off is that we would then often be
-            // allocating memory that we would throw away.  Not sure if it is worth it.
             for (std::vector<std::string>::iterator it = first; it != last; ++it) {
-              SupportedTypeInfo supported_type_info = key_to_supported_types_[*it];
+              SupportedTypeInfo supported_type_info = key_to_supported_types_.at(*it);
               negotiated_interfaces::msg::SupportedType match;
               match.ros_type_name = supported_type_info.ros_type_name;
               match.format_match = supported_type_info.format_match;
@@ -305,11 +350,7 @@ void NegotiatedPublisher::negotiate()
     keys_to_preserve.insert(key);
     if (key_to_publisher_.count(key) == 0) {
       // This particular subscription is not yet in the map, so we need to create it.
-
-      // TODO(clalancette): It should never, ever be the case that the key
-      // we created here is something that isn't in key_to_supported_types_.
-      // But to be extra cautious we should probably check.
-      auto pub_factory = key_to_supported_types_[key].pub_factory;
+      auto pub_factory = key_to_supported_types_.at(key).pub_factory;
       key_to_publisher_[key] = pub_factory(info.topic_name);
     }
   }
