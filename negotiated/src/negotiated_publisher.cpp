@@ -39,9 +39,11 @@ namespace negotiated
 {
 NegotiatedPublisher::NegotiatedPublisher(
   rclcpp::Node::SharedPtr node,
-  const std::string & topic_name)
+  const std::string & topic_name,
+  const NegotiatedPublisherOptions & neg_pub_options)
 : node_(node),
-  topic_name_(topic_name)
+  topic_name_(topic_name),
+  neg_pub_options_(neg_pub_options)
 {
   negotiated_subscription_type_gids_ = std::make_shared<std::map<PublisherGid,
       std::vector<std::string>>>();
@@ -139,8 +141,7 @@ void NegotiatedPublisher::timer_callback()
 
   negotiated_subscription_type_gids_ = new_negotiated_subscription_gids;
 
-  if (different_maps) {
-    // TODO(clalancette): We probably want a user option to change this behavior
+  if (different_maps && neg_pub_options_.renegotiate_on_subscription_removal) {
     negotiate();
   }
 }

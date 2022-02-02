@@ -33,6 +33,11 @@
 namespace negotiated
 {
 
+struct NegotiatedPublisherOptions
+{
+  bool renegotiate_on_subscription_removal{true};
+};
+
 class NegotiatedPublisher
 {
 public:
@@ -40,7 +45,8 @@ public:
 
   explicit NegotiatedPublisher(
     rclcpp::Node::SharedPtr node,
-    const std::string & topic_name);
+    const std::string & topic_name,
+    const NegotiatedPublisherOptions & neg_pub_options = NegotiatedPublisherOptions());
 
   template<typename T>
   void add_supported_type(
@@ -114,8 +120,10 @@ private:
   std::string generate_key(const std::string & ros_type_name, const std::string & format_match);
 
   rclcpp::Node::SharedPtr node_;
-  std::map<std::string, SupportedTypeInfo> key_to_supported_types_;
   std::string topic_name_;
+  NegotiatedPublisherOptions neg_pub_options_;
+
+  std::map<std::string, SupportedTypeInfo> key_to_supported_types_;
   rclcpp::Publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr neg_publisher_;
   std::map<std::string, std::shared_ptr<rclcpp::PublisherBase>> key_to_publisher_;
   rclcpp::Subscription<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_sub_;
