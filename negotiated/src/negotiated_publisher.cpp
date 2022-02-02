@@ -141,7 +141,7 @@ void NegotiatedPublisher::timer_callback()
 
   negotiated_subscription_type_gids_ = new_negotiated_subscription_gids;
 
-  if (different_maps && neg_pub_options_.renegotiate_on_subscription_removal) {
+  if (different_maps && neg_pub_options_.negotiate_on_subscription_removal) {
     negotiate();
   }
 }
@@ -187,7 +187,9 @@ void NegotiatedPublisher::start()
         negotiated_subscription_type_gids_->emplace(gid_key, key_list);
       }
 
-      negotiate();
+      if (neg_pub_options_.negotiate_on_subscription_add) {
+        negotiate();
+      }
     };
 
   std::string supported_type_name = topic_name_ + "/supported_types";

@@ -35,7 +35,8 @@ namespace negotiated
 
 struct NegotiatedPublisherOptions
 {
-  bool renegotiate_on_subscription_removal{true};
+  bool negotiate_on_subscription_removal{true};
+  bool negotiate_on_subscription_add{true};
 };
 
 class NegotiatedPublisher
@@ -77,6 +78,8 @@ public:
 
   void start();
 
+  void negotiate();
+
   template<typename T>
   bool type_was_negotiated()
   {
@@ -112,8 +115,6 @@ private:
     std::string format_match;
     std::function<rclcpp::PublisherBase::SharedPtr(const std::string &)> pub_factory;
   };
-
-  void negotiate();
 
   void timer_callback();
 
