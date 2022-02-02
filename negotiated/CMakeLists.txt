@@ -9,7 +9,6 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(negotiated_interfaces REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(std_msgs REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED
   src/negotiated_publisher.cpp
@@ -20,42 +19,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 target_link_libraries(${PROJECT_NAME}
   rclcpp::rclcpp
   ${negotiated_interfaces_TARGETS}
-)
-
-add_executable(neg_sub_example1
-  src/neg_sub_example1.cpp
-)
-target_include_directories(neg_sub_example1 PRIVATE
-  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-)
-target_link_libraries(neg_sub_example1
-  rclcpp::rclcpp
-  ${std_msgs_TARGETS}
-  ${PROJECT_NAME}
-)
-
-add_executable(neg_sub_example2
-  src/neg_sub_example2.cpp
-)
-target_include_directories(neg_sub_example2 PRIVATE
-  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-)
-target_link_libraries(neg_sub_example2
-  rclcpp::rclcpp
-  ${std_msgs_TARGETS}
-  ${PROJECT_NAME}
-)
-
-add_executable(neg_pub_example1
-  src/neg_pub_example1.cpp
-)
-target_include_directories(neg_pub_example1 PRIVATE
-  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-)
-target_link_libraries(neg_pub_example1
-  rclcpp::rclcpp
-  ${std_msgs_TARGETS}
-  ${PROJECT_NAME}
 )
 
 install(
@@ -70,13 +33,6 @@ ament_export_include_directories("include/${PROJECT_NAME}")
 ament_export_targets(export_${PROJECT_NAME})
 
 ament_export_dependencies(negotiated_interfaces rclcpp)
-
-install(TARGETS
-  neg_sub_example1
-  neg_sub_example2
-  neg_pub_example1
-  DESTINATION lib/${PROJECT_NAME}
-)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
