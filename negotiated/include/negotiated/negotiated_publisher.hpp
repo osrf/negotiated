@@ -43,7 +43,10 @@ public:
     const std::string & topic_name);
 
   template<typename T>
-  void add_supported_type(double weight, const rclcpp::QoS & qos)
+  void add_supported_type(
+    double weight,
+    const rclcpp::QoS & qos,
+    const rclcpp::PublisherOptions & options = rclcpp::PublisherOptions())
   {
     std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
     std::string key_name = generate_key(ros_type_name, T::format_match);
@@ -54,9 +57,9 @@ public:
     key_to_supported_types_.emplace(key_name, SupportedTypeInfo());
 
     auto factory =
-      [this, qos](const std::string & topic_name) -> rclcpp::PublisherBase::SharedPtr
+      [this, qos, options](const std::string & topic_name) -> rclcpp::PublisherBase::SharedPtr
       {
-        return node_->create_publisher<typename T::MsgT>(topic_name, qos);
+        return node_->create_publisher<typename T::MsgT>(topic_name, qos, options);
       };
     key_to_supported_types_[key_name].pub_factory = factory;
 
