@@ -8,44 +8,57 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_components REQUIRED)
 find_package(negotiated REQUIRED)
 find_package(std_msgs REQUIRED)
 
-add_executable(neg_sub_example1
+add_library(neg_sub_example1_node SHARED
   src/neg_sub_example1.cpp
 )
-target_link_libraries(neg_sub_example1
+target_link_libraries(neg_sub_example1_node
   negotiated::negotiated
   rclcpp::rclcpp
+  ${rclcpp_components_TARGETS}
   ${std_msgs_TARGETS}
 )
+rclcpp_components_register_node(neg_sub_example1_node
+  PLUGIN "negotiated_examples::NegSubExample1"
+  EXECUTABLE neg_sub_example1)
 
-add_executable(neg_sub_example2
+add_library(neg_sub_example2_node SHARED
   src/neg_sub_example2.cpp
 )
-target_link_libraries(neg_sub_example2
+target_link_libraries(neg_sub_example2_node
   negotiated::negotiated
   rclcpp::rclcpp
+  ${rclcpp_components_TARGETS}
   ${std_msgs_TARGETS}
 )
+rclcpp_components_register_node(neg_sub_example2_node
+  PLUGIN "negotiated_examples::NegSubExample2"
+  EXECUTABLE neg_sub_example2)
 
-add_executable(neg_pub_example1
+add_library(neg_pub_example1_node SHARED
   src/neg_pub_example1.cpp
 )
-target_link_libraries(neg_pub_example1
+target_link_libraries(neg_pub_example1_node
   negotiated::negotiated
   rclcpp::rclcpp
+  ${rclcpp_components_TARGETS}
   ${std_msgs_TARGETS}
+)
+rclcpp_components_register_node(neg_pub_example1_node
+  PLUGIN "negotiated_examples::NegPubExample1"
+  EXECUTABLE neg_pub_example1)
+
+install(
+  TARGETS neg_sub_example1_node neg_sub_example2_node neg_pub_example1_node
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
 )
 
 ament_export_dependencies(negotiated_interfaces negotiated rclcpp std_msgs)
-
-install(TARGETS
-  neg_sub_example1
-  neg_sub_example2
-  neg_pub_example1
-  DESTINATION lib/${PROJECT_NAME}
-)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

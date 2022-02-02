@@ -41,6 +41,12 @@ public:
   RCLCPP_SMART_PTR_DEFINITIONS(NegotiatedSubscription)
 
   explicit NegotiatedSubscription(
+    rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters,
+    rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics,
+    const std::string & topic_name,
+    const NegotiatedSubscriptionOptions & options = NegotiatedSubscriptionOptions());
+
+  explicit NegotiatedSubscription(
     rclcpp::Node::SharedPtr node,
     const std::string & topic_name,
     const NegotiatedSubscriptionOptions & options = NegotiatedSubscriptionOptions());
@@ -67,7 +73,13 @@ public:
       [this, qos, callback,
         options](const std::string & topic_name) -> rclcpp::SubscriptionBase::SharedPtr
       {
-        return node_->create_subscription<typename T::MsgT>(topic_name, qos, callback, options);
+        return rclcpp::create_subscription<typename T::MsgT>(
+          node_parameters_,
+          node_topics_,
+          topic_name,
+          qos,
+          callback,
+          options);
       };
 
     key_to_supported_types_[key_name].sub_factory = factory;
@@ -84,8 +96,8 @@ private:
 
   std::string generate_key(const std::string & ros_type_name, const std::string & format_match);
 
-  rclcpp::Node::SharedPtr node_;
-  NegotiatedSubscriptionOptions neg_sub_options_;
+  rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_;
+  rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics_;
   std::unordered_map<std::string, SupportedTypeInfo> key_to_supported_types_;
   rclcpp::Subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr
     neg_subscription_;

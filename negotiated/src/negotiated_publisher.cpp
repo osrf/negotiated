@@ -38,24 +38,55 @@
 namespace negotiated
 {
 NegotiatedPublisher::NegotiatedPublisher(
-  rclcpp::Node::SharedPtr node,
+  rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters,
+  rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics,
+  rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr node_logging,
+  rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph,
+  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_base,
+  rclcpp::node_interfaces::NodeTimersInterface::SharedPtr node_timers,
   const std::string & topic_name,
   const NegotiatedPublisherOptions & neg_pub_options)
-: node_(node),
+: node_parameters_(node_parameters),
+  node_topics_(node_topics),
+  node_logging_(node_logging),
+  node_graph_(node_graph),
+  node_base_(node_base),
+  node_timers_(node_timers),
   topic_name_(topic_name),
   neg_pub_options_(neg_pub_options)
 {
   negotiated_subscription_type_gids_ = std::make_shared<std::map<PublisherGid,
       std::vector<std::string>>>();
 
-  neg_publisher_ = node_->create_publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
-    topic_name_, rclcpp::QoS(10));
+  neg_publisher_ = rclcpp::create_publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
+    node_parameters,
+    node_topics,
+    topic_name_,
+    rclcpp::QoS(10));
 
-  graph_event_ = node_->get_graph_event();
+  graph_event_ = node_graph_->get_graph_event();
 
-  graph_change_timer_ = node_->create_wall_timer(
+  graph_change_timer_ = rclcpp::create_wall_timer(
     std::chrono::milliseconds(100),
-    std::bind(&NegotiatedPublisher::timer_callback, this));
+    std::bind(&NegotiatedPublisher::timer_callback, this),
+    nullptr,
+    node_base_.get(),
+    node_timers_.get());
+}
+
+NegotiatedPublisher::NegotiatedPublisher(
+  rclcpp::Node::SharedPtr node,
+  const std::string & topic_name,
+  const NegotiatedPublisherOptions & neg_pub_options)
+: NegotiatedPublisher(node->get_node_parameters_interface(),
+    node->get_node_topics_interface(),
+    node->get_node_logging_interface(),
+    node->get_node_graph_interface(),
+    node->get_node_base_interface(),
+    node->get_node_timers_interface(),
+    topic_name,
+    neg_pub_options)
+{
 }
 
 void NegotiatedPublisher::timer_callback()
@@ -72,16 +103,14 @@ void NegotiatedPublisher::timer_callback()
   //
   // We probably want to eventually make this configurable, but for now we don't renegotiate
 
-  node_->wait_for_graph_change(graph_event_, std::chrono::milliseconds(0));
+  node_graph_->wait_for_graph_change(graph_event_, std::chrono::milliseconds(0));
   if (!graph_event_->check_and_clear()) {
     return;
   }
 
   auto new_negotiated_subscription_gids = std::make_shared<std::map<PublisherGid,
       std::vector<std::string>>>();
-  rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph =
-    node_->get_node_graph_interface();
-  std::vector<rclcpp::TopicEndpointInfo> endpoints = node_graph->get_publishers_info_by_topic(
+  std::vector<rclcpp::TopicEndpointInfo> endpoints = node_graph_->get_publishers_info_by_topic(
     topic_name_ + "/supported_types");
 
   // We need to hold the lock across this entire operation
@@ -124,14 +153,16 @@ void NegotiatedPublisher::timer_callback()
       if (key_to_supported_types_.count(key) == 0) {
         // This should never happen, but just be careful
         RCLCPP_INFO(
-          node_->get_logger(), "Could not find key in supported_types, this shouldn't happen");
+          node_logging_->get_logger(),
+          "Could not find key in supported_types, this shouldn't happen");
         continue;
       }
 
       if (key_to_supported_types_[key].gid_to_weight.count(gid_to_key.first) == 0) {
         // This should also never happen, but just be careful.
         RCLCPP_INFO(
-          node_->get_logger(), "Could not find gid in supported_types, this shouldn't happen");
+          node_logging_->get_logger(),
+          "Could not find gid in supported_types, this shouldn't happen");
         continue;
       }
 
@@ -193,23 +224,29 @@ void NegotiatedPublisher::start()
     };
 
   std::string supported_type_name = topic_name_ + "/supported_types";
-  supported_types_sub_ = node_->create_subscription<negotiated_interfaces::msg::SupportedTypes>(
-    supported_type_name, rclcpp::QoS(100).transient_local(), neg_cb);
+  supported_types_sub_ = rclcpp::create_subscription<negotiated_interfaces::msg::SupportedTypes>(
+    node_parameters_,
+    node_topics_,
+    supported_type_name,
+    rclcpp::QoS(100).transient_local(),
+    neg_cb);
 }
 
 void NegotiatedPublisher::negotiate()
 {
-  RCLCPP_INFO(node_->get_logger(), "Negotiating");
+  RCLCPP_INFO(node_logging_->get_logger(), "Negotiating");
 
   if (negotiated_subscription_type_gids_->empty()) {
     RCLCPP_INFO(
-      node_->get_logger(), "Skipping negotiation because of empty subscription supported types");
+      node_logging_->get_logger(),
+      "Skipping negotiation because of empty subscription supported types");
     return;
   }
 
   if (key_to_supported_types_.empty()) {
     RCLCPP_INFO(
-      node_->get_logger(), "Skipping negotiation because of empty publisher supported types");
+      node_logging_->get_logger(),
+      "Skipping negotiation because of empty publisher supported types");
     return;
   }
 
@@ -332,7 +369,7 @@ void NegotiatedPublisher::negotiate()
 
   if (matched_subs.empty()) {
     // We couldn't find any match, so don't setup anything
-    RCLCPP_INFO(node_->get_logger(), "Could not negotiate");
+    RCLCPP_INFO(node_logging_->get_logger(), "Could not negotiate");
     key_to_publisher_.clear();
 
     msg->success = false;

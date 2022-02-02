@@ -45,6 +45,16 @@ public:
   RCLCPP_SMART_PTR_DEFINITIONS(NegotiatedPublisher)
 
   explicit NegotiatedPublisher(
+    rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters,
+    rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics,
+    rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr node_logging,
+    rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph,
+    rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_base,
+    rclcpp::node_interfaces::NodeTimersInterface::SharedPtr node_timers,
+    const std::string & topic_name,
+    const NegotiatedPublisherOptions & neg_pub_options = NegotiatedPublisherOptions());
+
+  explicit NegotiatedPublisher(
     rclcpp::Node::SharedPtr node,
     const std::string & topic_name,
     const NegotiatedPublisherOptions & neg_pub_options = NegotiatedPublisherOptions());
@@ -66,7 +76,12 @@ public:
     auto factory =
       [this, qos, options](const std::string & topic_name) -> rclcpp::PublisherBase::SharedPtr
       {
-        return node_->create_publisher<typename T::MsgT>(topic_name, qos, options);
+        return rclcpp::create_publisher<typename T::MsgT>(
+          node_parameters_,
+          node_topics_,
+          topic_name,
+          qos,
+          options);
       };
     key_to_supported_types_[key_name].pub_factory = factory;
 
@@ -95,7 +110,7 @@ public:
     std::string key = generate_key(ros_type_name, T::format_match);
 
     if (key_to_publisher_.count(key) == 0) {
-      RCLCPP_INFO(node_->get_logger(), "Negotiation hasn't happened yet, skipping publish");
+      RCLCPP_INFO(node_logging_->get_logger(), "Negotiation hasn't happened yet, skipping publish");
       return;
     }
 
@@ -120,7 +135,12 @@ private:
 
   std::string generate_key(const std::string & ros_type_name, const std::string & format_match);
 
-  rclcpp::Node::SharedPtr node_;
+  rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_;
+  rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics_;
+  rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr node_logging_;
+  rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph_;
+  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_base_;
+  rclcpp::node_interfaces::NodeTimersInterface::SharedPtr node_timers_;
   std::string topic_name_;
   NegotiatedPublisherOptions neg_pub_options_;
 

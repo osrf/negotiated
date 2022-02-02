@@ -15,6 +15,7 @@
 #include <memory>
 
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp_components/register_node_macro.hpp"
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/string.hpp"
 
@@ -22,38 +23,44 @@
 
 #include "example_type_info.hpp"
 
-int main(int argc, char ** argv)
+namespace negotiated_examples
 {
-  rclcpp::init(argc, argv);
 
-  auto node = std::make_shared<rclcpp::Node>("neg_sub_node");
+class NegSubExample1 final : public rclcpp::Node
+{
+public:
+  explicit NegSubExample1(const rclcpp::NodeOptions & options)
+  : rclcpp::Node("neg_sub_example1", options)
+  {
+    auto string_user_cb = [this](const std_msgs::msg::String & msg)
+      {
+        RCLCPP_INFO(this->get_logger(), "String user callback: %s", msg.data.c_str());
+      };
 
-  auto string_user_cb = [node](const std_msgs::msg::String & msg)
-    {
-      RCLCPP_INFO(node->get_logger(), "String user callback: %s", msg.data.c_str());
-    };
+    auto int_user_cb = [this](const std_msgs::msg::Int32 & msg)
+      {
+        RCLCPP_INFO(this->get_logger(), "Int user callback: %d", msg.data);
+      };
 
-  auto int_user_cb = [node](const std_msgs::msg::Int32 & msg)
-    {
-      RCLCPP_INFO(node->get_logger(), "Int user callback: %d", msg.data);
-    };
+    neg_sub_ = std::make_shared<negotiated::NegotiatedSubscription>(
+      this->get_node_parameters_interface(),
+      this->get_node_topics_interface(),
+      "myneg");
+    neg_sub_->add_supported_callback<negotiated_examples::StringT>(
+      1.0,
+      rclcpp::QoS(1),
+      string_user_cb);
+    neg_sub_->add_supported_callback<negotiated_examples::Int32T>(
+      0.5,
+      rclcpp::QoS(1),
+      int_user_cb);
+    neg_sub_->start();
+  }
 
-  auto neg_sub = std::make_shared<negotiated::NegotiatedSubscription>(
-    node,
-    "myneg");
-  neg_sub->add_supported_callback<negotiated_examples::StringT>(
-    1.0,
-    rclcpp::QoS(1),
-    string_user_cb);
-  neg_sub->add_supported_callback<negotiated_examples::Int32T>(
-    0.5,
-    rclcpp::QoS(1),
-    int_user_cb);
-  neg_sub->start();
+private:
+  std::shared_ptr<negotiated::NegotiatedSubscription> neg_sub_;
+};
 
-  rclcpp::spin(node);
+}  // namespace negotiated_examples
 
-  rclcpp::shutdown();
-
-  return 0;
-}
+RCLCPP_COMPONENTS_REGISTER_NODE(negotiated_examples::NegSubExample1)

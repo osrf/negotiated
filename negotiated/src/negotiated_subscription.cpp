@@ -27,16 +27,17 @@ namespace negotiated
 {
 
 NegotiatedSubscription::NegotiatedSubscription(
-  rclcpp::Node::SharedPtr node,
+  rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters,
+  rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics,
   const std::string & topic_name,
   const NegotiatedSubscriptionOptions & options)
-: node_(node),
-  neg_sub_options_(options)
+: node_parameters_(node_parameters),
+  node_topics_(node_topics)
 {
   auto sub_cb =
-    [this, node](const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)
+    [this, options](const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)
     {
-      if (!msg.success && neg_sub_options_.disconnect_on_negotiation_failure) {
+      if (!msg.success && options.disconnect_on_negotiation_failure) {
         // We know the publisher attempted to and failed negotiation amongst the
         // various subscriptions.  We also know that it is no longer publishing
         // anything, so disconnect ourselves and hope for a better result next time.
@@ -79,12 +80,29 @@ NegotiatedSubscription::NegotiatedSubscription(
       subscription_ = sub_factory(matched_info.topic_name);
     };
 
-  neg_subscription_ = node->create_subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
-    topic_name, rclcpp::QoS(10), sub_cb);
+  neg_subscription_ = rclcpp::create_subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
+    node_parameters_,
+    node_topics_,
+    topic_name,
+    rclcpp::QoS(10),
+    sub_cb);
 
-  supported_types_pub_ = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+  supported_types_pub_ = rclcpp::create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    node_parameters_,
+    node_topics_,
     topic_name + "/supported_types",
     rclcpp::QoS(100).transient_local());
+}
+
+NegotiatedSubscription::NegotiatedSubscription(
+  rclcpp::Node::SharedPtr node,
+  const std::string & topic_name,
+  const NegotiatedSubscriptionOptions & options)
+: NegotiatedSubscription(node->get_node_parameters_interface(),
+    node->get_node_topics_interface(),
+    topic_name,
+    options)
+{
 }
 
 std::string NegotiatedSubscription::generate_key(
