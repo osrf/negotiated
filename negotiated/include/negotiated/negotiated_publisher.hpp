@@ -72,18 +72,22 @@ public:
   bool type_was_negotiated()
   {
     std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
-    return ros_type_name_ == ros_type_name && format_match_ == T::format_match;
+    std::string key = generate_key(ros_type_name, T::format_match);
+    return key_to_publisher_.count(key) > 0;
   }
 
-  template<typename MessageT>
+  template<typename T, typename MessageT>
   void publish(const MessageT & msg)
   {
-    if (publisher_ == nullptr) {
+    std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
+    std::string key = generate_key(ros_type_name, T::format_match);
+
+    if (key_to_publisher_.count(key) == 0) {
       RCLCPP_INFO(node_->get_logger(), "Negotiation hasn't happened yet, skipping publish");
       return;
     }
 
-    // TODO(clalancette): What if this is a publish for a type we didn't negotiate for?
+    std::shared_ptr<rclcpp::PublisherBase> publisher_ = key_to_publisher_[key];
 
     auto pub = static_cast<rclcpp::Publisher<MessageT> *>(publisher_.get());
     pub->publish(msg);
@@ -109,10 +113,8 @@ private:
   rclcpp::Node::SharedPtr node_;
   std::unordered_map<std::string, SupportedTypeInfo> key_to_supported_types_;
   std::string topic_name_;
-  std::string ros_type_name_;
-  std::string format_match_;
   rclcpp::Publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr neg_publisher_;
-  std::shared_ptr<rclcpp::PublisherBase> publisher_{nullptr};
+  std::map<std::string, std::shared_ptr<rclcpp::PublisherBase>> key_to_publisher_;
   rclcpp::Subscription<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_sub_;
   rclcpp::TimerBase::SharedPtr graph_change_timer_;
   rclcpp::Event::SharedPtr graph_event_;

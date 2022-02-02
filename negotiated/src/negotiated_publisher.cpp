@@ -274,35 +274,43 @@ void NegotiatedPublisher::negotiate()
 
   if (!matched_subs.empty()) {
     // Now that we've run the algorithm and figured out what our actual publication
-    // "type" is going to be, create the publisher and inform the subscriptions
-    // the name of it.
+    // "type" is going to be, create the publisher(s) and inform the subscriptions
+    // the name(s) of them.
 
-    // Note that we only recreate the publisher if we need to, e.g. it is different than
-    // last time we negotiated.  This keeps us from unnecessarily tearing down and recreating
-    // the publisher if it is going to be exactly the same as last time.  In all cases, though,
-    // we send out the information to the subscriptions so they can act accordingly (even new ones).
+    // Note that we only recreate the publishers if the new list of publishers is different from
+    // the old list, e.g. it is different than the last time we negotiated.  This keeps us from
+    // unnecessarily tearing down and recreating the publishers if the set is going to be exactly
+    // the same as last time.  In all cases, though, we send out the information to the
+    // subscriptions so they can act accordingly (even new ones).
 
-    // TODO(clalancette): We may have to create multiple publishers here
+    std::string ros_type_name;
+    std::string format_match;
+    std::string new_topic_name;
 
-    std::string new_topic_name = topic_name_ + "/" + matched_subs[0].format_match;
+    for (const negotiated_interfaces::msg::SupportedType & type : matched_subs) {
+      std::string key = generate_key(type.ros_type_name, type.format_match);
+      if (key_to_publisher_.count(key) == 0) {
+        // This particular subscription is not yet in the map, so we need to create it.
 
-    if (ros_type_name_ != matched_subs[0].ros_type_name ||
-      format_match_ != matched_subs[0].format_match)
-    {
-      ros_type_name_ = matched_subs[0].ros_type_name;
-      format_match_ = matched_subs[0].format_match;
+        ros_type_name = type.ros_type_name;
+        format_match = type.format_match;
+        new_topic_name = topic_name_ + "/" + type.format_match;
 
-      std::string key_name = generate_key(ros_type_name_, format_match_);
-      // TODO(clalancette): It should never, ever be the case that the key
-      // we created here is something that isn't in key_to_supported_types_.
-      // But to be extra cautious we should probably check.
-      auto pub_factory = key_to_supported_types_[key_name].pub_factory;
-      publisher_ = pub_factory(new_topic_name);
+        // TODO(clalancette): It should never, ever be the case that the key
+        // we created here is something that isn't in key_to_supported_types_.
+        // But to be extra cautious we should probably check.
+        auto pub_factory = key_to_supported_types_[key].pub_factory;
+        key_to_publisher_[key] = pub_factory(new_topic_name);
+      }
     }
 
+    // TODO(clalancette): Above we added new publishers into the map, but we didn't
+    // remove any potentially stale ones.  We need to do that.
+
+    // TODO(clalancette): This is wrong, this needs to be a vector
     auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
-    msg->ros_type_name = ros_type_name_;
-    msg->format_match = format_match_;
+    msg->ros_type_name = ros_type_name;
+    msg->format_match = format_match;
     msg->topic_name = new_topic_name;
 
     neg_publisher_->publish(std::move(msg));
@@ -312,7 +320,7 @@ void NegotiatedPublisher::negotiate()
 
   // We couldn't find any match, so don't setup anything
   RCLCPP_INFO(node_->get_logger(), "Could not negotiate");
-  publisher_.reset();
+  key_to_publisher_.clear();
 }
 
 }  // namespace negotiated

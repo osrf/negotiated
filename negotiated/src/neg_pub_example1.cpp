@@ -43,13 +43,13 @@ int main(int argc, char ** argv)
       if (neg_pub->type_was_negotiated<negotiated_examples::StringT>()) {
         auto msg = std_msgs::msg::String();
         msg.data = "Hello World: " + std::to_string(count++);
-        neg_pub->publish(msg);
+        neg_pub->publish<negotiated_examples::StringT>(msg);
       }
 
       if (neg_pub->type_was_negotiated<negotiated_examples::Int32T>()) {
         auto msg = std_msgs::msg::Int32();
         msg.data = count++;
-        neg_pub->publish(msg);
+        neg_pub->publish<negotiated_examples::Int32T>(msg);
       }
     };
 
