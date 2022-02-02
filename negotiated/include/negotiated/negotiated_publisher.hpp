@@ -20,8 +20,8 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
@@ -114,7 +114,7 @@ private:
   std::string generate_key(const std::string & ros_type_name, const std::string & format_match);
 
   rclcpp::Node::SharedPtr node_;
-  std::unordered_map<std::string, SupportedTypeInfo> key_to_supported_types_;
+  std::map<std::string, SupportedTypeInfo> key_to_supported_types_;
   std::string topic_name_;
   rclcpp::Publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr neg_publisher_;
   std::map<std::string, std::shared_ptr<rclcpp::PublisherBase>> key_to_publisher_;
