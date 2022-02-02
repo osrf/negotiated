@@ -34,6 +34,15 @@ NegotiatedSubscription::NegotiatedSubscription(
   auto sub_cb =
     [this, node](const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)
     {
+      if (!msg.success) {
+        // We know the publisher attempted to and failed negotiation amongst the
+        // various subscriptions.  We also know that it is no longer publishing
+        // anything, so disconnect ourselves and hope for a better result next time.
+        // TODO(clalancette): We should probably make this configurable
+        subscription_.reset();
+        return;
+      }
+
       negotiated_interfaces::msg::NegotiatedTopicInfo matched_info;
       std::string key;
 
@@ -66,7 +75,7 @@ NegotiatedSubscription::NegotiatedSubscription(
       format_match_ = matched_info.format_match;
 
       auto sub_factory = key_to_supported_types_[key].sub_factory;
-      this->subscription_ = sub_factory(matched_info.topic_name);
+      subscription_ = sub_factory(matched_info.topic_name);
     };
 
   neg_subscription_ = node->create_subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>(

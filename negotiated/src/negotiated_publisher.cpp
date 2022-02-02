@@ -328,51 +328,53 @@ void NegotiatedPublisher::negotiate()
     }
   }
 
+  auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
+
   if (matched_subs.empty()) {
     // We couldn't find any match, so don't setup anything
     RCLCPP_INFO(node_->get_logger(), "Could not negotiate");
     key_to_publisher_.clear();
 
-    return;
-  }
+    msg->success = false;
+  } else {
+    // Now that we've run the algorithm and figured out what our actual publication
+    // "type" is going to be, create the publisher(s) and inform the subscriptions
+    // the name(s) of them.
 
-  // Now that we've run the algorithm and figured out what our actual publication
-  // "type" is going to be, create the publisher(s) and inform the subscriptions
-  // the name(s) of them.
+    // Note that we only recreate the publishers if the new list of publishers is different from
+    // the old list, e.g. it is different than the last time we negotiated.  This keeps us from
+    // unnecessarily tearing down and recreating the publishers if the set is going to be exactly
+    // the same as last time.  In all cases, though, we send out the information to the
+    // subscriptions so they can act accordingly (even new ones).
 
-  // Note that we only recreate the publishers if the new list of publishers is different from
-  // the old list, e.g. it is different than the last time we negotiated.  This keeps us from
-  // unnecessarily tearing down and recreating the publishers if the set is going to be exactly
-  // the same as last time.  In all cases, though, we send out the information to the
-  // subscriptions so they can act accordingly (even new ones).
+    msg->success = true;
 
-  std::set<std::string> keys_to_preserve;
-  auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
+    std::set<std::string> keys_to_preserve;
+    for (const negotiated_interfaces::msg::SupportedType & type : matched_subs) {
+      negotiated_interfaces::msg::NegotiatedTopicInfo info;
+      info.ros_type_name = type.ros_type_name;
+      info.format_match = type.format_match;
+      info.topic_name = topic_name_ + "/" + type.format_match;
+      msg->negotiated_topics.push_back(info);
 
-  for (const negotiated_interfaces::msg::SupportedType & type : matched_subs) {
-    negotiated_interfaces::msg::NegotiatedTopicInfo info;
-    info.ros_type_name = type.ros_type_name;
-    info.format_match = type.format_match;
-    info.topic_name = topic_name_ + "/" + type.format_match;
-    msg->negotiated_topics.push_back(info);
-
-    std::string key = generate_key(type.ros_type_name, type.format_match);
-    keys_to_preserve.insert(key);
-    if (key_to_publisher_.count(key) == 0) {
-      // This particular subscription is not yet in the map, so we need to create it.
-      auto pub_factory = key_to_supported_types_.at(key).pub_factory;
-      key_to_publisher_[key] = pub_factory(info.topic_name);
+      std::string key = generate_key(type.ros_type_name, type.format_match);
+      keys_to_preserve.insert(key);
+      if (key_to_publisher_.count(key) == 0) {
+        // This particular subscription is not yet in the map, so we need to create it.
+        auto pub_factory = key_to_supported_types_.at(key).pub_factory;
+        key_to_publisher_[key] = pub_factory(info.topic_name);
+      }
     }
-  }
 
-  // Now go through and remove any publishers that are no longer needed.
-  for (std::map<std::string, std::shared_ptr<rclcpp::PublisherBase>>::iterator it =
-    key_to_publisher_.begin(); it != key_to_publisher_.end(); )
-  {
-    if (keys_to_preserve.count(it->first) == 0) {
-      key_to_publisher_.erase(it++);
-    } else {
-      ++it;
+    // Now go through and remove any publishers that are no longer needed.
+    for (std::map<std::string, std::shared_ptr<rclcpp::PublisherBase>>::iterator it =
+      key_to_publisher_.begin(); it != key_to_publisher_.end(); )
+    {
+      if (keys_to_preserve.count(it->first) == 0) {
+        key_to_publisher_.erase(it++);
+      } else {
+        ++it;
+      }
     }
   }
 
