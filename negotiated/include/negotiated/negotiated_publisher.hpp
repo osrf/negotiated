@@ -33,7 +33,7 @@
 namespace negotiated
 {
 
-struct NegotiatedPublisherOptions
+struct NegotiatedPublisherOptions final
 {
   bool negotiate_on_subscription_removal{true};
   bool negotiate_on_subscription_add{true};

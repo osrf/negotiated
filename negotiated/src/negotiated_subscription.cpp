@@ -28,17 +28,18 @@ namespace negotiated
 
 NegotiatedSubscription::NegotiatedSubscription(
   rclcpp::Node::SharedPtr node,
-  const std::string & topic_name)
-: node_(node)
+  const std::string & topic_name,
+  const NegotiatedSubscriptionOptions & options)
+: node_(node),
+  neg_sub_options_(options)
 {
   auto sub_cb =
     [this, node](const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)
     {
-      if (!msg.success) {
+      if (!msg.success && neg_sub_options_.disconnect_on_negotiation_failure) {
         // We know the publisher attempted to and failed negotiation amongst the
         // various subscriptions.  We also know that it is no longer publishing
         // anything, so disconnect ourselves and hope for a better result next time.
-        // TODO(clalancette): We should probably make this configurable
         subscription_.reset();
         return;
       }

@@ -30,10 +30,9 @@
 namespace negotiated
 {
 
-struct SupportedTypeInfo final
+struct NegotiatedSubscriptionOptions
 {
-  negotiated_interfaces::msg::SupportedType supported_type;
-  std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)> sub_factory;
+  bool disconnect_on_negotiation_failure{true};
 };
 
 class NegotiatedSubscription
@@ -43,7 +42,8 @@ public:
 
   explicit NegotiatedSubscription(
     rclcpp::Node::SharedPtr node,
-    const std::string & topic_name);
+    const std::string & topic_name,
+    const NegotiatedSubscriptionOptions & options = NegotiatedSubscriptionOptions());
 
   template<typename T, typename CallbackT>
   void add_supported_callback(
@@ -76,9 +76,16 @@ public:
   void start();
 
 private:
+  struct SupportedTypeInfo final
+  {
+    negotiated_interfaces::msg::SupportedType supported_type;
+    std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)> sub_factory;
+  };
+
   std::string generate_key(const std::string & ros_type_name, const std::string & format_match);
 
   rclcpp::Node::SharedPtr node_;
+  NegotiatedSubscriptionOptions neg_sub_options_;
   std::unordered_map<std::string, SupportedTypeInfo> key_to_supported_types_;
   rclcpp::Subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr
     neg_subscription_;
