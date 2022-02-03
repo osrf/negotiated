@@ -58,6 +58,10 @@ install(
   RUNTIME DESTINATION bin
 )
 
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
 ament_export_dependencies(negotiated_interfaces negotiated rclcpp std_msgs)
 
 if(BUILD_TESTING)

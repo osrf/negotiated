@@ -40,10 +40,18 @@ public:
       this->get_node_parameters_interface(),
       this->get_node_topics_interface(),
       "myneg");
+
+    bool use_intra_process = this->declare_parameter("use_intra_process", false);
+    rclcpp::SubscriptionOptions sub_options;
+    if (use_intra_process) {
+      sub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
+    }
+
     neg_sub_->add_supported_callback<negotiated_examples::StringT2>(
       1.0,
       rclcpp::QoS(1),
-      string_user_cb);
+      string_user_cb,
+      sub_options);
     neg_sub_->start();
   }
 

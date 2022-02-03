@@ -42,9 +42,16 @@ public:
       this->get_node_base_interface(),
       this->get_node_timers_interface(),
       "myneg");
-    neg_pub_->add_supported_type<negotiated_examples::StringT>(1.0, rclcpp::QoS(1));
-    neg_pub_->add_supported_type<negotiated_examples::Int32T>(0.5, rclcpp::QoS(1));
-    neg_pub_->add_supported_type<negotiated_examples::StringT2>(0.1, rclcpp::QoS(1));
+
+    bool use_intra_process = this->declare_parameter("use_intra_process", false);
+    rclcpp::PublisherOptions pub_options;
+    if (use_intra_process) {
+      pub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
+    }
+
+    neg_pub_->add_supported_type<negotiated_examples::StringT>(1.0, rclcpp::QoS(1), pub_options);
+    neg_pub_->add_supported_type<negotiated_examples::Int32T>(0.5, rclcpp::QoS(1), pub_options);
+    neg_pub_->add_supported_type<negotiated_examples::StringT2>(0.1, rclcpp::QoS(1), pub_options);
     neg_pub_->start();
 
     auto publish_message = [this]() -> void
