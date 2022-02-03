@@ -26,11 +26,11 @@
 namespace negotiated_examples
 {
 
-class NegSubExample1 final : public rclcpp::Node
+class NegotiatedSubExample1 final : public rclcpp::Node
 {
 public:
-  explicit NegSubExample1(const rclcpp::NodeOptions & options)
-  : rclcpp::Node("neg_sub_example1", options)
+  explicit NegotiatedSubExample1(const rclcpp::NodeOptions & options)
+  : rclcpp::Node("negotiated_sub_example1", options)
   {
     auto string_user_cb = [this](const std_msgs::msg::String & msg)
       {
@@ -42,7 +42,7 @@ public:
         RCLCPP_INFO(this->get_logger(), "Int user callback: %d", msg.data);
       };
 
-    neg_sub_ = std::make_shared<negotiated::NegotiatedSubscription>(this, "myneg");
+    negotiated_sub_ = std::make_shared<negotiated::NegotiatedSubscription>(this, "example");
 
     bool use_intra_process = this->declare_parameter("use_intra_process", false);
     rclcpp::SubscriptionOptions sub_options;
@@ -50,23 +50,23 @@ public:
       sub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
     }
 
-    neg_sub_->add_supported_callback<negotiated_examples::StringT>(
+    negotiated_sub_->add_supported_callback<negotiated_examples::StringT>(
       1.0,
       rclcpp::QoS(1),
       string_user_cb,
       sub_options);
-    neg_sub_->add_supported_callback<negotiated_examples::Int32T>(
+    negotiated_sub_->add_supported_callback<negotiated_examples::Int32T>(
       0.5,
       rclcpp::QoS(1),
       int_user_cb,
       sub_options);
-    neg_sub_->start();
+    negotiated_sub_->start();
   }
 
 private:
-  std::shared_ptr<negotiated::NegotiatedSubscription> neg_sub_;
+  std::shared_ptr<negotiated::NegotiatedSubscription> negotiated_sub_;
 };
 
 }  // namespace negotiated_examples
 
-RCLCPP_COMPONENTS_REGISTER_NODE(negotiated_examples::NegSubExample1)
+RCLCPP_COMPONENTS_REGISTER_NODE(negotiated_examples::NegotiatedSubExample1)

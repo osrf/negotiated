@@ -22,7 +22,7 @@ target_link_libraries(neg_sub_example1_node
   ${std_msgs_TARGETS}
 )
 rclcpp_components_register_node(neg_sub_example1_node
-  PLUGIN "negotiated_examples::NegSubExample1"
+  PLUGIN "negotiated_examples::NegotiatedSubExample1"
   EXECUTABLE neg_sub_example1)
 
 add_library(neg_sub_example2_node SHARED
@@ -35,7 +35,7 @@ target_link_libraries(neg_sub_example2_node
   ${std_msgs_TARGETS}
 )
 rclcpp_components_register_node(neg_sub_example2_node
-  PLUGIN "negotiated_examples::NegSubExample2"
+  PLUGIN "negotiated_examples::NegotiatedSubExample2"
   EXECUTABLE neg_sub_example2)
 
 add_library(neg_pub_example1_node SHARED
@@ -48,7 +48,7 @@ target_link_libraries(neg_pub_example1_node
   ${std_msgs_TARGETS}
 )
 rclcpp_components_register_node(neg_pub_example1_node
-  PLUGIN "negotiated_examples::NegPubExample1"
+  PLUGIN "negotiated_examples::NegotiatedPubExample1"
   EXECUTABLE neg_pub_example1)
 
 install(

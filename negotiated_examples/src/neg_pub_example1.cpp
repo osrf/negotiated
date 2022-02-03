@@ -28,13 +28,13 @@
 namespace negotiated_examples
 {
 
-class NegPubExample1 final : public rclcpp::Node
+class NegotiatedPubExample1 final : public rclcpp::Node
 {
 public:
-  explicit NegPubExample1(const rclcpp::NodeOptions & options)
-  : rclcpp::Node("neg_pub_example1", options)
+  explicit NegotiatedPubExample1(const rclcpp::NodeOptions & options)
+  : rclcpp::Node("negotiated_pub_example1", options)
   {
-    neg_pub_ = std::make_shared<negotiated::NegotiatedPublisher>(this, "myneg");
+    negotiated_pub_ = std::make_shared<negotiated::NegotiatedPublisher>(this, "example");
 
     bool use_intra_process = this->declare_parameter("use_intra_process", false);
     rclcpp::PublisherOptions pub_options;
@@ -42,29 +42,38 @@ public:
       pub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
     }
 
-    neg_pub_->add_supported_type<negotiated_examples::StringT>(1.0, rclcpp::QoS(1), pub_options);
-    neg_pub_->add_supported_type<negotiated_examples::Int32T>(0.5, rclcpp::QoS(1), pub_options);
-    neg_pub_->add_supported_type<negotiated_examples::StringT2>(0.1, rclcpp::QoS(1), pub_options);
-    neg_pub_->start();
+    negotiated_pub_->add_supported_type<negotiated_examples::StringT>(
+      1.0,
+      rclcpp::QoS(1),
+      pub_options);
+    negotiated_pub_->add_supported_type<negotiated_examples::Int32T>(
+      0.5,
+      rclcpp::QoS(1),
+      pub_options);
+    negotiated_pub_->add_supported_type<negotiated_examples::StringT2>(
+      0.1,
+      rclcpp::QoS(1),
+      pub_options);
+    negotiated_pub_->start();
 
     auto publish_message = [this]() -> void
       {
-        if (neg_pub_->type_was_negotiated<negotiated_examples::StringT>()) {
+        if (negotiated_pub_->type_was_negotiated<negotiated_examples::StringT>()) {
           auto msg = std_msgs::msg::String();
           msg.data = "Hello World: " + std::to_string(count_);
-          neg_pub_->publish<negotiated_examples::StringT>(msg);
+          negotiated_pub_->publish<negotiated_examples::StringT>(msg);
         }
 
-        if (neg_pub_->type_was_negotiated<negotiated_examples::Int32T>()) {
+        if (negotiated_pub_->type_was_negotiated<negotiated_examples::Int32T>()) {
           auto msg = std_msgs::msg::Int32();
           msg.data = count_;
-          neg_pub_->publish<negotiated_examples::Int32T>(msg);
+          negotiated_pub_->publish<negotiated_examples::Int32T>(msg);
         }
 
-        if (neg_pub_->type_was_negotiated<negotiated_examples::StringT2>()) {
+        if (negotiated_pub_->type_was_negotiated<negotiated_examples::StringT2>()) {
           auto msg = std::make_unique<std_msgs::msg::String>();
           msg->data = "Hello Universe: " + std::to_string(count_);
-          neg_pub_->publish<negotiated_examples::StringT2>(std::move(msg));
+          negotiated_pub_->publish<negotiated_examples::StringT2>(std::move(msg));
         }
 
         count_++;
@@ -74,11 +83,11 @@ public:
   }
 
 private:
-  std::shared_ptr<negotiated::NegotiatedPublisher> neg_pub_;
+  std::shared_ptr<negotiated::NegotiatedPublisher> negotiated_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
   int count_{0};
 };
 
 }  // namespace negotiated_examples
 
-RCLCPP_COMPONENTS_REGISTER_NODE(negotiated_examples::NegPubExample1)
+RCLCPP_COMPONENTS_REGISTER_NODE(negotiated_examples::NegotiatedPubExample1)
