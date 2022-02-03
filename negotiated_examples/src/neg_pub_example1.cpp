@@ -35,7 +35,7 @@ public:
   explicit NegotiatedPubExample1(const rclcpp::NodeOptions & options)
   : rclcpp::Node("negotiated_pub_example1", options)
   {
-    negotiated_pub_ = std::make_shared<negotiated::NegotiatedPublisher>(this, "example");
+    negotiated_pub_ = std::make_shared<negotiated::NegotiatedPublisher>(*this, "example");
 
     bool use_intra_process = this->declare_parameter("use_intra_process", false);
     rclcpp::PublisherOptions pub_options;

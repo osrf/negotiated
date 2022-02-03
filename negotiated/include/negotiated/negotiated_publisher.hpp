@@ -45,10 +45,38 @@ class NegotiatedPublisher
 public:
   RCLCPP_SMART_PTR_DEFINITIONS(NegotiatedPublisher)
 
+  template<typename NodeT>
   explicit NegotiatedPublisher(
-    rclcpp::Node * node,
+    NodeT & node,
     const std::string & topic_name,
-    const NegotiatedPublisherOptions & neg_pub_options = NegotiatedPublisherOptions());
+    const NegotiatedPublisherOptions & neg_pub_options = NegotiatedPublisherOptions())
+  : node_parameters_(node.get_node_parameters_interface()),
+    node_topics_(node.get_node_topics_interface()),
+    node_logging_(node.get_node_logging_interface()),
+    node_graph_(node.get_node_graph_interface()),
+    node_base_(node.get_node_base_interface()),
+    node_timers_(node.get_node_timers_interface()),
+    topic_name_(topic_name),
+    neg_pub_options_(neg_pub_options)
+  {
+    negotiated_subscription_type_gids_ = std::make_shared<std::map<PublisherGid,
+        std::vector<std::string>>>();
+
+    neg_publisher_ = rclcpp::create_publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
+      node_parameters_,
+      node_topics_,
+      topic_name_,
+      rclcpp::QoS(10));
+
+    graph_event_ = node_graph_->get_graph_event();
+
+    graph_change_timer_ = rclcpp::create_wall_timer(
+      std::chrono::milliseconds(100),
+      std::bind(&NegotiatedPublisher::timer_callback, this),
+      nullptr,
+      node_base_.get(),
+      node_timers_.get());
+  }
 
   template<typename T>
   void add_supported_type(
