@@ -69,9 +69,9 @@ public:
         }
 
         if (neg_pub_->type_was_negotiated<negotiated_examples::StringT2>()) {
-          auto msg = std_msgs::msg::String();
-          msg.data = "Hello Universe: " + std::to_string(count_);
-          neg_pub_->publish<negotiated_examples::StringT2>(msg);
+          auto msg = std::make_unique<std_msgs::msg::String>();
+          msg->data = "Hello Universe: " + std::to_string(count_);
+          neg_pub_->publish<negotiated_examples::StringT2>(std::move(msg));
         }
 
         count_++;

@@ -22,6 +22,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
@@ -118,6 +119,23 @@ public:
 
     auto pub = static_cast<rclcpp::Publisher<MessageT> *>(publisher_.get());
     pub->publish(msg);
+  }
+
+  template<typename T, typename MessageT>
+  void publish(std::unique_ptr<MessageT> msg)
+  {
+    std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
+    std::string key = generate_key(ros_type_name, T::format_match);
+
+    if (key_to_publisher_.count(key) == 0) {
+      RCLCPP_INFO(node_logging_->get_logger(), "Negotiation hasn't happened yet, skipping publish");
+      return;
+    }
+
+    std::shared_ptr<rclcpp::PublisherBase> publisher_ = key_to_publisher_[key];
+
+    auto pub = static_cast<rclcpp::Publisher<MessageT> *>(publisher_.get());
+    pub->publish(std::move(msg));
   }
 
 private:
