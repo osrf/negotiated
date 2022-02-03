@@ -34,14 +34,7 @@ public:
   explicit NegPubExample1(const rclcpp::NodeOptions & options)
   : rclcpp::Node("neg_pub_example1", options)
   {
-    neg_pub_ = std::make_shared<negotiated::NegotiatedPublisher>(
-      this->get_node_parameters_interface(),
-      this->get_node_topics_interface(),
-      this->get_node_logging_interface(),
-      this->get_node_graph_interface(),
-      this->get_node_base_interface(),
-      this->get_node_timers_interface(),
-      "myneg");
+    neg_pub_ = std::make_shared<negotiated::NegotiatedPublisher>(this, "myneg");
 
     bool use_intra_process = this->declare_parameter("use_intra_process", false);
     rclcpp::PublisherOptions pub_options;

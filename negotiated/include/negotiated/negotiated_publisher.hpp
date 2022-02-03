@@ -46,17 +46,7 @@ public:
   RCLCPP_SMART_PTR_DEFINITIONS(NegotiatedPublisher)
 
   explicit NegotiatedPublisher(
-    rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters,
-    rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics,
-    rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr node_logging,
-    rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph,
-    rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_base,
-    rclcpp::node_interfaces::NodeTimersInterface::SharedPtr node_timers,
-    const std::string & topic_name,
-    const NegotiatedPublisherOptions & neg_pub_options = NegotiatedPublisherOptions());
-
-  explicit NegotiatedPublisher(
-    rclcpp::Node::SharedPtr node,
+    rclcpp::Node * node,
     const std::string & topic_name,
     const NegotiatedPublisherOptions & neg_pub_options = NegotiatedPublisherOptions());
 

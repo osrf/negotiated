@@ -36,10 +36,7 @@ public:
         RCLCPP_INFO(get_logger(), "String user callback: %s", msg.data.c_str());
       };
 
-    neg_sub_ = std::make_shared<negotiated::NegotiatedSubscription>(
-      this->get_node_parameters_interface(),
-      this->get_node_topics_interface(),
-      "myneg");
+    neg_sub_ = std::make_shared<negotiated::NegotiatedSubscription>(this, "myneg");
 
     bool use_intra_process = this->declare_parameter("use_intra_process", false);
     rclcpp::SubscriptionOptions sub_options;

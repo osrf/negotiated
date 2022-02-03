@@ -38,20 +38,15 @@
 namespace negotiated
 {
 NegotiatedPublisher::NegotiatedPublisher(
-  rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters,
-  rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics,
-  rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr node_logging,
-  rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph,
-  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_base,
-  rclcpp::node_interfaces::NodeTimersInterface::SharedPtr node_timers,
+  rclcpp::Node * node,
   const std::string & topic_name,
   const NegotiatedPublisherOptions & neg_pub_options)
-: node_parameters_(node_parameters),
-  node_topics_(node_topics),
-  node_logging_(node_logging),
-  node_graph_(node_graph),
-  node_base_(node_base),
-  node_timers_(node_timers),
+: node_parameters_(node->get_node_parameters_interface()),
+  node_topics_(node->get_node_topics_interface()),
+  node_logging_(node->get_node_logging_interface()),
+  node_graph_(node->get_node_graph_interface()),
+  node_base_(node->get_node_base_interface()),
+  node_timers_(node->get_node_timers_interface()),
   topic_name_(topic_name),
   neg_pub_options_(neg_pub_options)
 {
@@ -59,8 +54,8 @@ NegotiatedPublisher::NegotiatedPublisher(
       std::vector<std::string>>>();
 
   neg_publisher_ = rclcpp::create_publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
-    node_parameters,
-    node_topics,
+    node_parameters_,
+    node_topics_,
     topic_name_,
     rclcpp::QoS(10));
 
@@ -72,21 +67,6 @@ NegotiatedPublisher::NegotiatedPublisher(
     nullptr,
     node_base_.get(),
     node_timers_.get());
-}
-
-NegotiatedPublisher::NegotiatedPublisher(
-  rclcpp::Node::SharedPtr node,
-  const std::string & topic_name,
-  const NegotiatedPublisherOptions & neg_pub_options)
-: NegotiatedPublisher(node->get_node_parameters_interface(),
-    node->get_node_topics_interface(),
-    node->get_node_logging_interface(),
-    node->get_node_graph_interface(),
-    node->get_node_base_interface(),
-    node->get_node_timers_interface(),
-    topic_name,
-    neg_pub_options)
-{
 }
 
 void NegotiatedPublisher::timer_callback()

@@ -27,12 +27,11 @@ namespace negotiated
 {
 
 NegotiatedSubscription::NegotiatedSubscription(
-  rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters,
-  rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics,
+  rclcpp::Node * node,
   const std::string & topic_name,
   const NegotiatedSubscriptionOptions & options)
-: node_parameters_(node_parameters),
-  node_topics_(node_topics)
+: node_parameters_(node->get_node_parameters_interface()),
+  node_topics_(node->get_node_topics_interface())
 {
   auto sub_cb =
     [this, options](const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)
@@ -92,17 +91,6 @@ NegotiatedSubscription::NegotiatedSubscription(
     node_topics_,
     topic_name + "/supported_types",
     rclcpp::QoS(100).transient_local());
-}
-
-NegotiatedSubscription::NegotiatedSubscription(
-  rclcpp::Node::SharedPtr node,
-  const std::string & topic_name,
-  const NegotiatedSubscriptionOptions & options)
-: NegotiatedSubscription(node->get_node_parameters_interface(),
-    node->get_node_topics_interface(),
-    topic_name,
-    options)
-{
 }
 
 std::string NegotiatedSubscription::generate_key(

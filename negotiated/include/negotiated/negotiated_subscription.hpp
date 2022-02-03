@@ -41,13 +41,7 @@ public:
   RCLCPP_SMART_PTR_DEFINITIONS(NegotiatedSubscription)
 
   explicit NegotiatedSubscription(
-    rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters,
-    rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics,
-    const std::string & topic_name,
-    const NegotiatedSubscriptionOptions & options = NegotiatedSubscriptionOptions());
-
-  explicit NegotiatedSubscription(
-    rclcpp::Node::SharedPtr node,
+    rclcpp::Node * node,
     const std::string & topic_name,
     const NegotiatedSubscriptionOptions & options = NegotiatedSubscriptionOptions());
 
