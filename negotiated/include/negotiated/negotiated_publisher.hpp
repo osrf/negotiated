@@ -57,7 +57,7 @@ public:
     const rclcpp::PublisherOptions & options = rclcpp::PublisherOptions())
   {
     std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
-    std::string key_name = generate_key(ros_type_name, T::format_match);
+    std::string key_name = generate_key(ros_type_name, T::supported_type_name);
     if (key_to_supported_types_.count(key_name) != 0) {
       throw std::runtime_error("Cannot add duplicate key to supported types");
     }
@@ -79,7 +79,7 @@ public:
     PublisherGid gid{0};
     key_to_supported_types_[key_name].gid_to_weight[gid] = weight;
     key_to_supported_types_[key_name].ros_type_name = ros_type_name;
-    key_to_supported_types_[key_name].format_match = T::format_match;
+    key_to_supported_types_[key_name].supported_type_name = T::supported_type_name;
   }
 
   void start();
@@ -90,7 +90,7 @@ public:
   bool type_was_negotiated()
   {
     std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
-    std::string key = generate_key(ros_type_name, T::format_match);
+    std::string key = generate_key(ros_type_name, T::supported_type_name);
     return key_to_publisher_.count(key) > 0;
   }
 
@@ -98,7 +98,7 @@ public:
   void publish(const MessageT & msg)
   {
     std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
-    std::string key = generate_key(ros_type_name, T::format_match);
+    std::string key = generate_key(ros_type_name, T::supported_type_name);
 
     if (key_to_publisher_.count(key) == 0) {
       RCLCPP_INFO(node_logging_->get_logger(), "Negotiation hasn't happened yet, skipping publish");
@@ -115,7 +115,7 @@ public:
   void publish(std::unique_ptr<MessageT> msg)
   {
     std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
-    std::string key = generate_key(ros_type_name, T::format_match);
+    std::string key = generate_key(ros_type_name, T::supported_type_name);
 
     if (key_to_publisher_.count(key) == 0) {
       RCLCPP_INFO(node_logging_->get_logger(), "Negotiation hasn't happened yet, skipping publish");
@@ -135,13 +135,15 @@ private:
   {
     std::map<PublisherGid, double> gid_to_weight;
     std::string ros_type_name;
-    std::string format_match;
+    std::string supported_type_name;
     std::function<rclcpp::PublisherBase::SharedPtr(const std::string &)> pub_factory;
   };
 
   void timer_callback();
 
-  std::string generate_key(const std::string & ros_type_name, const std::string & format_match);
+  std::string generate_key(
+    const std::string & ros_type_name,
+    const std::string & supported_type_name);
 
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_;
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics_;

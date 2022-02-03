@@ -1,3 +1,3 @@
 string ros_type_name
-string format_match
+string supported_type_name
 string topic_name

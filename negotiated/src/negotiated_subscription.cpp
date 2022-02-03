@@ -48,13 +48,15 @@ NegotiatedSubscription::NegotiatedSubscription(
       std::string key;
 
       for (const negotiated_interfaces::msg::NegotiatedTopicInfo & info : msg.negotiated_topics) {
-        if (info.ros_type_name == ros_type_name_ && info.format_match == format_match_) {
+        if (info.ros_type_name == ros_type_name_ &&
+          info.supported_type_name == supported_type_name_)
+        {
           // The publisher renegotiated, but still supports the one we were already
           // connected to.  No more work to be done here.
           return;
         }
 
-        std::string tmp_key = generate_key(info.ros_type_name, info.format_match);
+        std::string tmp_key = generate_key(info.ros_type_name, info.supported_type_name);
         if (key_to_supported_types_.count(tmp_key) == 0) {
           // This is not a combination we support, so we can't subscribe
           continue;
@@ -73,7 +75,7 @@ NegotiatedSubscription::NegotiatedSubscription(
       }
 
       ros_type_name_ = matched_info.ros_type_name;
-      format_match_ = matched_info.format_match;
+      supported_type_name_ = matched_info.supported_type_name;
 
       auto sub_factory = key_to_supported_types_[key].sub_factory;
       subscription_ = sub_factory(matched_info.topic_name);
@@ -95,9 +97,9 @@ NegotiatedSubscription::NegotiatedSubscription(
 
 std::string NegotiatedSubscription::generate_key(
   const std::string & ros_type_name,
-  const std::string & format_match)
+  const std::string & supported_type_name)
 {
-  return ros_type_name + "+" + format_match;
+  return ros_type_name + "+" + supported_type_name;
 }
 
 void NegotiatedSubscription::start()

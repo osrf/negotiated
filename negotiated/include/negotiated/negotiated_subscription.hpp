@@ -53,14 +53,14 @@ public:
     const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions())
   {
     std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
-    std::string key_name = generate_key(ros_type_name, T::format_match);
+    std::string key_name = generate_key(ros_type_name, T::supported_type_name);
     if (key_to_supported_types_.count(key_name) != 0) {
       throw std::runtime_error("Cannot add duplicate key to supported types");
     }
 
     key_to_supported_types_.emplace(key_name, SupportedTypeInfo());
     key_to_supported_types_[key_name].supported_type.ros_type_name = ros_type_name;
-    key_to_supported_types_[key_name].supported_type.format_match = T::format_match;
+    key_to_supported_types_[key_name].supported_type.supported_type_name = T::supported_type_name;
     key_to_supported_types_[key_name].supported_type.weight = weight;
 
     auto factory =
@@ -88,7 +88,9 @@ private:
     std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)> sub_factory;
   };
 
-  std::string generate_key(const std::string & ros_type_name, const std::string & format_match);
+  std::string generate_key(
+    const std::string & ros_type_name,
+    const std::string & supported_type_name);
 
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_;
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics_;
@@ -98,7 +100,7 @@ private:
   std::shared_ptr<rclcpp::SubscriptionBase> subscription_;
   rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_pub_;
   std::string ros_type_name_;
-  std::string format_match_;
+  std::string supported_type_name_;
 };
 
 }  // namespace negotiated

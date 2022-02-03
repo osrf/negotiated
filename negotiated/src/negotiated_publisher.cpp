@@ -159,9 +159,9 @@ void NegotiatedPublisher::timer_callback()
 
 std::string NegotiatedPublisher::generate_key(
   const std::string & ros_type_name,
-  const std::string & format_match)
+  const std::string & supported_type_name)
 {
-  return ros_type_name + "+" + format_match;
+  return ros_type_name + "+" + supported_type_name;
 }
 
 void NegotiatedPublisher::start()
@@ -181,7 +181,9 @@ void NegotiatedPublisher::start()
       for (const negotiated_interfaces::msg::SupportedType & supported_type :
         supported_types.supported_types)
       {
-        std::string key = generate_key(supported_type.ros_type_name, supported_type.format_match);
+        std::string key = generate_key(
+          supported_type.ros_type_name,
+          supported_type.supported_type_name);
         if (key_to_supported_types_.count(key) == 0) {
           // This key is not something the publisher supports, so we can ignore it completely
           continue;
@@ -244,9 +246,9 @@ void NegotiatedPublisher::negotiate()
   //
   // Scenario 1:
   //   Assume there are 3 subscribers, S1, S2, and S3.
-  //   Further assume that all 3 subscribers support one ros_type/format_match combination, and
-  //    that combination (F1) is the same across all 3.
-  //   Finally assume that the publisher also supports the same ros_type/format_match
+  //   Further assume that all 3 subscribers support one ros_type/supported_type_name combination,
+  //    and that combination (F1) is the same across all 3.
+  //   Finally assume that the publisher also supports the same ros_type/supported_type_name
   //    combination (F1)
   //   When negotiation happens the publisher will try to find a solution that can satisify all of
   //    S1, S2, and S3.  It starts by examining all of the solutions that involve one publisher.
@@ -255,9 +257,10 @@ void NegotiatedPublisher::negotiate()
   //
   // Scenario 2:
   //   Assume there are 3 subscribers, S1, S2, and S3.
-  //   Further assume that S1 and S2 support one ros_type/format_match combination (F1), and
-  //    S3 supports a different ros_type/format_match combination (F2).
-  //   Finally assume that the publisher supports both F1 and F2 ros_type/format_match combinations.
+  //   Further assume that S1 and S2 support one ros_type/supported_type_name combination (F1), and
+  //    S3 supports a different ros_type/supported_type_name combination (F2).
+  //   Finally assume that the publisher supports both F1 and F2 ros_type/supported_type_name
+  //    combinations.
   //   When negotiation happens the publisher will try to find a solution that can satisify all of
   //    S1, S2, and S3.  It starts by examining all of the solutions that involve one publisher.
   //    The publisher and S1 and S2 support F1, but S3 does not, so there is no one publisher
@@ -266,9 +269,10 @@ void NegotiatedPublisher::negotiate()
   //
   // Scenario 3:
   //   Assume there are 3 subscribers, S1, S2, and S3.
-  //   Further assume that S1 and S2 support one ros_type/format_match combination (F1), and
-  //    S3 supports a different ros_type/format_match combination (F2).
-  //   Finally assume that the publisher supports only the F1 ros_type/format_match combinations.
+  //   Further assume that S1 and S2 support one ros_type/supported_type_name combination (F1), and
+  //    S3 supports a different ros_type/supported_type_name combination (F2).
+  //   Finally assume that the publisher supports only the F1 ros_type/supported_type_name
+  //     combinations.
   //   When negotiation happens the publisher will try to find a solution that can satisify all of
   //    S1, S2, and S3.  It starts by examining all of the solutions that involve one publisher.
   //    The publisher and S1 and S2 support F1, but S3 does not, so there is no one publisher
@@ -329,7 +333,7 @@ void NegotiatedPublisher::negotiate()
               SupportedTypeInfo supported_type_info = key_to_supported_types_.at(*it);
               negotiated_interfaces::msg::SupportedType match;
               match.ros_type_name = supported_type_info.ros_type_name;
-              match.format_match = supported_type_info.format_match;
+              match.supported_type_name = supported_type_info.supported_type_name;
               matched_subs.push_back(match);
             }
           }
@@ -370,11 +374,11 @@ void NegotiatedPublisher::negotiate()
     for (const negotiated_interfaces::msg::SupportedType & type : matched_subs) {
       negotiated_interfaces::msg::NegotiatedTopicInfo info;
       info.ros_type_name = type.ros_type_name;
-      info.format_match = type.format_match;
-      info.topic_name = topic_name_ + "/" + type.format_match;
+      info.supported_type_name = type.supported_type_name;
+      info.topic_name = topic_name_ + "/" + type.supported_type_name;
       msg->negotiated_topics.push_back(info);
 
-      std::string key = generate_key(type.ros_type_name, type.format_match);
+      std::string key = generate_key(type.ros_type_name, type.supported_type_name);
       keys_to_preserve.insert(key);
       if (key_to_publisher_.count(key) == 0) {
         // This particular subscription is not yet in the map, so we need to create it.

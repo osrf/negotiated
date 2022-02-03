@@ -26,19 +26,19 @@ namespace negotiated_examples
 struct StringT
 {
   using MsgT = std_msgs::msg::String;
-  static const inline std::string format_match = "a";
+  static const inline std::string supported_type_name = "a";
 };
 
 struct StringT2
 {
   using MsgT = std_msgs::msg::String;
-  static const inline std::string format_match = "b";
+  static const inline std::string supported_type_name = "b";
 };
 
 struct Int32T
 {
   using MsgT = std_msgs::msg::Int32;
-  static const inline std::string format_match = "c";
+  static const inline std::string supported_type_name = "c";
 };
 
 }  // namespace negotiated_examples
