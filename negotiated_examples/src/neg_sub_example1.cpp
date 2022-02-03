@@ -42,7 +42,7 @@ public:
         RCLCPP_INFO(this->get_logger(), "Int user callback: %d", msg.data);
       };
 
-    negotiated_sub_ = std::make_shared<negotiated::NegotiatedSubscription>(this, "example");
+    negotiated_sub_ = std::make_shared<negotiated::NegotiatedSubscription>(*this, "example");
 
     bool use_intra_process = this->declare_parameter("use_intra_process", false);
     rclcpp::SubscriptionOptions sub_options;
