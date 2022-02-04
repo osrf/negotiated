@@ -40,28 +40,23 @@ class NegotiatedSubscription
 public:
   RCLCPP_SMART_PTR_DEFINITIONS(NegotiatedSubscription)
 
+  explicit NegotiatedSubscription(
+    rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_,
+    rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics_,
+    const std::string & topic_name,
+    const NegotiatedSubscriptionOptions & options = NegotiatedSubscriptionOptions());
+
   template<typename NodeT>
   explicit NegotiatedSubscription(
     NodeT & node,
     const std::string & topic_name,
     const NegotiatedSubscriptionOptions & options = NegotiatedSubscriptionOptions())
-  : node_parameters_(node.get_node_parameters_interface()),
-    node_topics_(node.get_node_topics_interface()),
-    neg_sub_options_(options)
-  {
-    neg_subscription_ =
-      rclcpp::create_subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
-      node_parameters_,
-      node_topics_,
+  : NegotiatedSubscription(
+      node.get_node_parameters_interface(),
+      node.get_node_topics_interface(),
       topic_name,
-      rclcpp::QoS(10),
-      std::bind(&NegotiatedSubscription::topicsInfoCb, this, std::placeholders::_1));
-
-    supported_types_pub_ = rclcpp::create_publisher<negotiated_interfaces::msg::SupportedTypes>(
-      node_parameters_,
-      node_topics_,
-      topic_name + "/supported_types",
-      rclcpp::QoS(100).transient_local());
+      options)
+  {
   }
 
   template<typename T, typename CallbackT>

@@ -37,6 +37,44 @@
 
 namespace negotiated
 {
+
+NegotiatedPublisher::NegotiatedPublisher(
+  rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters,
+  rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics,
+  rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr node_logging,
+  rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph,
+  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_base,
+  rclcpp::node_interfaces::NodeTimersInterface::SharedPtr node_timers,
+  const std::string & topic_name,
+  const NegotiatedPublisherOptions & neg_pub_options)
+: node_parameters_(node_parameters),
+  node_topics_(node_topics),
+  node_logging_(node_logging),
+  node_graph_(node_graph),
+  node_base_(node_base),
+  node_timers_(node_timers),
+  topic_name_(topic_name),
+  neg_pub_options_(neg_pub_options)
+{
+  negotiated_subscription_type_gids_ = std::make_shared<std::map<PublisherGid,
+      std::vector<std::string>>>();
+
+  neg_publisher_ = rclcpp::create_publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
+    node_parameters_,
+    node_topics_,
+    topic_name_,
+    rclcpp::QoS(10));
+
+  graph_event_ = node_graph_->get_graph_event();
+
+  graph_change_timer_ = rclcpp::create_wall_timer(
+    std::chrono::milliseconds(100),
+    std::bind(&NegotiatedPublisher::timer_callback, this),
+    nullptr,
+    node_base_.get(),
+    node_timers_.get());
+}
+
 void NegotiatedPublisher::timer_callback()
 {
   // What we are doing here is checking the graph for any changes.
