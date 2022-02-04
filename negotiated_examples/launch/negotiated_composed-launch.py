@@ -27,12 +27,12 @@ def generate_launch_description():
             composable_node_descriptions=[
                 ComposableNode(
                     package='negotiated_examples',
-                    plugin='negotiated_examples::NegSubExample1',
-                    name='neg_sub_example1'),
+                    plugin='negotiated_examples::NegotiatedSubExample1',
+                    name='negotiated_sub_example1'),
                 ComposableNode(
                     package='negotiated_examples',
-                    plugin='negotiated_examples::NegPubExample1',
-                    name='neg_pub_example1')
+                    plugin='negotiated_examples::NegotiatedPubExample1',
+                    name='negotiated_pub_example1')
             ],
             output='both',
     )
