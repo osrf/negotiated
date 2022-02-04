@@ -150,6 +150,8 @@ public:
     pub->publish(std::move(msg));
   }
 
+  void stop();
+
 private:
   using PublisherGid = std::array<uint8_t, RMW_GID_STORAGE_SIZE>;
 

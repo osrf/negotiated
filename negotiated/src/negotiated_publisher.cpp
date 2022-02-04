@@ -220,6 +220,13 @@ void NegotiatedPublisher::start()
     neg_cb);
 }
 
+void NegotiatedPublisher::stop()
+{
+  supported_types_sub_.reset();
+  key_to_publisher_.clear();
+  negotiated_subscription_type_gids_->clear();
+}
+
 void NegotiatedPublisher::negotiate()
 {
   RCLCPP_INFO(node_logging_->get_logger(), "Negotiating");
