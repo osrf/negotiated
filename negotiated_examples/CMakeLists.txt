@@ -9,6 +9,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(rclcpp_lifecycle REQUIRED)
 find_package(negotiated REQUIRED)
 find_package(std_msgs REQUIRED)
 
@@ -51,6 +52,15 @@ rclcpp_components_register_node(neg_pub_example1_node
   PLUGIN "negotiated_examples::NegotiatedPubExample1"
   EXECUTABLE neg_pub_example1)
 
+add_executable(negotiated_lifecycle_pub
+  src/negotiated_lifecycle_pub.cpp)
+target_link_libraries(negotiated_lifecycle_pub
+  negotiated::negotiated
+  rclcpp::rclcpp
+  rclcpp_lifecycle::rclcpp_lifecycle
+  ${std_msgs_TARGETS}
+)
+
 install(
   TARGETS neg_sub_example1_node neg_sub_example2_node neg_pub_example1_node
   ARCHIVE DESTINATION lib
@@ -58,11 +68,15 @@ install(
   RUNTIME DESTINATION bin
 )
 
+install(
+  TARGETS negotiated_lifecycle_pub
+  DESTINATION lib/${PROJECT_NAME})
+
 install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
 )
 
-ament_export_dependencies(negotiated_interfaces negotiated rclcpp std_msgs)
+ament_export_dependencies(negotiated rclcpp rclcpp_lifecycle std_msgs)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
