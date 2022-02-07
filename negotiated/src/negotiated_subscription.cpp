@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <functional>
 #include <string>
 #include <utility>
 
@@ -130,6 +131,20 @@ void NegotiatedSubscription::start()
   }
 
   supported_types_pub_->publish(supported_types);
+}
+
+size_t NegotiatedSubscription::get_negotiated_topic_publisher_count() const
+{
+  return negotiated_subscription_->get_publisher_count();
+}
+
+size_t NegotiatedSubscription::get_data_topic_publisher_count() const
+{
+  if (ros_type_name_.empty() && supported_type_name_.empty()) {
+    return 0;
+  }
+
+  return subscription_->get_publisher_count();
 }
 
 }  // namespace negotiated

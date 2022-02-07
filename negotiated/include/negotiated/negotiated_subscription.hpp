@@ -68,6 +68,10 @@ public:
     const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions())
   {
     std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
+    if (T::supported_type_name.empty()) {
+      throw std::runtime_error("The supported_type_name cannot be empty");
+    }
+
     std::string key_name = generate_key(ros_type_name, T::supported_type_name);
     if (key_to_supported_types_.count(key_name) != 0) {
       throw std::runtime_error("Cannot add duplicate key to supported types");
@@ -95,6 +99,10 @@ public:
   }
 
   void start();
+
+  size_t get_negotiated_topic_publisher_count() const;
+
+  size_t get_data_topic_publisher_count() const;
 
 private:
   struct SupportedTypeInfo final
