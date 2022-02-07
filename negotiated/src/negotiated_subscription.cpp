@@ -30,12 +30,13 @@ NegotiatedSubscription::NegotiatedSubscription(
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters,
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics,
   const std::string & topic_name,
-  const NegotiatedSubscriptionOptions & options)
+  const NegotiatedSubscriptionOptions & negotiated_sub_options)
 : node_parameters_(node_parameters),
   node_topics_(node_topics),
-  neg_sub_options_(options)
+  negotiated_sub_options_(negotiated_sub_options)
 {
-  neg_subscription_ = rclcpp::create_subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
+  negotiated_subscription_ =
+    rclcpp::create_subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
     node_parameters_,
     node_topics_,
     topic_name,
@@ -52,10 +53,12 @@ NegotiatedSubscription::NegotiatedSubscription(
 void NegotiatedSubscription::topicsInfoCb(
   const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)
 {
-  if (!msg.success && neg_sub_options_.disconnect_on_negotiation_failure) {
-    // We know the publisher attempted to and failed negotiation amongst the
-    // various subscriptions.  We also know that it is no longer publishing
-    // anything, so disconnect ourselves and hope for a better result next time.
+  if (!msg.success && negotiated_sub_options_.disconnect_on_negotiation_failure) {
+    // We know the publisher attempted to and failed negotiation amongst the various subscriptions.
+    // We also know that it is no longer publishing anything, so disconnect ourselves and hope for
+    // a better result next time.
+    ros_type_name_ = "";
+    supported_type_name_ = "";
     subscription_.reset();
     return;
   }
@@ -64,27 +67,44 @@ void NegotiatedSubscription::topicsInfoCb(
   std::string key;
 
   for (const negotiated_interfaces::msg::NegotiatedTopicInfo & info : msg.negotiated_topics) {
-    if (info.ros_type_name == ros_type_name_ && info.supported_type_name == supported_type_name_) {
-      // The publisher renegotiated, but still supports the one we were already
-      // connected to.  No more work to be done here.
+    if (info.ros_type_name == ros_type_name_ && info.supported_type_name == supported_type_name_ &&
+      negotiated_sub_options_.keep_existing_match_if_possible)
+    {
+      // The publisher renegotiated, but still supports the one we were already connected to.  We
+      // keep using the old type to ensure we don't lose data.
       return;
     }
 
     std::string tmp_key = generate_key(info.ros_type_name, info.supported_type_name);
     if (key_to_supported_types_.count(tmp_key) == 0) {
-      // This is not a combination we support, so we can't subscribe
+      // This is not a combination we support, so we can't subscribe to it.
       continue;
     }
 
-    // Otherwise, this is one that we can support, so just choose it
-    matched_info = info;
-    key = tmp_key;
-    break;
+    // Otherwise, this is a supported type that the subscription knows about.  We choose the first
+    // one in the list, in the assumption that the publisher gave the list to us in priority order.
+    // Note that if we are already connected, we check the rest of the list to see if we are
+    // already subscribed to a later entry.
+
+    if (key.empty()) {
+      matched_info = info;
+      key = tmp_key;
+    }
+
+    if ((ros_type_name_.empty() && supported_type_name_.empty()) ||
+      !negotiated_sub_options_.keep_existing_match_if_possible)
+    {
+      // Small optimization; if we've never connected before, we can stop searching as soon as we
+      // find the first valid match.
+      break;
+    }
   }
 
   if (key.empty()) {
-    // The publisher didn't give us anything that we can successfully subscribe to,
-    // so just don't try.
+    // The publisher didn't give us anything that we can successfully subscribe to.
+    ros_type_name_ = "";
+    supported_type_name_ = "";
+    subscription_.reset();
     return;
   }
 

@@ -33,6 +33,7 @@ namespace negotiated
 struct NegotiatedSubscriptionOptions
 {
   bool disconnect_on_negotiation_failure{true};
+  bool keep_existing_match_if_possible{true};
 };
 
 class NegotiatedSubscription
@@ -44,18 +45,18 @@ public:
     rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_,
     rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics_,
     const std::string & topic_name,
-    const NegotiatedSubscriptionOptions & options = NegotiatedSubscriptionOptions());
+    const NegotiatedSubscriptionOptions & negotiated_sub_options = NegotiatedSubscriptionOptions());
 
   template<typename NodeT>
   explicit NegotiatedSubscription(
     NodeT & node,
     const std::string & topic_name,
-    const NegotiatedSubscriptionOptions & options = NegotiatedSubscriptionOptions())
+    const NegotiatedSubscriptionOptions & negotiated_sub_options = NegotiatedSubscriptionOptions())
   : NegotiatedSubscription(
       node.get_node_parameters_interface(),
       node.get_node_topics_interface(),
       topic_name,
-      options)
+      negotiated_sub_options)
   {
   }
 
@@ -110,11 +111,11 @@ private:
 
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_;
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics_;
-  NegotiatedSubscriptionOptions neg_sub_options_;
+  NegotiatedSubscriptionOptions negotiated_sub_options_;
 
   std::unordered_map<std::string, SupportedTypeInfo> key_to_supported_types_;
   rclcpp::Subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr
-    neg_subscription_;
+    negotiated_subscription_;
   std::shared_ptr<rclcpp::SubscriptionBase> subscription_;
   rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_pub_;
   std::string ros_type_name_;
