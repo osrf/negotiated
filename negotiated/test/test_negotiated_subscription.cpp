@@ -15,9 +15,12 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <functional>
+#include <future>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/empty.hpp"
