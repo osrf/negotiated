@@ -59,11 +59,6 @@ public:
     return f_(first_, last_);
   }
 
-  bool operator()(It, It)
-  {
-    return f_(first_, last_);
-  }
-
 private:
   Function f_;
   It first_;
@@ -147,7 +142,7 @@ combine_discontinuous(
 }
 
 template<class BidirIter, class Function>
-Function
+void
 for_each_combination(BidirIter first, BidirIter mid, BidirIter last, Function f)
 {
   BoundRange<Function &, BidirIter> wfunc(f, first, mid);
@@ -155,7 +150,6 @@ for_each_combination(BidirIter first, BidirIter mid, BidirIter last, Function f)
     first, mid, std::distance(first, mid),
     mid, last, std::distance(mid, last),
     wfunc);
-  return f;
 }
 
 #endif  // COMBINATIONS_HPP_
