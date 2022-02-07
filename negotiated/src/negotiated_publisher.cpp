@@ -46,7 +46,7 @@ NegotiatedPublisher::NegotiatedPublisher(
   rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_base,
   rclcpp::node_interfaces::NodeTimersInterface::SharedPtr node_timers,
   const std::string & topic_name,
-  const NegotiatedPublisherOptions & neg_pub_options)
+  const NegotiatedPublisherOptions & negotiated_pub_options)
 : node_parameters_(node_parameters),
   node_topics_(node_topics),
   node_logging_(node_logging),
@@ -54,12 +54,13 @@ NegotiatedPublisher::NegotiatedPublisher(
   node_base_(node_base),
   node_timers_(node_timers),
   topic_name_(topic_name),
-  neg_pub_options_(neg_pub_options)
+  negotiated_pub_options_(negotiated_pub_options)
 {
   negotiated_subscription_type_gids_ = std::make_shared<std::map<PublisherGid,
       std::vector<std::string>>>();
 
-  neg_publisher_ = rclcpp::create_publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
+  negotiated_publisher_ =
+    rclcpp::create_publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
     node_parameters_,
     node_topics_,
     topic_name_,
@@ -87,7 +88,8 @@ void NegotiatedPublisher::timer_callback()
   // 1.  Always renegotiate, as we may be able to get something more efficient
   // 2.  Don't renegotiate, as we should just let the system continue working
   //
-  // We probably want to eventually make this configurable, but for now we don't renegotiate
+  // Which one we do is controlled by the negotiate_on_subscription_removal option; by default,
+  // we renegotiate.
 
   node_graph_->wait_for_graph_change(graph_event_, std::chrono::milliseconds(0));
   if (!graph_event_->check_and_clear()) {
@@ -158,7 +160,7 @@ void NegotiatedPublisher::timer_callback()
 
   negotiated_subscription_type_gids_ = new_negotiated_subscription_gids;
 
-  if (different_maps && neg_pub_options_.negotiate_on_subscription_removal) {
+  if (different_maps && negotiated_pub_options_.negotiate_on_subscription_removal) {
     negotiate();
   }
 }
@@ -206,7 +208,7 @@ void NegotiatedPublisher::start()
         negotiated_subscription_type_gids_->emplace(gid_key, key_list);
       }
 
-      if (neg_pub_options_.negotiate_on_subscription_add) {
+      if (negotiated_pub_options_.negotiate_on_subscription_add) {
         negotiate();
       }
     };
@@ -412,7 +414,7 @@ void NegotiatedPublisher::negotiate()
     }
   }
 
-  neg_publisher_->publish(std::move(msg));
+  negotiated_publisher_->publish(std::move(msg));
 }
 
 }  // namespace negotiated

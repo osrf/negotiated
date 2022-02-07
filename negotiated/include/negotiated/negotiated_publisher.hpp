@@ -53,13 +53,13 @@ public:
     rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_base,
     rclcpp::node_interfaces::NodeTimersInterface::SharedPtr node_timers,
     const std::string & topic_name,
-    const NegotiatedPublisherOptions & neg_pub_options = NegotiatedPublisherOptions());
+    const NegotiatedPublisherOptions & negotiated_pub_options = NegotiatedPublisherOptions());
 
   template<typename NodeT>
   explicit NegotiatedPublisher(
     NodeT & node,
     const std::string & topic_name,
-    const NegotiatedPublisherOptions & neg_pub_options = NegotiatedPublisherOptions())
+    const NegotiatedPublisherOptions & negotiated_pub_options = NegotiatedPublisherOptions())
   : NegotiatedPublisher(
       node.get_node_parameters_interface(),
       node.get_node_topics_interface(),
@@ -68,7 +68,7 @@ public:
       node.get_node_base_interface(),
       node.get_node_timers_interface(),
       topic_name,
-      neg_pub_options)
+      negotiated_pub_options)
   {
   }
 
@@ -176,10 +176,11 @@ private:
   rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_base_;
   rclcpp::node_interfaces::NodeTimersInterface::SharedPtr node_timers_;
   std::string topic_name_;
-  NegotiatedPublisherOptions neg_pub_options_;
+  NegotiatedPublisherOptions negotiated_pub_options_;
 
   std::map<std::string, SupportedTypeInfo> key_to_supported_types_;
-  rclcpp::Publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr neg_publisher_;
+  rclcpp::Publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr
+    negotiated_publisher_;
   std::map<std::string, std::shared_ptr<rclcpp::PublisherBase>> key_to_publisher_;
   rclcpp::Subscription<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_sub_;
   rclcpp::TimerBase::SharedPtr graph_change_timer_;
