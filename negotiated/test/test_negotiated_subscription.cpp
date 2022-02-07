@@ -45,6 +45,9 @@ protected:
   void SetUp()
   {
     node_ = std::make_shared<rclcpp::Node>("test_negotiated_subscription");
+
+    topics_pub_ = node_->create_publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
+      "foo", rclcpp::QoS(10));
   }
 
   void TearDown()
@@ -52,7 +55,25 @@ protected:
     node_.reset();
   }
 
+  bool spin_while_waiting(std::function<bool()> break_func)
+  {
+    // Setup our bogus future so we can spin
+    std::promise<bool> promise;
+    std::future<bool> future = promise.get_future();
+    auto shared_future = future.share();
+
+    for (int i = 0; i < 20; ++i) {
+      if (break_func()) {
+        return true;
+      }
+      rclcpp::spin_until_future_complete(node_, shared_future, std::chrono::milliseconds(10));
+    }
+
+    return false;
+  }
+
   rclcpp::Node::SharedPtr node_;
+  rclcpp::Publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr topics_pub_;
 };
 
 struct EmptyT
@@ -97,9 +118,6 @@ TEST_F(TestNegotiatedSubscription, add_duplicate_callback)
 TEST_F(TestNegotiatedSubscription, add_single_callback)
 {
   // Setup of our dummy publisher
-  auto topics_pub = node_->create_publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
-    "foo", rclcpp::QoS(10));
-
   auto data_pub = node_->create_publisher<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10));
 
   auto topics_msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
@@ -110,11 +128,6 @@ TEST_F(TestNegotiatedSubscription, add_single_callback)
   topic_info.supported_type_name = "a";
   topic_info.topic_name = "foo/a";
   topics_msg->negotiated_topics.push_back(topic_info);
-
-  // Setup our bogus future so we can spin
-  std::promise<bool> promise;
-  std::future<bool> future = promise.get_future();
-  auto shared_future = future.share();
 
   // Setup and test the subscription
   auto sub = std::make_shared<negotiated::NegotiatedSubscription>(
@@ -130,38 +143,29 @@ TEST_F(TestNegotiatedSubscription, add_single_callback)
   sub->add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), empty_cb);
   sub->start();
 
-  bool matched = false;
-  for (int i = 0; i < 200; ++i) {
-    matched = sub->get_negotiated_topic_publisher_count() > 0 &&
-      topics_pub->get_subscription_count() > 0;
-    if (matched) {
-      break;
-    }
-    rclcpp::spin_until_future_complete(node_, shared_future, std::chrono::milliseconds(10));
-  }
-  ASSERT_TRUE(matched);
+  auto negotiated_break_func = [this, sub]() -> bool
+    {
+      return sub->get_negotiated_topic_publisher_count() > 0 &&
+             topics_pub_->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_func));
 
-  topics_pub->publish(std::move(topics_msg));
+  topics_pub_->publish(std::move(topics_msg));
 
-  matched = false;
-  for (int i = 0; i < 200; ++i) {
-    matched = sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
-    if (matched) {
-      break;
-    }
-    rclcpp::spin_until_future_complete(node_, shared_future, std::chrono::milliseconds(10));
-  }
-  ASSERT_TRUE(matched);
+  auto data_break_func = [sub, data_pub]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(data_break_func));
 
   std_msgs::msg::Empty data;
   data_pub->publish(data);
 
-  for (int i = 0; i < 200; ++i) {
-    if (count > 0) {
-      break;
-    }
-    rclcpp::spin_until_future_complete(node_, shared_future, std::chrono::milliseconds(10));
-  }
+  auto count_break_func = [&count]() -> bool
+    {
+      return count > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(count_break_func));
 
   ASSERT_EQ(count, 1);
 }
@@ -169,9 +173,6 @@ TEST_F(TestNegotiatedSubscription, add_single_callback)
 TEST_F(TestNegotiatedSubscription, add_multiple_callbacks)
 {
   // Setup of our dummy publisher
-  auto topics_pub = node_->create_publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
-    "foo", rclcpp::QoS(10));
-
   auto data_pub = node_->create_publisher<std_msgs::msg::String>("foo/b", rclcpp::QoS(10));
 
   auto topics_msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
@@ -182,11 +183,6 @@ TEST_F(TestNegotiatedSubscription, add_multiple_callbacks)
   topic_info.supported_type_name = "b";
   topic_info.topic_name = "foo/b";
   topics_msg->negotiated_topics.push_back(topic_info);
-
-  // Setup our bogus future so we can spin
-  std::promise<bool> promise;
-  std::future<bool> future = promise.get_future();
-  auto shared_future = future.share();
 
   // Setup and test the subscription
   auto sub = std::make_shared<negotiated::NegotiatedSubscription>(
@@ -211,38 +207,29 @@ TEST_F(TestNegotiatedSubscription, add_multiple_callbacks)
 
   sub->start();
 
-  bool matched = false;
-  for (int i = 0; i < 200; ++i) {
-    matched = sub->get_negotiated_topic_publisher_count() > 0 &&
-      topics_pub->get_subscription_count() > 0;
-    if (matched) {
-      break;
-    }
-    rclcpp::spin_until_future_complete(node_, shared_future, std::chrono::milliseconds(10));
-  }
-  ASSERT_TRUE(matched);
+  auto negotiated_break_func = [this, sub]() -> bool
+    {
+      return sub->get_negotiated_topic_publisher_count() > 0 &&
+             topics_pub_->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_func));
 
-  topics_pub->publish(std::move(topics_msg));
+  topics_pub_->publish(std::move(topics_msg));
 
-  matched = false;
-  for (int i = 0; i < 200; ++i) {
-    matched = sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
-    if (matched) {
-      break;
-    }
-    rclcpp::spin_until_future_complete(node_, shared_future, std::chrono::milliseconds(10));
-  }
-  ASSERT_TRUE(matched);
+  auto data_break_func = [sub, data_pub]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(data_break_func));
 
   std_msgs::msg::String data;
   data_pub->publish(data);
 
-  for (int i = 0; i < 200; ++i) {
-    if (string_count > 0) {
-      break;
-    }
-    rclcpp::spin_until_future_complete(node_, shared_future, std::chrono::milliseconds(10));
-  }
+  auto count_break_func = [&string_count]() -> bool
+    {
+      return string_count > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(count_break_func));
 
   ASSERT_EQ(empty_count, 0);
   ASSERT_EQ(string_count, 1);
@@ -251,9 +238,6 @@ TEST_F(TestNegotiatedSubscription, add_multiple_callbacks)
 TEST_F(TestNegotiatedSubscription, failed_topics_info)
 {
   // Setup of our dummy publisher
-  auto topics_pub = node_->create_publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
-    "foo", rclcpp::QoS(10));
-
   auto data_pub = node_->create_publisher<std_msgs::msg::String>("foo/b", rclcpp::QoS(10));
 
   auto topics_msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
@@ -265,11 +249,6 @@ TEST_F(TestNegotiatedSubscription, failed_topics_info)
   topic_info.topic_name = "foo/b";
   topics_msg->negotiated_topics.push_back(topic_info);
 
-  // Setup our bogus future so we can spin
-  std::promise<bool> promise;
-  std::future<bool> future = promise.get_future();
-  auto shared_future = future.share();
-
   // Setup and test the subscription
   auto sub = std::make_shared<negotiated::NegotiatedSubscription>(
     node_->get_node_parameters_interface(), node_->get_node_topics_interface(), "foo");
@@ -289,36 +268,26 @@ TEST_F(TestNegotiatedSubscription, failed_topics_info)
 
   sub->start();
 
-  bool matched = false;
-  for (int i = 0; i < 200; ++i) {
-    matched = sub->get_negotiated_topic_publisher_count() > 0 &&
-      topics_pub->get_subscription_count() > 0;
-    if (matched) {
-      break;
-    }
-    rclcpp::spin_until_future_complete(node_, shared_future, std::chrono::milliseconds(10));
-  }
-  ASSERT_TRUE(matched);
+  auto negotiated_break_func = [this, sub]() -> bool
+    {
+      return sub->get_negotiated_topic_publisher_count() > 0 &&
+             topics_pub_->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_func));
 
-  topics_pub->publish(std::move(topics_msg));
+  topics_pub_->publish(std::move(topics_msg));
 
-  matched = false;
-  for (int i = 0; i < 20; ++i) {
-    matched = sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
-    if (matched) {
-      break;
-    }
-    rclcpp::spin_until_future_complete(node_, shared_future, std::chrono::milliseconds(10));
-  }
-  ASSERT_FALSE(matched);
+  auto data_break_func = [sub, data_pub]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0 &&
+             data_pub->get_subscription_count() > 0;
+    };
+  ASSERT_FALSE(spin_while_waiting(data_break_func));
 }
 
 TEST_F(TestNegotiatedSubscription, no_matching_topics)
 {
   // Setup of our dummy publisher
-  auto topics_pub = node_->create_publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
-    "foo", rclcpp::QoS(10));
-
   auto data_pub = node_->create_publisher<std_msgs::msg::String>("foo/c", rclcpp::QoS(10));
 
   auto topics_msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
@@ -330,11 +299,6 @@ TEST_F(TestNegotiatedSubscription, no_matching_topics)
   topic_info.topic_name = "foo/c";
   topics_msg->negotiated_topics.push_back(topic_info);
 
-  // Setup our bogus future so we can spin
-  std::promise<bool> promise;
-  std::future<bool> future = promise.get_future();
-  auto shared_future = future.share();
-
   // Setup and test the subscription
   auto sub = std::make_shared<negotiated::NegotiatedSubscription>(
     node_->get_node_parameters_interface(), node_->get_node_topics_interface(), "foo");
@@ -354,26 +318,29 @@ TEST_F(TestNegotiatedSubscription, no_matching_topics)
 
   sub->start();
 
-  bool matched = false;
-  for (int i = 0; i < 200; ++i) {
-    matched = sub->get_negotiated_topic_publisher_count() > 0 &&
-      topics_pub->get_subscription_count() > 0;
-    if (matched) {
-      break;
-    }
-    rclcpp::spin_until_future_complete(node_, shared_future, std::chrono::milliseconds(10));
-  }
-  ASSERT_TRUE(matched);
+  auto negotiated_break_func = [this, sub]() -> bool
+    {
+      return sub->get_negotiated_topic_publisher_count() > 0 &&
+             topics_pub_->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_func));
 
-  topics_pub->publish(std::move(topics_msg));
+  topics_pub_->publish(std::move(topics_msg));
 
-  matched = false;
-  for (int i = 0; i < 20; ++i) {
-    matched = sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
-    if (matched) {
-      break;
-    }
-    rclcpp::spin_until_future_complete(node_, shared_future, std::chrono::milliseconds(10));
-  }
-  ASSERT_FALSE(matched);
+  auto data_break_func = [sub, data_pub]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0 &&
+             data_pub->get_subscription_count() > 0;
+    };
+  ASSERT_FALSE(spin_while_waiting(data_break_func));
+}
+
+TEST_F(TestNegotiatedSubscription, renegotiate_keep_same_topic)
+{
+  // TODO(clalancette): write this test
+}
+
+TEST_F(TestNegotiatedSubscription, renegotiate_change_topic)
+{
+  // TODO(clalancette): write this test
 }
