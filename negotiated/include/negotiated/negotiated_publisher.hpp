@@ -152,7 +152,8 @@ public:
       throw std::invalid_argument("The supported_type_name cannot be empty");
     }
 
-    std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
+    using ROSMessageType = typename rclcpp::TypeAdapter<typename T::MsgT>::ros_message_type;
+    std::string ros_type_name = rosidl_generator_traits::name<ROSMessageType>();
     std::string key_name = generate_key(ros_type_name, T::supported_type_name);
     if (key_to_supported_types_.count(key_name) != 0) {
       throw std::invalid_argument("Cannot add duplicate key to supported types");
@@ -193,7 +194,8 @@ public:
       throw std::invalid_argument("The supported_type_name cannot be empty");
     }
 
-    std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
+    using ROSMessageType = typename rclcpp::TypeAdapter<typename T::MsgT>::ros_message_type;
+    std::string ros_type_name = rosidl_generator_traits::name<ROSMessageType>();
     std::string key_name = generate_key(ros_type_name, T::supported_type_name);
     if (key_to_supported_types_.count(key_name) == 0) {
       throw std::invalid_argument("Specified key does not exist");
@@ -230,7 +232,8 @@ public:
   template<typename T>
   bool type_was_negotiated()
   {
-    std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
+    using ROSMessageType = typename rclcpp::TypeAdapter<typename T::MsgT>::ros_message_type;
+    std::string ros_type_name = rosidl_generator_traits::name<ROSMessageType>();
     std::string key = generate_key(ros_type_name, T::supported_type_name);
     return key_to_publisher_.count(key) > 0;
   }
@@ -250,7 +253,8 @@ public:
   template<typename T, typename MessageT>
   void publish(const MessageT & msg)
   {
-    std::string ros_type_name = rosidl_generator_traits::name<MessageT>();
+    using ROSMessageType = typename rclcpp::TypeAdapter<typename T::MsgT>::ros_message_type;
+    std::string ros_type_name = rosidl_generator_traits::name<ROSMessageType>();
     std::string key = generate_key(ros_type_name, T::supported_type_name);
 
     if (key_to_publisher_.count(key) == 0) {
@@ -260,8 +264,7 @@ public:
 
     std::shared_ptr<rclcpp::PublisherBase> publisher_ = key_to_publisher_[key];
 
-    using ROSMessageType = typename rclcpp::TypeAdapter<MessageT>::ros_message_type;
-    auto pub = static_cast<rclcpp::Publisher<ROSMessageType> *>(publisher_.get());
+    auto pub = static_cast<rclcpp::Publisher<typename T::MsgT> *>(publisher_.get());
     pub->publish(msg);
   }
 
@@ -280,7 +283,8 @@ public:
   template<typename T, typename MessageT>
   void publish(std::unique_ptr<MessageT> msg)
   {
-    std::string ros_type_name = rosidl_generator_traits::name<MessageT>();
+    using ROSMessageType = typename rclcpp::TypeAdapter<typename T::MsgT>::ros_message_type;
+    std::string ros_type_name = rosidl_generator_traits::name<ROSMessageType>();
     std::string key = generate_key(ros_type_name, T::supported_type_name);
 
     if (key_to_publisher_.count(key) == 0) {
@@ -290,8 +294,7 @@ public:
 
     std::shared_ptr<rclcpp::PublisherBase> publisher_ = key_to_publisher_[key];
 
-    using ROSMessageType = typename rclcpp::TypeAdapter<MessageT>::ros_message_type;
-    auto pub = static_cast<rclcpp::Publisher<ROSMessageType> *>(publisher_.get());
+    auto pub = static_cast<rclcpp::Publisher<typename T::MsgT> *>(publisher_.get());
     pub->publish(std::move(msg));
   }
 
