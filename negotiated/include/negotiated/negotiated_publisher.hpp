@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include "rclcpp/type_adapter.hpp"
 #include "rclcpp/rclcpp.hpp"
 
 #include "negotiated_interfaces/msg/negotiated_topics_info.hpp"
@@ -136,8 +137,8 @@ public:
     return key_to_publisher_.count(key) > 0;
   }
 
-  template<typename T, typename MessageT>
-  void publish(const MessageT & msg)
+  template<typename T>
+  void publish(const typename T::MsgT & msg)
   {
     std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
     std::string key = generate_key(ros_type_name, T::supported_type_name);
@@ -149,12 +150,13 @@ public:
 
     std::shared_ptr<rclcpp::PublisherBase> publisher_ = key_to_publisher_[key];
 
-    auto pub = static_cast<rclcpp::Publisher<MessageT> *>(publisher_.get());
+    using ROSMessageType = typename rclcpp::TypeAdapter<typename T::MsgT>::ros_message_type;
+    auto pub = static_cast<rclcpp::Publisher<ROSMessageType> *>(publisher_.get());
     pub->publish(msg);
   }
 
-  template<typename T, typename MessageT>
-  void publish(std::unique_ptr<MessageT> msg)
+  template<typename T>
+  void publish(std::unique_ptr<typename T::MsgT> msg)
   {
     std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
     std::string key = generate_key(ros_type_name, T::supported_type_name);
@@ -166,7 +168,8 @@ public:
 
     std::shared_ptr<rclcpp::PublisherBase> publisher_ = key_to_publisher_[key];
 
-    auto pub = static_cast<rclcpp::Publisher<MessageT> *>(publisher_.get());
+    using ROSMessageType = typename rclcpp::TypeAdapter<typename T::MsgT>::ros_message_type;
+    auto pub = static_cast<rclcpp::Publisher<ROSMessageType> *>(publisher_.get());
     pub->publish(std::move(msg));
   }
 
