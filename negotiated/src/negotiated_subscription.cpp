@@ -27,6 +27,47 @@
 namespace negotiated
 {
 
+namespace detail
+{
+
+negotiated_interfaces::msg::NegotiatedTopicInfo default_negotiate_cb(
+  const negotiated_interfaces::msg::NegotiatedTopicInfo & existing_info,
+  const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)
+{
+  negotiated_interfaces::msg::NegotiatedTopicInfo matched_info;
+
+  if (!msg.success) {
+    return matched_info;
+  }
+
+  for (const negotiated_interfaces::msg::NegotiatedTopicInfo & info : msg.negotiated_topics) {
+    if (info.ros_type_name == existing_info.ros_type_name &&
+      info.supported_type_name == existing_info.supported_type_name &&
+      info.topic_name == existing_info.topic_name)
+    {
+      // The publisher renegotiated, but still supports the one we were already connected to.  We
+      // keep using the old type to ensure we don't lose data.
+      matched_info = info;
+      break;
+    }
+
+    // Otherwise, this is a supported type that the subscription knows about.  We choose the first
+    // one in the list, in the assumption that the publisher gave the list to us in priority order.
+    // Note that if we are already connected, we check the rest of the list to see if we are
+    // already subscribed to a later entry.
+
+    if (matched_info.ros_type_name.empty() && matched_info.supported_type_name.empty() &&
+      matched_info.topic_name.empty())
+    {
+      matched_info = info;
+    }
+  }
+
+  return matched_info;
+}
+
+}  // namespace detail
+
 NegotiatedSubscription::NegotiatedSubscription(
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters,
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics,
@@ -54,66 +95,50 @@ NegotiatedSubscription::NegotiatedSubscription(
 void NegotiatedSubscription::topicsInfoCb(
   const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)
 {
-  if (!msg.success && negotiated_sub_options_.disconnect_on_negotiation_failure) {
-    // We know the publisher attempted to and failed negotiation amongst the various subscriptions.
-    // We also know that it is no longer publishing anything, so disconnect ourselves and hope for
-    // a better result next time.
-    ros_type_name_ = "";
-    supported_type_name_ = "";
-    subscription_.reset();
-    return;
-  }
+  negotiated_interfaces::msg::NegotiatedTopicsInfo supported_topics;
+  supported_topics.success = msg.success;
 
-  negotiated_interfaces::msg::NegotiatedTopicInfo matched_info;
-  std::string key;
-
+  // Here we filter for only the topic types this subscription can support.
   for (const negotiated_interfaces::msg::NegotiatedTopicInfo & info : msg.negotiated_topics) {
-    if (info.ros_type_name == ros_type_name_ && info.supported_type_name == supported_type_name_ &&
-      negotiated_sub_options_.keep_existing_match_if_possible)
-    {
-      // The publisher renegotiated, but still supports the one we were already connected to.  We
-      // keep using the old type to ensure we don't lose data.
-      return;
-    }
-
     std::string tmp_key = generate_key(info.ros_type_name, info.supported_type_name);
     if (key_to_supported_types_.count(tmp_key) == 0) {
       // This is not a combination we support, so we can't subscribe to it.
       continue;
     }
 
-    // Otherwise, this is a supported type that the subscription knows about.  We choose the first
-    // one in the list, in the assumption that the publisher gave the list to us in priority order.
-    // Note that if we are already connected, we check the rest of the list to see if we are
-    // already subscribed to a later entry.
-
-    if (key.empty()) {
-      matched_info = info;
-      key = tmp_key;
-    }
-
-    if ((ros_type_name_.empty() && supported_type_name_.empty()) ||
-      !negotiated_sub_options_.keep_existing_match_if_possible)
-    {
-      // Small optimization; if we've never connected before, we can stop searching as soon as we
-      // find the first valid match.
-      break;
-    }
+    supported_topics.negotiated_topics.push_back(info);
   }
 
-  if (key.empty()) {
-    // The publisher didn't give us anything that we can successfully subscribe to.
-    ros_type_name_ = "";
-    supported_type_name_ = "";
+  negotiated_interfaces::msg::NegotiatedTopicInfo matched_info =
+    negotiated_sub_options_.negotiate_cb(existing_topic_info_, supported_topics);
+
+  if ((matched_info.ros_type_name.empty() || matched_info.supported_type_name.empty() ||
+    matched_info.topic_name.empty()) && negotiated_sub_options_.disconnect_on_negotiation_failure)
+  {
+    // We know the publisher attempted to and failed negotiation amongst the various subscriptions.
+    // We also know that it is no longer publishing anything, so disconnect ourselves and hope for
+    // a better result next time.
+    existing_topic_info_.ros_type_name = "";
+    existing_topic_info_.supported_type_name = "";
+    existing_topic_info_.topic_name = "";
     subscription_.reset();
     return;
   }
 
-  ros_type_name_ = matched_info.ros_type_name;
-  supported_type_name_ = matched_info.supported_type_name;
+  if (matched_info.ros_type_name == existing_topic_info_.ros_type_name &&
+    matched_info.supported_type_name == existing_topic_info_.supported_type_name &&
+    matched_info.topic_name == existing_topic_info_.topic_name)
+  {
+    // This is exactly the same as what we are already connected to, so no work to do.
+    return;
+  }
 
-  auto sub_factory = key_to_supported_types_[key].sub_factory;
-  subscription_ = sub_factory(matched_info.topic_name);
+  existing_topic_info_ = matched_info;
+
+  std::string key = generate_key(
+    existing_topic_info_.ros_type_name,
+    existing_topic_info_.supported_type_name);
+  subscription_ = key_to_supported_types_[key].sub_factory(existing_topic_info_.topic_name);
 }
 
 std::string NegotiatedSubscription::generate_key(
@@ -140,7 +165,9 @@ size_t NegotiatedSubscription::get_negotiated_topic_publisher_count() const
 
 size_t NegotiatedSubscription::get_data_topic_publisher_count() const
 {
-  if (ros_type_name_.empty() && supported_type_name_.empty()) {
+  if (existing_topic_info_.ros_type_name.empty() ||
+    existing_topic_info_.supported_type_name.empty() || existing_topic_info_.topic_name.empty())
+  {
     return 0;
   }
 

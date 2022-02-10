@@ -23,6 +23,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 
+#include "negotiated_interfaces/msg/negotiated_topic_info.hpp"
 #include "negotiated_interfaces/msg/negotiated_topics_info.hpp"
 #include "negotiated_interfaces/msg/supported_type.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
@@ -30,10 +31,23 @@
 namespace negotiated
 {
 
+namespace detail
+{
+
+negotiated_interfaces::msg::NegotiatedTopicInfo default_negotiate_cb(
+  const negotiated_interfaces::msg::NegotiatedTopicInfo & existing_info,
+  const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg);
+
+}  // namespace detail
+
 struct NegotiatedSubscriptionOptions
 {
   bool disconnect_on_negotiation_failure{true};
-  bool keep_existing_match_if_possible{true};
+
+  std::function<negotiated_interfaces::msg::NegotiatedTopicInfo(
+      const negotiated_interfaces::msg::NegotiatedTopicInfo & existing_info,
+      const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)> negotiate_cb{
+    detail::default_negotiate_cb};
 };
 
 class NegotiatedSubscription
@@ -144,8 +158,8 @@ private:
     negotiated_subscription_;
   std::shared_ptr<rclcpp::SubscriptionBase> subscription_;
   rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_pub_;
-  std::string ros_type_name_;
-  std::string supported_type_name_;
+
+  negotiated_interfaces::msg::NegotiatedTopicInfo existing_topic_info_;
 };
 
 }  // namespace negotiated
