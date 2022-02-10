@@ -58,6 +58,7 @@ public:
   explicit NegotiatedSubscription(
     rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_,
     rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics_,
+    rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr node_logging,
     const std::string & topic_name,
     const NegotiatedSubscriptionOptions & negotiated_sub_options = NegotiatedSubscriptionOptions());
 
@@ -69,6 +70,7 @@ public:
   : NegotiatedSubscription(
       node.get_node_parameters_interface(),
       node.get_node_topics_interface(),
+      node.get_node_logging_interface(),
       topic_name,
       negotiated_sub_options)
   {
@@ -151,6 +153,7 @@ private:
 
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_;
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics_;
+  rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr node_logging_;
   NegotiatedSubscriptionOptions negotiated_sub_options_;
 
   std::unordered_map<std::string, SupportedTypeInfo> key_to_supported_types_;

@@ -71,10 +71,12 @@ negotiated_interfaces::msg::NegotiatedTopicInfo default_negotiate_cb(
 NegotiatedSubscription::NegotiatedSubscription(
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters,
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics,
+  rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr node_logging,
   const std::string & topic_name,
   const NegotiatedSubscriptionOptions & negotiated_sub_options)
 : node_parameters_(node_parameters),
   node_topics_(node_topics),
+  node_logging_(node_logging),
   negotiated_sub_options_(negotiated_sub_options)
 {
   negotiated_subscription_ =
@@ -133,11 +135,18 @@ void NegotiatedSubscription::topicsInfoCb(
     return;
   }
 
+  std::string key = generate_key(
+    matched_info.ros_type_name,
+    matched_info.supported_type_name);
+  if (key_to_supported_types_.count(key) == 0) {
+    RCLCPP_WARN(
+      node_logging_->get_logger(),
+      "Returned matched type from user callback is not supported, ignoring");
+    return;
+  }
+
   existing_topic_info_ = matched_info;
 
-  std::string key = generate_key(
-    existing_topic_info_.ros_type_name,
-    existing_topic_info_.supported_type_name);
   subscription_ = key_to_supported_types_[key].sub_factory(existing_topic_info_.topic_name);
 }
 

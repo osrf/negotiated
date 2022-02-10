@@ -100,14 +100,20 @@ TEST_F(TestNegotiatedSubscription, node_constructor)
 TEST_F(TestNegotiatedSubscription, node_base_constructor)
 {
   auto sub = std::make_shared<negotiated::NegotiatedSubscription>(
-    node_->get_node_parameters_interface(), node_->get_node_topics_interface(), "foo");
+    node_->get_node_parameters_interface(),
+    node_->get_node_topics_interface(),
+    node_->get_node_logging_interface(),
+    "foo");
   ASSERT_NE(sub, nullptr);
 }
 
 TEST_F(TestNegotiatedSubscription, add_duplicate_callback)
 {
   negotiated::NegotiatedSubscription sub(
-    node_->get_node_parameters_interface(), node_->get_node_topics_interface(), "foo");
+    node_->get_node_parameters_interface(),
+    node_->get_node_topics_interface(),
+    node_->get_node_logging_interface(),
+    "foo");
 
   auto cb = [](const std_msgs::msg::Empty & msg)
     {
@@ -134,7 +140,10 @@ TEST_F(TestNegotiatedSubscription, add_single_callback)
 
   // Setup and test the subscription
   auto sub = std::make_shared<negotiated::NegotiatedSubscription>(
-    node_->get_node_parameters_interface(), node_->get_node_topics_interface(), "foo");
+    node_->get_node_parameters_interface(),
+    node_->get_node_topics_interface(),
+    node_->get_node_logging_interface(),
+    "foo");
 
   int count = 0;
   auto empty_cb = [&count](const std_msgs::msg::Empty & msg)
@@ -189,7 +198,10 @@ TEST_F(TestNegotiatedSubscription, add_multiple_callbacks)
 
   // Setup and test the subscription
   auto sub = std::make_shared<negotiated::NegotiatedSubscription>(
-    node_->get_node_parameters_interface(), node_->get_node_topics_interface(), "foo");
+    node_->get_node_parameters_interface(),
+    node_->get_node_topics_interface(),
+    node_->get_node_logging_interface(),
+    "foo");
 
   int empty_count = 0;
   auto empty_cb = [&empty_count](const std_msgs::msg::Empty & msg)
@@ -254,7 +266,10 @@ TEST_F(TestNegotiatedSubscription, failed_topics_info)
 
   // Setup and test the subscription
   auto sub = std::make_shared<negotiated::NegotiatedSubscription>(
-    node_->get_node_parameters_interface(), node_->get_node_topics_interface(), "foo");
+    node_->get_node_parameters_interface(),
+    node_->get_node_topics_interface(),
+    node_->get_node_logging_interface(),
+    "foo");
 
   auto empty_cb = [](const std_msgs::msg::Empty & msg)
     {
@@ -304,7 +319,10 @@ TEST_F(TestNegotiatedSubscription, no_matching_topics)
 
   // Setup and test the subscription
   auto sub = std::make_shared<negotiated::NegotiatedSubscription>(
-    node_->get_node_parameters_interface(), node_->get_node_topics_interface(), "foo");
+    node_->get_node_parameters_interface(),
+    node_->get_node_topics_interface(),
+    node_->get_node_logging_interface(),
+    "foo");
 
   auto empty_cb = [](const std_msgs::msg::Empty & msg)
     {
@@ -354,7 +372,10 @@ TEST_F(TestNegotiatedSubscription, renegotiate_keep_same_topic)
 
   // Setup and test the subscription
   auto sub = std::make_shared<negotiated::NegotiatedSubscription>(
-    node_->get_node_parameters_interface(), node_->get_node_topics_interface(), "foo");
+    node_->get_node_parameters_interface(),
+    node_->get_node_topics_interface(),
+    node_->get_node_logging_interface(),
+    "foo");
 
   int empty_count = 0;
   auto empty_cb = [&empty_count](const std_msgs::msg::Empty & msg)
@@ -451,7 +472,10 @@ TEST_F(TestNegotiatedSubscription, renegotiate_change_topic)
 
   // Setup and test the subscription
   auto sub = std::make_shared<negotiated::NegotiatedSubscription>(
-    node_->get_node_parameters_interface(), node_->get_node_topics_interface(), "foo");
+    node_->get_node_parameters_interface(),
+    node_->get_node_topics_interface(),
+    node_->get_node_logging_interface(),
+    "foo");
 
   int empty_count = 0;
   auto empty_cb = [&empty_count](const std_msgs::msg::Empty & msg)
