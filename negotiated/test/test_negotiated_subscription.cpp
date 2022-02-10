@@ -560,7 +560,10 @@ TEST_F(TestNegotiatedSubscription, custom_negotiated_cb)
   // std_msgs/msg/Empty publication, so by default that is what the NegotiatedSubscription
   // would choose.  The custom negotiation function below chooses the std_msgs/msg/String
   // one instead.
-  auto custom_negotiate_cb = [](const negotiated_interfaces::msg::NegotiatedTopicInfo & existing_info, const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg) -> negotiated_interfaces::msg::NegotiatedTopicInfo
+  auto custom_negotiate_cb =
+    [](const negotiated_interfaces::msg::NegotiatedTopicInfo & existing_info,
+      const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg) ->
+    negotiated_interfaces::msg::NegotiatedTopicInfo
     {
       (void)existing_info;
 
@@ -575,7 +578,10 @@ TEST_F(TestNegotiatedSubscription, custom_negotiated_cb)
   negotiated_sub_options.negotiate_cb = custom_negotiate_cb;
 
   // Setup and test the subscription
-  auto sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo", negotiated_sub_options);
+  auto sub = std::make_shared<negotiated::NegotiatedSubscription>(
+    *node_,
+    "foo",
+    negotiated_sub_options);
 
   int empty_count = 0;
   auto empty_cb = [&empty_count](const std_msgs::msg::Empty & msg)
