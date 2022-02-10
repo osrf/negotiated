@@ -34,7 +34,9 @@
 class NegotiatedLifecyclePub : public rclcpp_lifecycle::LifecycleNode
 {
 public:
-  explicit NegotiatedLifecyclePub(const std::string & node_name, bool use_intra_process_comm = false)
+  explicit NegotiatedLifecyclePub(
+    const std::string & node_name,
+    bool use_intra_process_comm = false)
   : rclcpp_lifecycle::LifecycleNode(node_name),
     use_intra_process_comm_(use_intra_process_comm),
     count_(0)
@@ -172,7 +174,8 @@ int main(int argc, char * argv[])
 
   rclcpp::executors::SingleThreadedExecutor executor;
 
-  auto negotiated_lifecycle_node = std::make_shared<NegotiatedLifecyclePub>("negotiated_lifecycle_pub");
+  auto negotiated_lifecycle_node = std::make_shared<NegotiatedLifecyclePub>(
+    "negotiated_lifecycle_pub");
 
   executor.add_node(negotiated_lifecycle_node->get_node_base_interface());
 
