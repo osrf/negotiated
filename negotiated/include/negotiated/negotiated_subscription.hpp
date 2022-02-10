@@ -67,10 +67,11 @@ public:
     CallbackT callback,
     const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions())
   {
-    std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
     if (T::supported_type_name.empty()) {
       throw std::runtime_error("The supported_type_name cannot be empty");
     }
+
+    std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
 
     std::string key_name = generate_key(ros_type_name, T::supported_type_name);
     if (key_to_supported_types_.count(key_name) != 0) {
