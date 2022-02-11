@@ -145,7 +145,8 @@ TEST_F(TestNegotiatedPublisher, type_not_yet_negotiated)
 TEST_F(TestNegotiatedPublisher, single_subscription_negotiated)
 {
   // Dummy subscription
-  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>("foo/supported_types", rclcpp::QoS(10).transient_local());
+  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
 
   negotiated_interfaces::msg::SupportedTypes dummy_supported_types;
   negotiated_interfaces::msg::SupportedType empty_type;
@@ -163,7 +164,8 @@ TEST_F(TestNegotiatedPublisher, single_subscription_negotiated)
       empty_count++;
     };
 
-  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10), dummy_sub_cb);
+  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>(
+    "foo/a", rclcpp::QoS(10), dummy_sub_cb);
 
   auto pub = std::make_shared<negotiated::NegotiatedPublisher>(*node_, "foo");
 
@@ -192,7 +194,8 @@ TEST_F(TestNegotiatedPublisher, single_subscription_negotiated)
 TEST_F(TestNegotiatedPublisher, single_failed_negotiation)
 {
   // Dummy subscription
-  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>("foo/supported_types", rclcpp::QoS(10).transient_local());
+  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
 
   negotiated_interfaces::msg::SupportedTypes dummy_supported_types;
   negotiated_interfaces::msg::SupportedType empty_type;
@@ -220,7 +223,8 @@ TEST_F(TestNegotiatedPublisher, single_failed_negotiation)
 TEST_F(TestNegotiatedPublisher, two_subscriptions_same_type)
 {
   // Dummy subscription
-  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>("foo/supported_types", rclcpp::QoS(10).transient_local());
+  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
 
   negotiated_interfaces::msg::SupportedTypes dummy_supported_types;
   negotiated_interfaces::msg::SupportedType empty_type;
@@ -231,7 +235,8 @@ TEST_F(TestNegotiatedPublisher, two_subscriptions_same_type)
 
   dummy_sub_types->publish(dummy_supported_types);
 
-  auto dummy_sub_types2 = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>("foo/supported_types", rclcpp::QoS(10).transient_local());
+  auto dummy_sub_types2 = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
 
   negotiated_interfaces::msg::SupportedTypes dummy_supported_types2;
   negotiated_interfaces::msg::SupportedType empty_type2;
@@ -249,9 +254,11 @@ TEST_F(TestNegotiatedPublisher, two_subscriptions_same_type)
       empty_count++;
     };
 
-  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10), dummy_sub_cb);
+  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>(
+    "foo/a", rclcpp::QoS(10), dummy_sub_cb);
 
-  auto dummy_sub2 = node_->create_subscription<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10), dummy_sub_cb);
+  auto dummy_sub2 = node_->create_subscription<std_msgs::msg::Empty>(
+    "foo/a", rclcpp::QoS(10), dummy_sub_cb);
 
   auto pub = std::make_shared<negotiated::NegotiatedPublisher>(*node_, "foo");
 
@@ -280,7 +287,8 @@ TEST_F(TestNegotiatedPublisher, two_subscriptions_same_type)
 TEST_F(TestNegotiatedPublisher, two_subscriptions_different_types)
 {
   // Dummy subscription
-  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>("foo/supported_types", rclcpp::QoS(10).transient_local());
+  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
 
   negotiated_interfaces::msg::SupportedTypes dummy_supported_types;
   negotiated_interfaces::msg::SupportedType empty_type;
@@ -291,7 +299,8 @@ TEST_F(TestNegotiatedPublisher, two_subscriptions_different_types)
 
   dummy_sub_types->publish(dummy_supported_types);
 
-  auto dummy_sub_types2 = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>("foo/supported_types", rclcpp::QoS(10).transient_local());
+  auto dummy_sub_types2 = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
 
   negotiated_interfaces::msg::SupportedTypes dummy_supported_types2;
   negotiated_interfaces::msg::SupportedType empty_type2;
@@ -316,9 +325,11 @@ TEST_F(TestNegotiatedPublisher, two_subscriptions_different_types)
       string_count++;
     };
 
-  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10), dummy_sub_cb);
+  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>(
+    "foo/a", rclcpp::QoS(10), dummy_sub_cb);
 
-  auto dummy_sub2 = node_->create_subscription<std_msgs::msg::String>("foo/b", rclcpp::QoS(10), dummy_sub_string_cb);
+  auto dummy_sub2 = node_->create_subscription<std_msgs::msg::String>(
+    "foo/b", rclcpp::QoS(10), dummy_sub_string_cb);
 
   auto pub = std::make_shared<negotiated::NegotiatedPublisher>(*node_, "foo");
 
@@ -353,7 +364,8 @@ TEST_F(TestNegotiatedPublisher, two_subscriptions_different_types)
 TEST_F(TestNegotiatedPublisher, disconnect_supported_types)
 {
   // Dummy subscription
-  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>("foo/supported_types", rclcpp::QoS(10).transient_local());
+  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
 
   negotiated_interfaces::msg::SupportedTypes dummy_supported_types;
   negotiated_interfaces::msg::SupportedType empty_type;
@@ -364,7 +376,8 @@ TEST_F(TestNegotiatedPublisher, disconnect_supported_types)
 
   dummy_sub_types->publish(dummy_supported_types);
 
-  auto dummy_sub_types2 = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>("foo/supported_types", rclcpp::QoS(10).transient_local());
+  auto dummy_sub_types2 = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
 
   negotiated_interfaces::msg::SupportedTypes dummy_supported_types2;
   negotiated_interfaces::msg::SupportedType empty_type2;
@@ -389,9 +402,11 @@ TEST_F(TestNegotiatedPublisher, disconnect_supported_types)
       string_count++;
     };
 
-  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10), dummy_sub_cb);
+  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>(
+    "foo/a", rclcpp::QoS(10), dummy_sub_cb);
 
-  auto dummy_sub2 = node_->create_subscription<std_msgs::msg::String>("foo/b", rclcpp::QoS(10), dummy_sub_string_cb);
+  auto dummy_sub2 = node_->create_subscription<std_msgs::msg::String>(
+    "foo/b", rclcpp::QoS(10), dummy_sub_string_cb);
 
   auto pub = std::make_shared<negotiated::NegotiatedPublisher>(*node_, "foo");
 
@@ -423,7 +438,8 @@ TEST_F(TestNegotiatedPublisher, disconnect_supported_types)
 TEST_F(TestNegotiatedPublisher, dont_negotiate_on_subscription_add)
 {
   // Dummy subscription
-  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>("foo/supported_types", rclcpp::QoS(10).transient_local());
+  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
 
   negotiated_interfaces::msg::SupportedTypes dummy_supported_types;
   negotiated_interfaces::msg::SupportedType empty_type;
@@ -434,7 +450,8 @@ TEST_F(TestNegotiatedPublisher, dont_negotiate_on_subscription_add)
 
   dummy_sub_types->publish(dummy_supported_types);
 
-  auto dummy_sub_types2 = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>("foo/supported_types", rclcpp::QoS(10).transient_local());
+  auto dummy_sub_types2 = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
 
   negotiated_interfaces::msg::SupportedTypes dummy_supported_types2;
   negotiated_interfaces::msg::SupportedType empty_type2;
@@ -459,9 +476,11 @@ TEST_F(TestNegotiatedPublisher, dont_negotiate_on_subscription_add)
       string_count++;
     };
 
-  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10), dummy_sub_cb);
+  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>(
+    "foo/a", rclcpp::QoS(10), dummy_sub_cb);
 
-  auto dummy_sub2 = node_->create_subscription<std_msgs::msg::String>("foo/b", rclcpp::QoS(10), dummy_sub_string_cb);
+  auto dummy_sub2 = node_->create_subscription<std_msgs::msg::String>(
+    "foo/b", rclcpp::QoS(10), dummy_sub_string_cb);
 
   negotiated::NegotiatedPublisherOptions options;
   options.negotiate_on_subscription_add = false;
@@ -491,7 +510,8 @@ TEST_F(TestNegotiatedPublisher, dont_negotiate_on_subscription_add)
 TEST_F(TestNegotiatedPublisher, dont_negotiate_on_disconnect)
 {
   // Dummy subscription
-  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>("foo/supported_types", rclcpp::QoS(10).transient_local());
+  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
 
   negotiated_interfaces::msg::SupportedTypes dummy_supported_types;
   negotiated_interfaces::msg::SupportedType empty_type;
@@ -502,7 +522,8 @@ TEST_F(TestNegotiatedPublisher, dont_negotiate_on_disconnect)
 
   dummy_sub_types->publish(dummy_supported_types);
 
-  auto dummy_sub_types2 = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>("foo/supported_types", rclcpp::QoS(10).transient_local());
+  auto dummy_sub_types2 = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
 
   negotiated_interfaces::msg::SupportedTypes dummy_supported_types2;
   negotiated_interfaces::msg::SupportedType empty_type2;
@@ -527,9 +548,11 @@ TEST_F(TestNegotiatedPublisher, dont_negotiate_on_disconnect)
       string_count++;
     };
 
-  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10), dummy_sub_cb);
+  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>(
+    "foo/a", rclcpp::QoS(10), dummy_sub_cb);
 
-  auto dummy_sub2 = node_->create_subscription<std_msgs::msg::String>("foo/b", rclcpp::QoS(10), dummy_sub_string_cb);
+  auto dummy_sub2 = node_->create_subscription<std_msgs::msg::String>(
+    "foo/b", rclcpp::QoS(10), dummy_sub_string_cb);
 
   negotiated::NegotiatedPublisherOptions options;
   options.negotiate_on_subscription_removal = false;
