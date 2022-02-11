@@ -129,8 +129,8 @@ public:
    *                     weights are more likely to be chosen.
    * \param[in] qos - The Quality of Service parameters to apply if this type is chosen.
    * \param[in] options - The PublisherOptions to apply if this type is chosen.
-   * \throws std::runtime_error if the supported_type_name in the structure is the empty string, OR
-   * \throws std::runtime_error if the exact same type has already been added.
+   * \throws std::invalid_argument if the supported_type_name in the structure is the empty string, OR
+   * \throws std::invalid_argument if the exact same type has already been added.
    */
   template<typename T>
   void add_supported_type(
@@ -139,13 +139,13 @@ public:
     const rclcpp::PublisherOptions & options = rclcpp::PublisherOptions())
   {
     if (T::supported_type_name.empty()) {
-      throw std::runtime_error("The supported_type_name cannot be empty");
+      throw std::invalid_argument("The supported_type_name cannot be empty");
     }
 
     std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
     std::string key_name = generate_key(ros_type_name, T::supported_type_name);
     if (key_to_supported_types_.count(key_name) != 0) {
-      throw std::runtime_error("Cannot add duplicate key to supported types");
+      throw std::invalid_argument("Cannot add duplicate key to supported types");
     }
 
     key_to_supported_types_.emplace(key_name, SupportedTypeInfo());
@@ -173,20 +173,20 @@ public:
    * Remove a supported type from this NegotiatedPublisher.  The template argument must have the
    * same form as in add_supported_type(), and must have previously been added by
    * add_supported_type().
-   * \throws std::runtime_error if the supported_type_name in the structure is the empty string, OR
-   * \throws std::runtime_error if the type to be removed was not previously added.
+   * \throws std::invalid_argument if the supported_type_name in the structure is the empty string, OR
+   * \throws std::invalid_argument if the type to be removed was not previously added.
    */
   template<typename T>
   void remove_supported_type()
   {
     if (T::supported_type_name.empty()) {
-      throw std::runtime_error("The supported_type_name cannot be empty");
+      throw std::invalid_argument("The supported_type_name cannot be empty");
     }
 
     std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
     std::string key_name = generate_key(ros_type_name, T::supported_type_name);
     if (key_to_supported_types_.count(key_name) == 0) {
-      throw std::runtime_error("Specified key does not exist");
+      throw std::invalid_argument("Specified key does not exist");
     }
 
     key_to_supported_types_.erase(key_name);

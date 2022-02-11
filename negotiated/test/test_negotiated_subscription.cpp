@@ -122,7 +122,9 @@ TEST_F(TestNegotiatedSubscription, add_callback_empty_type)
       (void)msg;
     };
 
-  EXPECT_THROW(sub.add_supported_callback<InvalidT>(1.0, rclcpp::QoS(10), cb), std::runtime_error);
+  EXPECT_THROW(
+    sub.add_supported_callback<InvalidT>(1.0, rclcpp::QoS(10), cb),
+    std::invalid_argument);
 }
 
 TEST_F(TestNegotiatedSubscription, add_duplicate_callback)
@@ -135,21 +137,21 @@ TEST_F(TestNegotiatedSubscription, add_duplicate_callback)
     };
 
   sub.add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), cb);
-  EXPECT_THROW(sub.add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), cb), std::runtime_error);
+  EXPECT_THROW(sub.add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), cb), std::invalid_argument);
 }
 
 TEST_F(TestNegotiatedSubscription, remove_callback_empty_type)
 {
   negotiated::NegotiatedSubscription sub(*node_, "foo");
 
-  EXPECT_THROW(sub.remove_supported_callback<InvalidT>(), std::runtime_error);
+  EXPECT_THROW(sub.remove_supported_callback<InvalidT>(), std::invalid_argument);
 }
 
 TEST_F(TestNegotiatedSubscription, remove_nonexistent_callback)
 {
   negotiated::NegotiatedSubscription sub(*node_, "foo");
 
-  EXPECT_THROW(sub.remove_supported_callback<EmptyT>(), std::runtime_error);
+  EXPECT_THROW(sub.remove_supported_callback<EmptyT>(), std::invalid_argument);
 }
 
 TEST_F(TestNegotiatedSubscription, add_single_callback)

@@ -111,28 +111,28 @@ TEST_F(TestNegotiatedPublisher, add_duplicate_type)
   negotiated::NegotiatedPublisher pub(*node_, "foo");
 
   pub.add_supported_type<EmptyT>(1.0, rclcpp::QoS(10));
-  EXPECT_THROW(pub.add_supported_type<EmptyT>(1.0, rclcpp::QoS(10)), std::runtime_error);
+  EXPECT_THROW(pub.add_supported_type<EmptyT>(1.0, rclcpp::QoS(10)), std::invalid_argument);
 }
 
 TEST_F(TestNegotiatedPublisher, add_callback_empty_type)
 {
   negotiated::NegotiatedPublisher pub(*node_, "foo");
 
-  EXPECT_THROW(pub.add_supported_type<InvalidT>(1.0, rclcpp::QoS(10)), std::runtime_error);
+  EXPECT_THROW(pub.add_supported_type<InvalidT>(1.0, rclcpp::QoS(10)), std::invalid_argument);
 }
 
 TEST_F(TestNegotiatedPublisher, remove_callback_empty_type)
 {
   negotiated::NegotiatedPublisher pub(*node_, "foo");
 
-  EXPECT_THROW(pub.remove_supported_type<InvalidT>(), std::runtime_error);
+  EXPECT_THROW(pub.remove_supported_type<InvalidT>(), std::invalid_argument);
 }
 
 TEST_F(TestNegotiatedPublisher, remove_nonexistent_callback)
 {
   negotiated::NegotiatedPublisher pub(*node_, "foo");
 
-  EXPECT_THROW(pub.remove_supported_type<EmptyT>(), std::runtime_error);
+  EXPECT_THROW(pub.remove_supported_type<EmptyT>(), std::invalid_argument);
 }
 
 TEST_F(TestNegotiatedPublisher, type_not_yet_negotiated)
