@@ -13,44 +13,44 @@ find_package(rclcpp_lifecycle REQUIRED)
 find_package(negotiated REQUIRED)
 find_package(std_msgs REQUIRED)
 
-add_library(neg_sub_example1_node SHARED
-  src/neg_sub_example1.cpp
+add_library(negotiated_sub_example1_node SHARED
+  src/negotiated_sub_example1.cpp
 )
-target_link_libraries(neg_sub_example1_node
+target_link_libraries(negotiated_sub_example1_node
   negotiated::negotiated
   rclcpp::rclcpp
   ${rclcpp_components_TARGETS}
   ${std_msgs_TARGETS}
 )
-rclcpp_components_register_node(neg_sub_example1_node
+rclcpp_components_register_node(negotiated_sub_example1_node
   PLUGIN "negotiated_examples::NegotiatedSubExample1"
-  EXECUTABLE neg_sub_example1)
+  EXECUTABLE negotiated_sub_example1)
 
-add_library(neg_sub_example2_node SHARED
-  src/neg_sub_example2.cpp
+add_library(negotiated_sub_example2_node SHARED
+  src/negotiated_sub_example2.cpp
 )
-target_link_libraries(neg_sub_example2_node
+target_link_libraries(negotiated_sub_example2_node
   negotiated::negotiated
   rclcpp::rclcpp
   ${rclcpp_components_TARGETS}
   ${std_msgs_TARGETS}
 )
-rclcpp_components_register_node(neg_sub_example2_node
+rclcpp_components_register_node(negotiated_sub_example2_node
   PLUGIN "negotiated_examples::NegotiatedSubExample2"
-  EXECUTABLE neg_sub_example2)
+  EXECUTABLE negotiated_sub_example2)
 
-add_library(neg_pub_example1_node SHARED
-  src/neg_pub_example1.cpp
+add_library(negotiated_pub_example1_node SHARED
+  src/negotiated_pub_example1.cpp
 )
-target_link_libraries(neg_pub_example1_node
+target_link_libraries(negotiated_pub_example1_node
   negotiated::negotiated
   rclcpp::rclcpp
   ${rclcpp_components_TARGETS}
   ${std_msgs_TARGETS}
 )
-rclcpp_components_register_node(neg_pub_example1_node
+rclcpp_components_register_node(negotiated_pub_example1_node
   PLUGIN "negotiated_examples::NegotiatedPubExample1"
-  EXECUTABLE neg_pub_example1)
+  EXECUTABLE negotiated_pub_example1)
 
 add_executable(negotiated_lifecycle_pub
   src/negotiated_lifecycle_pub.cpp)
@@ -62,7 +62,7 @@ target_link_libraries(negotiated_lifecycle_pub
 )
 
 install(
-  TARGETS neg_sub_example1_node neg_sub_example2_node neg_pub_example1_node
+  TARGETS negotiated_sub_example1_node negotiated_sub_example2_node negotiated_pub_example1_node
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
