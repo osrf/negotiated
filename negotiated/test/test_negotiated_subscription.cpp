@@ -91,6 +91,12 @@ struct StringT
   static const inline std::string supported_type_name = "b";
 };
 
+struct InvalidT
+{
+  using MsgT = std_msgs::msg::Empty;
+  static const inline std::string supported_type_name = "";
+};
+
 TEST_F(TestNegotiatedSubscription, node_constructor)
 {
   auto sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo");
@@ -107,6 +113,18 @@ TEST_F(TestNegotiatedSubscription, node_base_constructor)
   ASSERT_NE(sub, nullptr);
 }
 
+TEST_F(TestNegotiatedSubscription, add_callback_empty_type)
+{
+  negotiated::NegotiatedSubscription sub(*node_, "foo");
+
+  auto cb = [](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+    };
+
+  EXPECT_THROW(sub.add_supported_callback<InvalidT>(1.0, rclcpp::QoS(10), cb), std::runtime_error);
+}
+
 TEST_F(TestNegotiatedSubscription, add_duplicate_callback)
 {
   negotiated::NegotiatedSubscription sub(*node_, "foo");
@@ -118,6 +136,13 @@ TEST_F(TestNegotiatedSubscription, add_duplicate_callback)
 
   sub.add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), cb);
   EXPECT_THROW(sub.add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), cb), std::runtime_error);
+}
+
+TEST_F(TestNegotiatedSubscription, remove_callback_empty_type)
+{
+  negotiated::NegotiatedSubscription sub(*node_, "foo");
+
+  EXPECT_THROW(sub.remove_supported_callback<InvalidT>(), std::runtime_error);
 }
 
 TEST_F(TestNegotiatedSubscription, remove_nonexistent_callback)

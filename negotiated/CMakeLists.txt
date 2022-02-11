@@ -53,6 +53,14 @@ if(BUILD_TESTING)
     ${negotiated_interfaces_TARGETS}
     ${std_msgs_TARGETS}
   )
+
+  ament_add_gtest(test_negotiated_publisher test/test_negotiated_publisher.cpp)
+  target_link_libraries(test_negotiated_publisher
+    rclcpp::rclcpp
+    ${PROJECT_NAME}
+    ${negotiated_interfaces_TARGETS}
+    ${std_msgs_TARGETS}
+  )
 endif()
 
 ament_package()
