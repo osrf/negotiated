@@ -588,3 +588,72 @@ TEST_F(TestNegotiatedPublisher, dont_negotiate_on_disconnect)
   ASSERT_TRUE(pub->type_was_negotiated<EmptyT>());
   ASSERT_FALSE(pub->type_was_negotiated<StringT>());
 }
+
+TEST_F(TestNegotiatedPublisher, two_subscriptions_different_types_no_multiple_types)
+{
+  // Dummy subscription
+  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
+
+  negotiated_interfaces::msg::SupportedTypes dummy_supported_types;
+  negotiated_interfaces::msg::SupportedType empty_type;
+  empty_type.ros_type_name = "std_msgs/msg/Empty";
+  empty_type.supported_type_name = "a";
+  empty_type.weight = 1.0;
+  dummy_supported_types.supported_types.push_back(empty_type);
+
+  dummy_sub_types->publish(dummy_supported_types);
+
+  auto dummy_sub_types2 = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
+
+  negotiated_interfaces::msg::SupportedTypes dummy_supported_types2;
+  negotiated_interfaces::msg::SupportedType empty_type2;
+  empty_type2.ros_type_name = "std_msgs/msg/String";
+  empty_type2.supported_type_name = "b";
+  empty_type2.weight = 1.0;
+  dummy_supported_types2.supported_types.push_back(empty_type2);
+
+  dummy_sub_types2->publish(dummy_supported_types2);
+
+  int empty_count = 0;
+  auto dummy_sub_cb = [&empty_count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      empty_count++;
+    };
+
+  int string_count = 0;
+  auto dummy_sub_string_cb = [&string_count](const std_msgs::msg::String & msg)
+    {
+      (void)msg;
+      string_count++;
+    };
+
+  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>(
+    "foo/a", rclcpp::QoS(10), dummy_sub_cb);
+
+  auto dummy_sub2 = node_->create_subscription<std_msgs::msg::String>(
+    "foo/b", rclcpp::QoS(10), dummy_sub_string_cb);
+
+  negotiated::NegotiatedPublisherOptions options;
+  options.allow_multiple_types = false;
+
+  auto pub = std::make_shared<negotiated::NegotiatedPublisher>(*node_, "foo", options);
+
+  pub->add_supported_type<EmptyT>(1.0, rclcpp::QoS(10));
+  pub->add_supported_type<StringT>(1.0, rclcpp::QoS(10));
+
+  pub->start();
+
+  auto negotiated_break_cb = [pub]() -> bool
+    {
+      return pub->type_was_negotiated<EmptyT>() && pub->type_was_negotiated<StringT>();
+    };
+  spin_while_waiting(negotiated_break_cb);
+  ASSERT_FALSE(pub->type_was_negotiated<EmptyT>());
+  ASSERT_FALSE(pub->type_was_negotiated<StringT>());
+
+  ASSERT_EQ(empty_count, 0);
+  ASSERT_EQ(string_count, 0);
+}

@@ -40,13 +40,18 @@ struct NegotiatedPublisherOptions final
 {
   /// Whether to automatically cause a renegotiation when NegotiatedSubscriptions leave the graph.
   /// If set to false, then renegotiations will only happen when the user calls
-  // NegotiatedPublisher::negotiate().
+  /// NegotiatedPublisher::negotiate().
   bool negotiate_on_subscription_removal{true};
 
   /// Whether to automatically cause a renegotiation when NegotiatedSubscriptions join the graph.
   /// If set to false, then renegotiations will only happen when the user calls
-  // NegotiatedPublisher::negotiate().
+  /// NegotiatedPublisher::negotiate().
   bool negotiate_on_subscription_add{true};
+
+  /// Whether to allow a multiple-topic solution during negotiation.  If set to false, then
+  /// only single-topic solutions will be considered during negotation, and if one can't be
+  /// found negotiation will fail.
+  bool allow_multiple_types{true};
 };
 
 /// NegotiatedPublisher implements the publishing side of a negotiated system.

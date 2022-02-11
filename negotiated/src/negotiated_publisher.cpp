@@ -362,6 +362,10 @@ void NegotiatedPublisher::negotiate()
     if (!matched_subs.empty()) {
       break;
     }
+
+    if (i == 1 && !negotiated_pub_options_.allow_multiple_types) {
+      break;
+    }
   }
 
   auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
