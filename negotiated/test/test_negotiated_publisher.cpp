@@ -113,6 +113,16 @@ TEST_F(TestNegotiatedPublisher, node_base_constructor)
   ASSERT_NE(pub, nullptr);
 }
 
+TEST_F(TestNegotiatedPublisher, zero_negotiated_solutions)
+{
+  negotiated::NegotiatedPublisherOptions options;
+  options.maximum_negotiated_solutions = 0;
+
+  EXPECT_THROW(
+    std::make_shared<negotiated::NegotiatedPublisher>(*node_, "foo", options),
+    std::invalid_argument);
+}
+
 TEST_F(TestNegotiatedPublisher, add_duplicate_type)
 {
   negotiated::NegotiatedPublisher pub(*node_, "foo");
@@ -644,7 +654,7 @@ TEST_F(TestNegotiatedPublisher, two_subscriptions_different_types_no_multiple_ty
     "foo/b", rclcpp::QoS(10), dummy_sub_string_cb);
 
   negotiated::NegotiatedPublisherOptions options;
-  options.allow_multiple_types = false;
+  options.maximum_negotiated_solutions = 1;
 
   auto pub = std::make_shared<negotiated::NegotiatedPublisher>(*node_, "foo", options);
 

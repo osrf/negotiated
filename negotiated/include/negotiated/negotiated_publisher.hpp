@@ -17,6 +17,7 @@
 
 #include <array>
 #include <functional>
+#include <limits>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -48,10 +49,10 @@ struct NegotiatedPublisherOptions final
   /// NegotiatedPublisher::negotiate().
   bool negotiate_on_subscription_add{true};
 
-  /// Whether to allow a multiple-topic solution during negotiation.  If set to false, then
-  /// only single-topic solutions will be considered during negotation, and if one can't be
-  /// found negotiation will fail.
-  bool allow_multiple_types{true};
+  /// The maximum number of solutions to allow while negotiating.  The default is to allow
+  /// any number of solutions, but this may be restricted all the way down to 1 (passing
+  /// 0 here will result in an exception while constructing).
+  size_t maximum_negotiated_solutions{std::numeric_limits<size_t>::max()};
 
   /// A callback that will be called if negotiation is successful.  This gives the
   /// NegotiatedPublisher user a chance to react in arbitrary ways once negotiation has happened.

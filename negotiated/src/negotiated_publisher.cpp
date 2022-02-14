@@ -56,6 +56,10 @@ NegotiatedPublisher::NegotiatedPublisher(
   topic_name_(topic_name),
   negotiated_pub_options_(negotiated_pub_options)
 {
+  if (negotiated_pub_options_.maximum_negotiated_solutions == 0) {
+    throw std::invalid_argument("maximum_negotiated_solutions must be larger than 0");
+  }
+
   negotiated_subscription_type_gids_ = std::make_shared<std::map<PublisherGid,
       std::vector<std::string>>>();
 
@@ -363,7 +367,7 @@ void NegotiatedPublisher::negotiate()
       break;
     }
 
-    if (i == 1 && !negotiated_pub_options_.allow_multiple_types) {
+    if (i == negotiated_pub_options_.maximum_negotiated_solutions) {
       break;
     }
   }
