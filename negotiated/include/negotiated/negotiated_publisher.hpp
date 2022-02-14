@@ -52,6 +52,11 @@ struct NegotiatedPublisherOptions final
   /// only single-topic solutions will be considered during negotation, and if one can't be
   /// found negotiation will fail.
   bool allow_multiple_types{true};
+
+  /// A callback that will be called if negotiation is successful.  This gives the
+  /// NegotiatedPublisher user a chance to react in arbitrary ways once negotiation has happened.
+  std::function<void(const negotiated_interfaces::msg::NegotiatedTopicsInfo &)>
+  successful_negotiation_cb{nullptr};
 };
 
 /// NegotiatedPublisher implements the publishing side of a negotiated system.

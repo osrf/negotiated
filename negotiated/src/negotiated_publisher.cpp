@@ -416,6 +416,10 @@ void NegotiatedPublisher::negotiate()
         ++it;
       }
     }
+
+    if (negotiated_pub_options_.successful_negotiation_cb != nullptr) {
+      negotiated_pub_options_.successful_negotiation_cb(*msg);
+    }
   }
 
   negotiated_publisher_->publish(std::move(msg));

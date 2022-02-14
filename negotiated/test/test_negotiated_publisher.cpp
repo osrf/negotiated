@@ -18,10 +18,17 @@
 #include <functional>
 #include <future>
 #include <memory>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/empty.hpp"
 #include "std_msgs/msg/string.hpp"
+
+#include "negotiated_interfaces/msg/negotiated_topics_info.hpp"
+#include "negotiated_interfaces/msg/supported_type.hpp"
+#include "negotiated_interfaces/msg/supported_types.hpp"
 
 #include "negotiated/negotiated_publisher.hpp"
 
@@ -656,4 +663,66 @@ TEST_F(TestNegotiatedPublisher, two_subscriptions_different_types_no_multiple_ty
 
   ASSERT_EQ(empty_count, 0);
   ASSERT_EQ(string_count, 0);
+}
+
+TEST_F(TestNegotiatedPublisher, negotiated_callback)
+{
+  // Dummy subscription
+  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
+
+  negotiated_interfaces::msg::SupportedTypes dummy_supported_types;
+  negotiated_interfaces::msg::SupportedType empty_type;
+  empty_type.ros_type_name = "std_msgs/msg/Empty";
+  empty_type.supported_type_name = "a";
+  empty_type.weight = 1.0;
+  dummy_supported_types.supported_types.push_back(empty_type);
+
+  dummy_sub_types->publish(dummy_supported_types);
+
+  int empty_count = 0;
+  auto dummy_sub_cb = [&empty_count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      empty_count++;
+    };
+
+  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>(
+    "foo/a", rclcpp::QoS(10), dummy_sub_cb);
+
+  bool negotiation_cb_called = false;
+
+  negotiated::NegotiatedPublisherOptions options;
+  options.successful_negotiation_cb =
+    [&negotiation_cb_called](const negotiated_interfaces::msg::NegotiatedTopicsInfo & topics)
+    {
+      (void)topics;
+      negotiation_cb_called = true;
+    };
+
+  auto pub = std::make_shared<negotiated::NegotiatedPublisher>(*node_, "foo", options);
+
+  pub->add_supported_type<EmptyT>(1.0, rclcpp::QoS(10));
+
+  pub->start();
+
+  auto negotiated_break_cb = [pub]() -> bool
+    {
+      return pub->type_was_negotiated<EmptyT>();
+    };
+  spin_while_waiting(negotiated_break_cb);
+  ASSERT_TRUE(pub->type_was_negotiated<EmptyT>());
+
+  std_msgs::msg::Empty empty;
+  pub->publish<EmptyT>(empty);
+
+  auto dummy_data_cb = [&empty_count]() -> bool
+    {
+      return empty_count > 0;
+    };
+  spin_while_waiting(dummy_data_cb);
+  ASSERT_EQ(empty_count, 1);
+
+  // And now let's ensure that the negotiated callback was called
+  ASSERT_TRUE(negotiation_cb_called);
 }
