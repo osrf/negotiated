@@ -7,10 +7,10 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(negotiated REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
-find_package(negotiated REQUIRED)
 find_package(std_msgs REQUIRED)
 
 add_library(negotiated_sub_example1_node SHARED
@@ -52,6 +52,19 @@ rclcpp_components_register_node(negotiated_pub_example1_node
   PLUGIN "negotiated_examples::NegotiatedPubExample1"
   EXECUTABLE negotiated_pub_example1)
 
+add_library(negotiated_pub_sub_pair_example1_node SHARED
+  src/negotiated_pub_sub_pair_example1.cpp
+)
+target_link_libraries(negotiated_pub_sub_pair_example1_node
+  negotiated::negotiated
+  rclcpp::rclcpp
+  ${rclcpp_components_TARGETS}
+  ${std_msgs_TARGETS}
+)
+rclcpp_components_register_node(negotiated_pub_sub_pair_example1_node
+  PLUGIN "negotiated_examples::NegotiatedPubSubPairExample1"
+  EXECUTABLE negotiated_pub_sub_pair_example1)
+
 add_executable(negotiated_lifecycle_pub
   src/negotiated_lifecycle_pub.cpp)
 target_link_libraries(negotiated_lifecycle_pub
@@ -62,7 +75,7 @@ target_link_libraries(negotiated_lifecycle_pub
 )
 
 install(
-  TARGETS negotiated_sub_example1_node negotiated_sub_example2_node negotiated_pub_example1_node
+  TARGETS negotiated_sub_example1_node negotiated_sub_example2_node negotiated_pub_example1_node negotiated_pub_sub_pair_example1_node
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
