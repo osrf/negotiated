@@ -247,10 +247,10 @@ public:
    *
    * \param[in] msg The message to publish.
    */
-  template<typename T>
-  void publish(const typename T::MsgT & msg)
+  template<typename T, typename MessageT>
+  void publish(const MessageT & msg)
   {
-    std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
+    std::string ros_type_name = rosidl_generator_traits::name<MessageT>();
     std::string key = generate_key(ros_type_name, T::supported_type_name);
 
     if (key_to_publisher_.count(key) == 0) {
@@ -260,7 +260,7 @@ public:
 
     std::shared_ptr<rclcpp::PublisherBase> publisher_ = key_to_publisher_[key];
 
-    using ROSMessageType = typename rclcpp::TypeAdapter<typename T::MsgT>::ros_message_type;
+    using ROSMessageType = typename rclcpp::TypeAdapter<MessageT>::ros_message_type;
     auto pub = static_cast<rclcpp::Publisher<ROSMessageType> *>(publisher_.get());
     pub->publish(msg);
   }
@@ -277,10 +277,10 @@ public:
    *
    * \param[in] msg The message to publish.
    */
-  template<typename T>
-  void publish(std::unique_ptr<typename T::MsgT> msg)
+  template<typename T, typename MessageT>
+  void publish(std::unique_ptr<MessageT> msg)
   {
-    std::string ros_type_name = rosidl_generator_traits::name<typename T::MsgT>();
+    std::string ros_type_name = rosidl_generator_traits::name<MessageT>();
     std::string key = generate_key(ros_type_name, T::supported_type_name);
 
     if (key_to_publisher_.count(key) == 0) {
@@ -290,7 +290,7 @@ public:
 
     std::shared_ptr<rclcpp::PublisherBase> publisher_ = key_to_publisher_[key];
 
-    using ROSMessageType = typename rclcpp::TypeAdapter<typename T::MsgT>::ros_message_type;
+    using ROSMessageType = typename rclcpp::TypeAdapter<MessageT>::ros_message_type;
     auto pub = static_cast<rclcpp::Publisher<ROSMessageType> *>(publisher_.get());
     pub->publish(std::move(msg));
   }
