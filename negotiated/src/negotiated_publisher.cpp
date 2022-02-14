@@ -394,7 +394,13 @@ void NegotiatedPublisher::negotiate()
       negotiated_interfaces::msg::NegotiatedTopicInfo info;
       info.ros_type_name = type.ros_type_name;
       info.supported_type_name = type.supported_type_name;
-      info.topic_name = topic_name_ + "/" + type.supported_type_name;
+
+      // We always want to send back an absolute topic name, so that downstream subscriptions
+      // don't additionally attempt to namespace it.
+      if (topic_name_[0] != '/') {
+        info.topic_name = "/";
+      }
+      info.topic_name += topic_name_ + "/" + type.supported_type_name;
       msg->negotiated_topics.push_back(info);
 
       std::string key = generate_key(type.ros_type_name, type.supported_type_name);
