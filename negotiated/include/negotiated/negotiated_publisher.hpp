@@ -236,7 +236,11 @@ public:
     using ROSMessageType = typename rclcpp::TypeAdapter<typename T::MsgT>::ros_message_type;
     std::string ros_type_name = rosidl_generator_traits::name<ROSMessageType>();
     std::string key = generate_key(ros_type_name, T::supported_type_name);
-    return key_to_publisher_.count(key) > 0;
+    if (key_to_supported_types_.count(key) == 0) {
+      return 0;
+    }
+
+    return key_to_supported_types_[key].publisher != nullptr;
   }
 
   /// Publish constref data to a chosen publisher.
@@ -258,14 +262,20 @@ public:
     std::string ros_type_name = rosidl_generator_traits::name<ROSMessageType>();
     std::string key = generate_key(ros_type_name, T::supported_type_name);
 
-    if (key_to_publisher_.count(key) == 0) {
+    if (key_to_supported_types_.count(key) == 0) {
       RCLCPP_INFO(node_logging_->get_logger(), "Negotiation hasn't happened yet, skipping publish");
       return;
     }
 
-    std::shared_ptr<rclcpp::PublisherBase> publisher_ = key_to_publisher_[key];
+    std::shared_ptr<rclcpp::PublisherBase> publisher = key_to_supported_types_[key].publisher;
+    if (publisher == nullptr) {
+      RCLCPP_INFO(
+        node_logging_->get_logger(),
+        "This type hasn't been negotiated for, skipping publish");
+      return;
+    }
 
-    auto pub = static_cast<rclcpp::Publisher<typename T::MsgT> *>(publisher_.get());
+    auto pub = static_cast<rclcpp::Publisher<typename T::MsgT> *>(publisher.get());
     pub->publish(msg);
   }
 
@@ -288,14 +298,20 @@ public:
     std::string ros_type_name = rosidl_generator_traits::name<ROSMessageType>();
     std::string key = generate_key(ros_type_name, T::supported_type_name);
 
-    if (key_to_publisher_.count(key) == 0) {
+    if (key_to_supported_types_.count(key) == 0) {
       RCLCPP_INFO(node_logging_->get_logger(), "Negotiation hasn't happened yet, skipping publish");
       return;
     }
 
-    std::shared_ptr<rclcpp::PublisherBase> publisher_ = key_to_publisher_[key];
+    std::shared_ptr<rclcpp::PublisherBase> publisher = key_to_supported_types_[key].publisher;
+    if (publisher == nullptr) {
+      RCLCPP_INFO(
+        node_logging_->get_logger(),
+        "This type hasn't been negotiated for, skipping publish");
+      return;
+    }
 
-    auto pub = static_cast<rclcpp::Publisher<typename T::MsgT> *>(publisher_.get());
+    auto pub = static_cast<rclcpp::Publisher<typename T::MsgT> *>(publisher.get());
     pub->publish(std::move(msg));
   }
 
@@ -320,6 +336,8 @@ private:
     std::string supported_type_name;
     /// The factory function associated with this type.
     std::function<rclcpp::PublisherBase::SharedPtr(const std::string &)> pub_factory;
+    /// The publisher created for this type; may be nullptr if this particular type was not chosen.
+    std::shared_ptr<rclcpp::PublisherBase> publisher{nullptr};
   };
 
   /// The timer callback to use to keep an eye on the network graph.
@@ -367,9 +385,6 @@ private:
   /// informing those NegotiatedSubscriptions of the chosen types.
   rclcpp::Publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr
     negotiated_publisher_;
-  /// A map between unique type keys (as returned by generate_key()) and an associated
-  /// rclcpp::Publisher.  Will only be populated if the particular type was chosen by negotiation.
-  std::map<std::string, std::shared_ptr<rclcpp::PublisherBase>> key_to_publisher_;
   /// The transient local subscription that gathers supported types from NegotiatedSubscriptions.
   rclcpp::Subscription<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_sub_;
   /// The timer used for checking for graph changes.

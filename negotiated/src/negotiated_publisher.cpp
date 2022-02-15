@@ -229,7 +229,9 @@ void NegotiatedPublisher::start()
 void NegotiatedPublisher::stop()
 {
   supported_types_sub_.reset();
-  key_to_publisher_.clear();
+  for (std::pair<const std::string, SupportedTypeInfo> & supported_info : key_to_supported_types_) {
+    supported_info.second.publisher = nullptr;
+  }
   negotiated_subscription_type_gids_->clear();
 }
 
@@ -377,7 +379,11 @@ void NegotiatedPublisher::negotiate()
   if (matched_subs.empty()) {
     // We couldn't find any match, so don't setup anything
     RCLCPP_INFO(node_logging_->get_logger(), "Could not negotiate");
-    key_to_publisher_.clear();
+    for (std::pair<const std::string,
+      SupportedTypeInfo> & supported_info : key_to_supported_types_)
+    {
+      supported_info.second.publisher = nullptr;
+    }
 
     msg->success = false;
   } else {
@@ -397,29 +403,27 @@ void NegotiatedPublisher::negotiate()
     for (const negotiated_interfaces::msg::SupportedType & type : matched_subs) {
       std::string key = generate_key(type.ros_type_name, type.supported_type_name);
       keys_to_preserve.insert(key);
-      if (key_to_publisher_.count(key) == 0) {
-        // This particular subscription is not yet in the map, so we need to create it.
-        auto pub_factory = key_to_supported_types_.at(key).pub_factory;
+      if (key_to_supported_types_.at(key).publisher == nullptr) {
+        // We need to create this publisher.
+        auto pub_factory = key_to_supported_types_[key].pub_factory;
         std::string topic_name = topic_name_ + "/" + type.supported_type_name;
-        key_to_publisher_[key] = pub_factory(topic_name);
+        key_to_supported_types_[key].publisher = pub_factory(topic_name);
       }
 
       negotiated_interfaces::msg::NegotiatedTopicInfo info;
       info.ros_type_name = type.ros_type_name;
       info.supported_type_name = type.supported_type_name;
-      info.topic_name = key_to_publisher_[key]->get_topic_name();
+      info.topic_name = key_to_supported_types_[key].publisher->get_topic_name();
 
       msg->negotiated_topics.push_back(info);
     }
 
     // Now go through and remove any publishers that are no longer needed.
-    for (std::map<std::string, std::shared_ptr<rclcpp::PublisherBase>>::iterator it =
-      key_to_publisher_.begin(); it != key_to_publisher_.end(); )
+    for (std::pair<const std::string,
+      SupportedTypeInfo> & supported_info : key_to_supported_types_)
     {
-      if (keys_to_preserve.count(it->first) == 0) {
-        key_to_publisher_.erase(it++);
-      } else {
-        ++it;
+      if (keys_to_preserve.count(supported_info.first) == 0) {
+        supported_info.second.publisher = nullptr;
       }
     }
 
