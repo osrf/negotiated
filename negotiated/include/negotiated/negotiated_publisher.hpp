@@ -21,6 +21,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -35,6 +36,51 @@
 
 namespace negotiated
 {
+
+namespace detail
+{
+
+using PublisherGid = std::array<uint8_t, RMW_GID_STORAGE_SIZE>;
+
+struct SupportedTypeInfo final
+{
+  /// A map of PublisherGids to the weight associated with them.  Note that this is unique since
+  /// every NegotiatedSubscription in the network has its own publisher for suppported types.
+  std::map<PublisherGid, double> gid_to_weight;
+  /// The canonical ROS type name associated with this type.
+  std::string ros_type_name;
+  /// The arbitrary supported_type_name string associated with this type.
+  std::string supported_type_name;
+  /// The factory function associated with this type.
+  std::function<rclcpp::PublisherBase::SharedPtr(const std::string &)> pub_factory;
+  /// The publisher created for this type; may be nullptr if this particular type was not chosen.
+  std::shared_ptr<rclcpp::PublisherBase> publisher{nullptr};
+};
+
+/// The declaration of the default negotiation algorithm.
+/**
+ * This algorithm will exhaustively search for a solution that will satisfy all connected
+ * NegotiatedSubscriptions.  If a solution exists, the solution with the lowest number of possible
+ * publications is selected.  If no solution exists, or no solution exists with a lower number of
+ * publishers than specified in 'maximum_solutions', an empty vector will be returned.
+ *
+ * \param[in] gid_set The set of Globally Unique Identifiers for NegotiatedSubscriptions that must
+ *                    be satisfied for a full solution.
+ * \param[in] key_to_supported_types A map of arbitrary, unique keys representing each possible
+ *                                   negotiated type to a SupportedTypeInfo struct as above.
+ * \param[in] maximum_solutions The maximum number of solutions to consider before giving up
+ *                              negotiation.
+ *
+ * \return A vector of negotiated_interfaces::msg::SupportedType structures, one for each of the
+ *         publishers that was chosen by negotiation.  If negotiation could not be completed for
+ *         any reason, this vector may be empty.
+ */
+std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callback(
+  const std::set<PublisherGid> & gid_set, const std::map<std::string,
+  SupportedTypeInfo> & key_to_supported_types,
+  size_t maximum_solutions);
+
+}  // namespace detail
 
 /// NegotiatedPublisherOptions allows the user to control some aspects of the NegotiatedPublisher.
 struct NegotiatedPublisherOptions final
@@ -53,6 +99,13 @@ struct NegotiatedPublisherOptions final
   /// any number of solutions, but this may be restricted all the way down to 1 (passing
   /// 0 here will result in an exception while constructing).
   size_t maximum_negotiated_solutions{std::numeric_limits<size_t>::max()};
+
+  /// The callback that will be called to perform negotiation.  The arguments are the same as
+  /// those described for detail::default_negotiation_callback().
+  std::function<std::vector<negotiated_interfaces::msg::SupportedType>(
+      const std::set<detail::PublisherGid> &,
+      const std::map<std::string, detail::SupportedTypeInfo> &,
+      size_t maximum_solutions)> negotiation_cb{detail::default_negotiation_callback};
 
   /// A callback that will be called if negotiation is successful.  This gives the
   /// NegotiatedPublisher user a chance to react in arbitrary ways once negotiation has happened.
@@ -160,7 +213,7 @@ public:
       throw std::invalid_argument("Cannot add duplicate key to supported types");
     }
 
-    key_to_supported_types_.emplace(key_name, SupportedTypeInfo());
+    key_to_supported_types_.emplace(key_name, detail::SupportedTypeInfo());
 
     auto factory =
       [this, qos, options](const std::string & topic_name) -> rclcpp::PublisherBase::SharedPtr
@@ -174,7 +227,7 @@ public:
       };
     key_to_supported_types_[key_name].pub_factory = factory;
 
-    PublisherGid gid{0};
+    detail::PublisherGid gid{0};
     key_to_supported_types_[key_name].gid_to_weight[gid] = weight;
     key_to_supported_types_[key_name].ros_type_name = ros_type_name;
     key_to_supported_types_[key_name].supported_type_name = T::supported_type_name;
@@ -323,23 +376,6 @@ public:
   void stop();
 
 private:
-  using PublisherGid = std::array<uint8_t, RMW_GID_STORAGE_SIZE>;
-
-  struct SupportedTypeInfo final
-  {
-    /// A map of PublisherGids to the weight associated with them.  Note that this is unique since
-    /// every NegotiatedSubscription in the network has its own publisher for suppported types.
-    std::map<PublisherGid, double> gid_to_weight;
-    /// The canonical ROS type name associated with this type.
-    std::string ros_type_name;
-    /// The arbitrary supported_type_name string associated with this type.
-    std::string supported_type_name;
-    /// The factory function associated with this type.
-    std::function<rclcpp::PublisherBase::SharedPtr(const std::string &)> pub_factory;
-    /// The publisher created for this type; may be nullptr if this particular type was not chosen.
-    std::shared_ptr<rclcpp::PublisherBase> publisher{nullptr};
-  };
-
   /// The timer callback to use to keep an eye on the network graph.
   /**
    * This method is run periodically to see if there have been changes in the network,
@@ -380,7 +416,7 @@ private:
   NegotiatedPublisherOptions negotiated_pub_options_;
 
   /// A map between unique type keys (as returned by generate_key()) and SupportedTypeInfos.
-  std::map<std::string, SupportedTypeInfo> key_to_supported_types_;
+  std::map<std::string, detail::SupportedTypeInfo> key_to_supported_types_;
   /// The publisher used to collect NegotiatedSubscriptions that are part of the network and for
   /// informing those NegotiatedSubscriptions of the chosen types.
   rclcpp::Publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr
@@ -396,7 +432,7 @@ private:
   std::mutex negotiated_subscription_type_mutex_;
   /// A map between PublisherGids and the list of unique type keys (as returned by generate_key()).
   /// This is used to track which GIDs preferences have been met during negotiation.
-  std::shared_ptr<std::map<PublisherGid,
+  std::shared_ptr<std::map<detail::PublisherGid,
     std::vector<std::string>>> negotiated_subscription_type_gids_;
 };
 

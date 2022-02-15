@@ -675,7 +675,7 @@ TEST_F(TestNegotiatedPublisher, two_subscriptions_different_types_no_multiple_ty
   ASSERT_EQ(string_count, 0);
 }
 
-TEST_F(TestNegotiatedPublisher, negotiated_callback)
+TEST_F(TestNegotiatedPublisher, successful_negotiation_callback)
 {
   // Dummy subscription
   auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
@@ -735,4 +735,236 @@ TEST_F(TestNegotiatedPublisher, negotiated_callback)
 
   // And now let's ensure that the negotiated callback was called
   ASSERT_TRUE(negotiation_cb_called);
+}
+
+TEST_F(TestNegotiatedPublisher, negotiation_callback)
+{
+  // Dummy subscription
+  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
+
+  negotiated_interfaces::msg::SupportedTypes dummy_supported_types;
+  negotiated_interfaces::msg::SupportedType empty_type;
+  empty_type.ros_type_name = "std_msgs/msg/Empty";
+  empty_type.supported_type_name = "a";
+  empty_type.weight = 1.0;
+  dummy_supported_types.supported_types.push_back(empty_type);
+  negotiated_interfaces::msg::SupportedType string_type;
+  string_type.ros_type_name = "std_msgs/msg/String";
+  string_type.supported_type_name = "b";
+  string_type.weight = 0.1;
+  dummy_supported_types.supported_types.push_back(string_type);
+
+  dummy_sub_types->publish(dummy_supported_types);
+
+  int empty_count = 0;
+  auto dummy_sub_cb = [&empty_count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      empty_count++;
+    };
+
+  int string_count = 0;
+  auto dummy_sub_cb2 = [&string_count](const std_msgs::msg::String & msg)
+    {
+      (void)msg;
+      string_count++;
+    };
+
+  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>(
+    "foo/a", rclcpp::QoS(10), dummy_sub_cb);
+
+  auto dummy_sub2 = node_->create_subscription<std_msgs::msg::String>(
+    "foo/b", rclcpp::QoS(10), dummy_sub_cb2);
+
+  negotiated::NegotiatedPublisherOptions options;
+  options.negotiation_cb =
+    [](const std::set<negotiated::detail::PublisherGid> & gid_set, const std::map<std::string,
+      negotiated::detail::SupportedTypeInfo> & key_to_supported_types,
+      size_t maximum_solutions) -> std::vector<negotiated_interfaces::msg::SupportedType>
+    {
+      (void)gid_set;
+      (void)key_to_supported_types;
+      (void)maximum_solutions;
+
+      // By default, we would have expected the negotiation to choose the std_msgs/msg/Empty
+      // ROS message type, since that had the higher weight.  But this negotiation algorithm
+      // always prefers the std_msgs/msg/String one.
+      std::vector<negotiated_interfaces::msg::SupportedType> ret(1);
+      ret[0].ros_type_name = "std_msgs/msg/String";
+      ret[0].supported_type_name = "b";
+      return ret;
+    };
+
+  auto pub = std::make_shared<negotiated::NegotiatedPublisher>(*node_, "foo", options);
+
+  pub->add_supported_type<EmptyT>(1.0, rclcpp::QoS(10));
+  pub->add_supported_type<StringT>(0.1, rclcpp::QoS(10));
+
+  pub->start();
+
+  auto negotiated_break_cb = [pub]() -> bool
+    {
+      return pub->type_was_negotiated<StringT>();
+    };
+  spin_while_waiting(negotiated_break_cb);
+  ASSERT_TRUE(pub->type_was_negotiated<StringT>());
+  ASSERT_FALSE(pub->type_was_negotiated<EmptyT>());
+
+  std_msgs::msg::String str;
+  pub->publish<StringT>(str);
+
+  auto dummy_data_cb = [&string_count]() -> bool
+    {
+      return string_count > 0;
+    };
+  spin_while_waiting(dummy_data_cb);
+  ASSERT_EQ(string_count, 1);
+  ASSERT_EQ(empty_count, 0);
+}
+
+TEST_F(TestNegotiatedPublisher, negotiation_callback_empty_set)
+{
+  // Dummy subscription
+  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
+
+  negotiated_interfaces::msg::SupportedTypes dummy_supported_types;
+  negotiated_interfaces::msg::SupportedType empty_type;
+  empty_type.ros_type_name = "std_msgs/msg/Empty";
+  empty_type.supported_type_name = "a";
+  empty_type.weight = 1.0;
+  dummy_supported_types.supported_types.push_back(empty_type);
+  negotiated_interfaces::msg::SupportedType string_type;
+  string_type.ros_type_name = "std_msgs/msg/String";
+  string_type.supported_type_name = "b";
+  string_type.weight = 0.1;
+  dummy_supported_types.supported_types.push_back(string_type);
+
+  dummy_sub_types->publish(dummy_supported_types);
+
+  int empty_count = 0;
+  auto dummy_sub_cb = [&empty_count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      empty_count++;
+    };
+
+  int string_count = 0;
+  auto dummy_sub_cb2 = [&string_count](const std_msgs::msg::String & msg)
+    {
+      (void)msg;
+      string_count++;
+    };
+
+  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>(
+    "foo/a", rclcpp::QoS(10), dummy_sub_cb);
+
+  auto dummy_sub2 = node_->create_subscription<std_msgs::msg::String>(
+    "foo/b", rclcpp::QoS(10), dummy_sub_cb2);
+
+  negotiated::NegotiatedPublisherOptions options;
+  options.negotiation_cb =
+    [](const std::set<negotiated::detail::PublisherGid> & gid_set, const std::map<std::string,
+      negotiated::detail::SupportedTypeInfo> & key_to_supported_types,
+      size_t maximum_solutions) -> std::vector<negotiated_interfaces::msg::SupportedType>
+    {
+      (void)gid_set;
+      (void)key_to_supported_types;
+      (void)maximum_solutions;
+
+      // By default, we would have expected the negotiation to choose the std_msgs/msg/Empty
+      // ROS message type, but this negotiation algorithm couldn't find a solution and returns
+      // an empty vector.
+      return std::vector<negotiated_interfaces::msg::SupportedType>();
+    };
+
+  auto pub = std::make_shared<negotiated::NegotiatedPublisher>(*node_, "foo", options);
+
+  pub->add_supported_type<EmptyT>(1.0, rclcpp::QoS(10));
+  pub->add_supported_type<StringT>(0.1, rclcpp::QoS(10));
+
+  pub->start();
+
+  auto negotiated_break_cb = [pub]() -> bool
+    {
+      return pub->type_was_negotiated<StringT>();
+    };
+  spin_while_waiting(negotiated_break_cb);
+  ASSERT_FALSE(pub->type_was_negotiated<StringT>());
+  ASSERT_FALSE(pub->type_was_negotiated<EmptyT>());
+}
+
+TEST_F(TestNegotiatedPublisher, negotiation_callback_bogus_data)
+{
+  // Dummy subscription
+  auto dummy_sub_types = node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
+    "foo/supported_types", rclcpp::QoS(10).transient_local());
+
+  negotiated_interfaces::msg::SupportedTypes dummy_supported_types;
+  negotiated_interfaces::msg::SupportedType empty_type;
+  empty_type.ros_type_name = "std_msgs/msg/Empty";
+  empty_type.supported_type_name = "a";
+  empty_type.weight = 1.0;
+  dummy_supported_types.supported_types.push_back(empty_type);
+  negotiated_interfaces::msg::SupportedType string_type;
+  string_type.ros_type_name = "std_msgs/msg/String";
+  string_type.supported_type_name = "b";
+  string_type.weight = 0.1;
+  dummy_supported_types.supported_types.push_back(string_type);
+
+  dummy_sub_types->publish(dummy_supported_types);
+
+  int empty_count = 0;
+  auto dummy_sub_cb = [&empty_count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      empty_count++;
+    };
+
+  int string_count = 0;
+  auto dummy_sub_cb2 = [&string_count](const std_msgs::msg::String & msg)
+    {
+      (void)msg;
+      string_count++;
+    };
+
+  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>(
+    "foo/a", rclcpp::QoS(10), dummy_sub_cb);
+
+  auto dummy_sub2 = node_->create_subscription<std_msgs::msg::String>(
+    "foo/b", rclcpp::QoS(10), dummy_sub_cb2);
+
+  negotiated::NegotiatedPublisherOptions options;
+  options.negotiation_cb =
+    [](const std::set<negotiated::detail::PublisherGid> & gid_set, const std::map<std::string,
+      negotiated::detail::SupportedTypeInfo> & key_to_supported_types,
+      size_t maximum_solutions) -> std::vector<negotiated_interfaces::msg::SupportedType>
+    {
+      (void)gid_set;
+      (void)key_to_supported_types;
+      (void)maximum_solutions;
+
+      // This negotiation algorithm somehow chose an invalid combination; the rest of the
+      // code in NegotiatedPublisher should reject this.
+      std::vector<negotiated_interfaces::msg::SupportedType> ret(1);
+      ret[0].ros_type_name = "std_msgs/msg/Bogus";
+      ret[0].supported_type_name = "q";
+      return ret;
+    };
+
+  auto pub = std::make_shared<negotiated::NegotiatedPublisher>(*node_, "foo", options);
+
+  pub->add_supported_type<EmptyT>(1.0, rclcpp::QoS(10));
+  pub->add_supported_type<StringT>(0.1, rclcpp::QoS(10));
+
+  pub->start();
+
+  auto negotiated_break_cb = [pub]() -> bool
+    {
+      return pub->type_was_negotiated<StringT>();
+    };
+  spin_while_waiting(negotiated_break_cb);
+  ASSERT_FALSE(pub->type_was_negotiated<StringT>());
+  ASSERT_FALSE(pub->type_was_negotiated<EmptyT>());
 }
