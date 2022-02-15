@@ -395,25 +395,21 @@ void NegotiatedPublisher::negotiate()
 
     std::set<std::string> keys_to_preserve;
     for (const negotiated_interfaces::msg::SupportedType & type : matched_subs) {
-      negotiated_interfaces::msg::NegotiatedTopicInfo info;
-      info.ros_type_name = type.ros_type_name;
-      info.supported_type_name = type.supported_type_name;
-
-      // We always want to send back an absolute topic name, so that downstream subscriptions
-      // don't additionally attempt to namespace it.
-      if (topic_name_[0] != '/') {
-        info.topic_name = "/";
-      }
-      info.topic_name += topic_name_ + "/" + type.supported_type_name;
-      msg->negotiated_topics.push_back(info);
-
       std::string key = generate_key(type.ros_type_name, type.supported_type_name);
       keys_to_preserve.insert(key);
       if (key_to_publisher_.count(key) == 0) {
         // This particular subscription is not yet in the map, so we need to create it.
         auto pub_factory = key_to_supported_types_.at(key).pub_factory;
-        key_to_publisher_[key] = pub_factory(info.topic_name);
+        std::string topic_name = topic_name_ + "/" + type.supported_type_name;
+        key_to_publisher_[key] = pub_factory(topic_name);
       }
+
+      negotiated_interfaces::msg::NegotiatedTopicInfo info;
+      info.ros_type_name = type.ros_type_name;
+      info.supported_type_name = type.supported_type_name;
+      info.topic_name = key_to_publisher_[key]->get_topic_name();
+
+      msg->negotiated_topics.push_back(info);
     }
 
     // Now go through and remove any publishers that are no longer needed.
