@@ -95,6 +95,11 @@ struct NegotiatedPublisherOptions final
   /// NegotiatedPublisher::negotiate().
   bool negotiate_on_subscription_add{true};
 
+  /// Whether to automatically disconnect publishers if the negotiation algorithm fails to find
+  /// a solution to connect to all NegotiationSubscriptions in the network.  If set to false,
+  /// then when a renegotiation fails existing publishers will be left as-is.
+  bool disconnect_publishers_on_failure{true};
+
   /// The maximum number of solutions to allow while negotiating.  The default is to allow
   /// any number of solutions, but this may be restricted all the way down to 1 (passing
   /// 0 here will result in an exception while constructing).

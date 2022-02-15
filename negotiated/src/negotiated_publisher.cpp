@@ -402,12 +402,13 @@ void NegotiatedPublisher::negotiate()
 
   if (matched_subs.empty()) {
     // We couldn't find any match, so don't setup anything
-    // TODO(clalancette): Add configuration to not disconnect in this case
     RCLCPP_INFO(node_logging_->get_logger(), "Could not negotiate");
-    for (std::pair<const std::string,
-      detail::SupportedTypeInfo> & supported_info : key_to_supported_types_)
-    {
-      supported_info.second.publisher = nullptr;
+    if (negotiated_pub_options_.disconnect_publishers_on_failure) {
+      for (std::pair<const std::string,
+        detail::SupportedTypeInfo> & supported_info : key_to_supported_types_)
+      {
+        supported_info.second.publisher = nullptr;
+      }
     }
 
     msg->success = false;
