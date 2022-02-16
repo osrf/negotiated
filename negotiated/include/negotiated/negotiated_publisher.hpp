@@ -45,7 +45,7 @@ using PublisherGid = std::array<uint8_t, RMW_GID_STORAGE_SIZE>;
 struct SupportedTypeInfo final
 {
   /// A map of PublisherGids to the weight associated with them.  Note that this is unique since
-  /// every NegotiatedSubscription in the network has its own publisher for suppported types.
+  /// every NegotiatedSubscription in the network has its own publisher for supported types.
   std::map<PublisherGid, double> gid_to_weight;
   /// The canonical ROS type name associated with this type.
   std::string ros_type_name;
