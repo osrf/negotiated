@@ -78,6 +78,7 @@ struct SupportedTypeInfo final
 std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callback(
   const std::set<PublisherGid> & gid_set, const std::map<std::string,
   SupportedTypeInfo> & key_to_supported_types,
+  bool allow_partial_negotiation_matches,
   size_t maximum_solutions);
 
 }  // namespace detail
@@ -100,6 +101,11 @@ struct NegotiatedPublisherOptions final
   /// then when a renegotiation fails existing publishers will be left as-is.
   bool disconnect_publishers_on_failure{true};
 
+  /// Whether to allow partial matches in the negotiation algorithm.  If this is set to true,
+  /// then the negotiation algorithm will always return a result, even if it cannot satisfy
+  /// all of the subscriptions in the network.
+  bool allow_partial_negotiation_matches{false};
+
   /// The maximum number of solutions to allow while negotiating.  The default is to allow
   /// any number of solutions, but this may be restricted all the way down to 1 (passing
   /// 0 here will result in an exception while constructing).
@@ -110,7 +116,8 @@ struct NegotiatedPublisherOptions final
   std::function<std::vector<negotiated_interfaces::msg::SupportedType>(
       const std::set<detail::PublisherGid> &,
       const std::map<std::string, detail::SupportedTypeInfo> &,
-      size_t maximum_solutions)> negotiation_cb{detail::default_negotiation_callback};
+      bool,
+      size_t)> negotiation_cb{detail::default_negotiation_callback};
 
   /// A callback that will be called if negotiation is successful.  This gives the
   /// NegotiatedPublisher user a chance to react in arbitrary ways once negotiation has happened.

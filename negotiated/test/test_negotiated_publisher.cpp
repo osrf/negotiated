@@ -781,10 +781,12 @@ TEST_F(TestNegotiatedPublisher, negotiation_callback)
   options.negotiation_cb =
     [](const std::set<negotiated::detail::PublisherGid> & gid_set, const std::map<std::string,
       negotiated::detail::SupportedTypeInfo> & key_to_supported_types,
+      bool allow_partial_negotiation_matches,
       size_t maximum_solutions) -> std::vector<negotiated_interfaces::msg::SupportedType>
     {
       (void)gid_set;
       (void)key_to_supported_types;
+      (void)allow_partial_negotiation_matches;
       (void)maximum_solutions;
 
       // By default, we would have expected the negotiation to choose the std_msgs/msg/Empty
@@ -867,10 +869,12 @@ TEST_F(TestNegotiatedPublisher, negotiation_callback_empty_set)
   options.negotiation_cb =
     [](const std::set<negotiated::detail::PublisherGid> & gid_set, const std::map<std::string,
       negotiated::detail::SupportedTypeInfo> & key_to_supported_types,
+      bool allow_partial_negotiation_matches,
       size_t maximum_solutions) -> std::vector<negotiated_interfaces::msg::SupportedType>
     {
       (void)gid_set;
       (void)key_to_supported_types;
+      (void)allow_partial_negotiation_matches;
       (void)maximum_solutions;
 
       // By default, we would have expected the negotiation to choose the std_msgs/msg/Empty
@@ -939,10 +943,12 @@ TEST_F(TestNegotiatedPublisher, negotiation_callback_bogus_data)
   options.negotiation_cb =
     [](const std::set<negotiated::detail::PublisherGid> & gid_set, const std::map<std::string,
       negotiated::detail::SupportedTypeInfo> & key_to_supported_types,
+      bool allow_partial_negotiation_matches,
       size_t maximum_solutions) -> std::vector<negotiated_interfaces::msg::SupportedType>
     {
       (void)gid_set;
       (void)key_to_supported_types;
+      (void)allow_partial_negotiation_matches;
       (void)maximum_solutions;
 
       // This negotiation algorithm somehow chose an invalid combination; the rest of the

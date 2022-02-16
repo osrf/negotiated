@@ -61,7 +61,9 @@ struct NegotiatedSubscriptionOptions
   /// has failed renegotiation.
   bool disconnect_on_negotiation_failure{true};
 
-  /// A user settable callback to call instead of the default_negotiate_cb().
+  /// The callback to be called when a NegotiatedPublisher sends the results of a negotiation.
+  /// The user can provide a custom negotiation function here to override the default (see
+  /// default_negotiate_cb() for details of the default negotiation function).
   std::function<negotiated_interfaces::msg::NegotiatedTopicInfo(
       const negotiated_interfaces::msg::NegotiatedTopicInfo & existing_info,
       const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)> negotiate_cb{

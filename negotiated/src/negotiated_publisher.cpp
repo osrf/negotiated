@@ -44,6 +44,7 @@ namespace detail
 std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callback(
   const std::set<detail::PublisherGid> & gid_set,
   const std::map<std::string, detail::SupportedTypeInfo> & key_to_supported_types,
+  bool allow_partial_negotiation_matches,
   size_t maximum_solutions)
 {
   // What the negotiation algorithm does is to try to find the minimum number of publishers with
@@ -103,11 +104,14 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
     keys.push_back(supported_info.first);
   }
 
+  size_t max_gids_supported = 0;
+
   for (size_t i = 1; i <= key_to_supported_types.size(); ++i) {
     double max_weight = 0.0;
 
     auto check_combination =
-      [key_to_supported_types, gid_set, &max_weight, &matched_subs](
+      [key_to_supported_types, gid_set, allow_partial_negotiation_matches, &max_weight,
+        &max_gids_supported, &matched_subs](
       std::vector<std::string>::iterator first,
       std::vector<std::string>::iterator last) -> bool
       {
@@ -130,13 +134,16 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
           }
         }
 
-        if (gids_needed.empty()) {
+        if (gids_needed.empty() || allow_partial_negotiation_matches) {
           // Hooray!  We found a solution at this level.  We don't interrupt processing at this
           // level because there may be another combination that is more favorable, but we know
           // we don't need to descend to further levels.
 
-          if (sum_of_weights > max_weight) {
+          size_t gids_supported_by_solution = gid_set.size() - gids_needed.size();
+
+          if (sum_of_weights > max_weight && gids_supported_by_solution >= max_gids_supported) {
             max_weight = sum_of_weights;
+            max_gids_supported = gids_supported_by_solution;
 
             matched_subs.clear();
             for (std::vector<std::string>::iterator it = first; it != last; ++it) {
@@ -154,7 +161,7 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
 
     for_each_combination(keys.begin(), keys.begin() + i, keys.end(), check_combination);
 
-    if (!matched_subs.empty()) {
+    if (max_gids_supported == gid_set.size()) {
       break;
     }
 
@@ -320,6 +327,12 @@ void NegotiatedPublisher::start()
 
       std::vector<std::string> key_list;
 
+      // TODO(clalancette): Currently if a NegotiatedSubscription joins this network, but
+      // provides types that this NegotiatedPublisher doesn't support, it will be completely
+      // ignored.  This means that the negotiation algorithm will not take this
+      // NegotiatedSbuscription into account, and thus may produce a successful result even
+      // though not all of the NegotiatedSubscriptions have been satisfied.  We probably want
+      // this to be configurable behavior.
       for (const negotiated_interfaces::msg::SupportedType & supported_type :
         supported_types.supported_types)
       {
@@ -396,6 +409,7 @@ void NegotiatedPublisher::negotiate()
     negotiated_pub_options_.negotiation_cb(
     gid_set,
     key_to_supported_types_,
+    negotiated_pub_options_.allow_partial_negotiation_matches,
     negotiated_pub_options_.maximum_negotiated_solutions);
 
   auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
