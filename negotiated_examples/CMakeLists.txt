@@ -105,6 +105,19 @@ target_link_libraries(negotiated_lifecycle_pub
   ${std_msgs_TARGETS}
 )
 
+add_library(negotiated_pub_compatible_example1_node SHARED
+  src/negotiated_pub_compatible_example1.cpp
+)
+target_link_libraries(negotiated_pub_compatible_example1_node
+  negotiated::negotiated
+  rclcpp::rclcpp
+  ${rclcpp_components_TARGETS}
+  ${std_msgs_TARGETS}
+)
+rclcpp_components_register_node(negotiated_pub_compatible_example1_node
+  PLUGIN "negotiated_examples::NegotiatedPubCompatibleExample1"
+  EXECUTABLE negotiated_pub_compatible_example1)
+
 install(
   TARGETS negotiated_sub_example1_node
           negotiated_sub_example2_node
@@ -112,6 +125,7 @@ install(
           negotiated_pub_sub_pair_example1_node
           negotiated_pub_type_adapt_example1_node
           negotiated_sub_type_adapt_example1_node
+          negotiated_pub_compatible_example1_node
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin

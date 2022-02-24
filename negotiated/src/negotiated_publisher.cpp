@@ -41,8 +41,15 @@ namespace negotiated
 namespace detail
 {
 
+std::string generate_key(
+  const std::string & ros_type_name,
+  const std::string & supported_type_name)
+{
+  return ros_type_name + "+" + supported_type_name;
+}
+
 std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callback(
-  const std::set<detail::PublisherGid> & gid_set,
+  const std::map<detail::PublisherGid, std::vector<std::string>> & negotiated_sub_gid_to_keys,
   const std::map<std::string, detail::SupportedTypeInfo> & key_to_supported_types,
   size_t maximum_solutions)
 {
@@ -96,11 +103,22 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
 
   std::vector<negotiated_interfaces::msg::SupportedType> matched_subs;
 
+  std::set<detail::PublisherGid> gid_set;
+  for (const std::pair<detail::PublisherGid,
+    std::vector<std::string>> & gid : negotiated_sub_gid_to_keys)
+  {
+    gid_set.insert(gid.first);
+  }
+
   std::vector<std::string> keys;
+  std::vector<detail::SupportedTypeInfo> compatible_supported_types;
   for (const std::pair<const std::string,
     detail::SupportedTypeInfo> & supported_info : key_to_supported_types)
   {
     keys.push_back(supported_info.first);
+    if (supported_info.second.is_compat) {
+      compatible_supported_types.push_back(supported_info.second);
+    }
   }
 
   for (size_t i = 1; i <= key_to_supported_types.size(); ++i) {
@@ -109,6 +127,8 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
     auto check_combination =
       [&key_to_supported_types = std::as_const(key_to_supported_types),
         & gid_set = std::as_const(gid_set),
+        & compatible_supported_types = std::as_const(compatible_supported_types),
+        & negotiated_sub_gid_to_keys = std::as_const(negotiated_sub_gid_to_keys),
         &max_weight,
         &matched_subs](
       std::vector<std::string>::iterator first,
@@ -133,6 +153,40 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
           }
         }
 
+        std::vector<negotiated_interfaces::msg::SupportedType> compatible_subs;
+        if (!compatible_supported_types.empty()) {
+          // We've removed all of the ones we could above in this iteration.  Now we go through
+          // the remaining list of GIDs, seeing if any of the "compatible" supported types satisfy
+          // the requirements.
+          for (std::set<detail::PublisherGid>::const_iterator it = gids_needed.begin();
+            it != gids_needed.end(); )
+          {
+            const std::vector<std::string> key_list = negotiated_sub_gid_to_keys.at(*it);
+
+            bool found_key = false;
+            for (const detail::SupportedTypeInfo & compat_info : compatible_supported_types) {
+              std::string key = detail::generate_key(
+                compat_info.ros_type_name,
+                compat_info.supported_type_name);
+              if (std::find(key_list.begin(), key_list.end(), key) != key_list.end()) {
+                negotiated_interfaces::msg::SupportedType match;
+                match.ros_type_name = compat_info.ros_type_name;
+                match.supported_type_name = compat_info.supported_type_name;
+                compatible_subs.push_back(match);
+
+                found_key = true;
+                break;
+              }
+            }
+
+            if (found_key) {
+              it = gids_needed.erase(it);
+            } else {
+              ++it;
+            }
+          }
+        }
+
         if (gids_needed.empty()) {
           // Hooray!  We found a solution at this level.  We don't interrupt processing at this
           // level because there may be another combination that is more favorable, but we know
@@ -142,6 +196,7 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
             max_weight = sum_of_weights;
 
             matched_subs.clear();
+            matched_subs = compatible_subs;
             for (std::vector<std::string>::iterator it = first; it != last; ++it) {
               detail::SupportedTypeInfo supported_type_info = key_to_supported_types.at(*it);
               negotiated_interfaces::msg::SupportedType match;
@@ -302,13 +357,6 @@ void NegotiatedPublisher::graph_change_timer_callback()
   }
 }
 
-std::string NegotiatedPublisher::generate_key(
-  const std::string & ros_type_name,
-  const std::string & supported_type_name)
-{
-  return ros_type_name + "+" + supported_type_name;
-}
-
 void NegotiatedPublisher::start()
 {
   auto neg_cb =
@@ -351,7 +399,7 @@ void NegotiatedPublisher::start()
       for (const negotiated_interfaces::msg::SupportedType & supported_type :
         supported_types.supported_types)
       {
-        std::string key = generate_key(
+        std::string key = detail::generate_key(
           supported_type.ros_type_name,
           supported_type.supported_type_name);
         if (key_to_supported_types_.count(key) == 0) {
@@ -390,7 +438,9 @@ void NegotiatedPublisher::stop()
   for (std::pair<const std::string,
     detail::SupportedTypeInfo> & supported_info : key_to_supported_types_)
   {
-    supported_info.second.publisher = nullptr;
+    if (!supported_info.second.is_compat) {
+      supported_info.second.publisher = nullptr;
+    }
   }
   negotiated_subscription_type_gids_->clear();
 }
@@ -399,13 +449,6 @@ void NegotiatedPublisher::negotiate()
 {
   RCLCPP_INFO(node_logging_->get_logger(), "Negotiating");
 
-  if (negotiated_subscription_type_gids_->empty()) {
-    RCLCPP_INFO(
-      node_logging_->get_logger(),
-      "Skipping negotiation because of empty subscription supported types");
-    return;
-  }
-
   if (key_to_supported_types_.empty()) {
     RCLCPP_INFO(
       node_logging_->get_logger(),
@@ -413,18 +456,14 @@ void NegotiatedPublisher::negotiate()
     return;
   }
 
-  std::set<detail::PublisherGid> gid_set;
-  for (const std::pair<detail::PublisherGid,
-    std::vector<std::string>> & gid : *negotiated_subscription_type_gids_)
-  {
-    gid_set.insert(gid.first);
-  }
+  std::vector<negotiated_interfaces::msg::SupportedType> matched_subs;
 
-  std::vector<negotiated_interfaces::msg::SupportedType> matched_subs =
-    negotiated_pub_options_.negotiation_cb(
-    gid_set,
-    key_to_supported_types_,
-    negotiated_pub_options_.maximum_negotiated_solutions);
+  if (!negotiated_subscription_type_gids_->empty()) {
+    matched_subs = negotiated_pub_options_.negotiation_cb(
+      *negotiated_subscription_type_gids_,
+      key_to_supported_types_,
+      negotiated_pub_options_.maximum_negotiated_solutions);
+  }
 
   auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
 
@@ -435,7 +474,9 @@ void NegotiatedPublisher::negotiate()
       for (std::pair<const std::string,
         detail::SupportedTypeInfo> & supported_info : key_to_supported_types_)
       {
-        supported_info.second.publisher = nullptr;
+        if (!supported_info.second.is_compat) {
+          supported_info.second.publisher = nullptr;
+        }
       }
     }
 
@@ -455,7 +496,7 @@ void NegotiatedPublisher::negotiate()
 
     std::set<std::string> keys_to_preserve;
     for (const negotiated_interfaces::msg::SupportedType & type : matched_subs) {
-      std::string key = generate_key(type.ros_type_name, type.supported_type_name);
+      std::string key = detail::generate_key(type.ros_type_name, type.supported_type_name);
 
       if (key_to_supported_types_.count(key) == 0) {
         // Somehow the negotiation algorithm returned a non-existent key to us.  Log
@@ -490,7 +531,9 @@ void NegotiatedPublisher::negotiate()
       detail::SupportedTypeInfo> & supported_info : key_to_supported_types_)
     {
       if (keys_to_preserve.count(supported_info.first) == 0) {
-        supported_info.second.publisher = nullptr;
+        if (!supported_info.second.is_compat) {
+          supported_info.second.publisher = nullptr;
+        }
       }
     }
 
