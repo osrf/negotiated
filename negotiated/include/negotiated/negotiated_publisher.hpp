@@ -42,6 +42,19 @@ namespace detail
 
 using PublisherGid = std::array<uint8_t, RMW_GID_STORAGE_SIZE>;
 
+/// Generate the key that is used as an index into the maps.
+/**
+ * Two of the internal maps are keyed off of the uniqueness of individual types as given by
+ * add_supported_type().  This method is responsible for generating those unique keys.
+ *
+ * \param[in] ros_type_name The canonical ROS type name, like std_msgs/msg/String.
+ * \param[in] supported_type_name The arbitrary (but non-empty) string passed by a user.
+ * \return A string that is the unique key into the maps.
+ */
+std::string generate_key(
+  const std::string & ros_type_name,
+  const std::string & supported_type_name);
+
 struct SupportedTypeInfo final
 {
   /// A map of PublisherGids to the weight associated with them.  Note that this is unique since
@@ -53,6 +66,10 @@ struct SupportedTypeInfo final
 
   /// The arbitrary supported_type_name string associated with this type.
   std::string supported_type_name;
+
+  /// Whether this supported type info is a compatible one (a regular publisher that the user
+  /// gave to us), or a NegotiatedPublisher.
+  bool is_compat;
 
   /// The factory function associated with this type.
   std::function<rclcpp::PublisherBase::SharedPtr(const std::string &)> pub_factory;
@@ -80,8 +97,8 @@ struct SupportedTypeInfo final
  *         any reason, this vector may be empty.
  */
 std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callback(
-  const std::set<PublisherGid> & gid_set, const std::map<std::string,
-  SupportedTypeInfo> & key_to_supported_types,
+  const std::map<detail::PublisherGid, std::vector<std::string>> & negotiated_sub_gid_to_keys,
+  const std::map<std::string, SupportedTypeInfo> & key_to_supported_types,
   size_t maximum_solutions);
 
 }  // namespace detail
@@ -112,7 +129,7 @@ struct NegotiatedPublisherOptions final
   /// The callback that will be called to perform negotiation.  The arguments are the same as
   /// those described for detail::default_negotiation_callback().
   std::function<std::vector<negotiated_interfaces::msg::SupportedType>(
-      const std::set<detail::PublisherGid> &,
+      const std::map<detail::PublisherGid, std::vector<std::string>> &,
       const std::map<std::string, detail::SupportedTypeInfo> &,
       size_t maximum_solutions)> negotiation_cb{detail::default_negotiation_callback};
 
@@ -217,7 +234,7 @@ public:
 
     using ROSMessageType = typename rclcpp::TypeAdapter<typename T::MsgT>::ros_message_type;
     std::string ros_type_name = rosidl_generator_traits::name<ROSMessageType>();
-    std::string key_name = generate_key(ros_type_name, T::supported_type_name);
+    std::string key_name = detail::generate_key(ros_type_name, T::supported_type_name);
     if (key_to_supported_types_.count(key_name) != 0) {
       throw std::invalid_argument("Cannot add duplicate key to supported types");
     }
@@ -228,6 +245,7 @@ public:
     key_to_supported_types_[key_name].gid_to_weight[gid] = weight;
     key_to_supported_types_[key_name].ros_type_name = ros_type_name;
     key_to_supported_types_[key_name].supported_type_name = T::supported_type_name;
+    key_to_supported_types_[key_name].is_compat = false;
     key_to_supported_types_[key_name].pub_factory =
       [this, qos, options](const std::string & topic_name) -> rclcpp::PublisherBase::SharedPtr
       {
@@ -245,6 +263,7 @@ public:
    * Remove a supported type from this NegotiatedPublisher.  The template argument must have the
    * same form as in add_supported_type(), and must have previously been added by
    * add_supported_type().
+   *
    * \throws std::invalid_argument if the supported_type_name in the structure is the empty string, OR
    * \throws std::invalid_argument if the type to be removed was not previously added.
    */
@@ -257,7 +276,86 @@ public:
 
     using ROSMessageType = typename rclcpp::TypeAdapter<typename T::MsgT>::ros_message_type;
     std::string ros_type_name = rosidl_generator_traits::name<ROSMessageType>();
-    std::string key_name = generate_key(ros_type_name, T::supported_type_name);
+    std::string key_name = detail::generate_key(ros_type_name, T::supported_type_name);
+    if (key_to_supported_types_.count(key_name) == 0) {
+      throw std::invalid_argument("Specified key does not exist");
+    }
+
+    key_to_supported_types_.erase(key_name);
+  }
+
+  /// Add a compatible publisher to the negotiation.
+  /**
+   * These are publishers that are not created on-demand by negotiation, but instead have been
+   * created by the API user (usually through rclcpp::create_publisher()).  These publishers
+   * aren't actually involved in negotiation, but instead are appended to the results of negotiation.
+   *
+   * \param[in] pub - The rclcpp::Publisher shared_ptr to involve in negotiation.  A new reference
+   *                  to this shared pointer will be taken, so in order to cleanup properly it must
+   *                  be dropped with a call to remove_compatible_publisher().
+   * \param[in] supported_type_name - An arbitrary name to give to the publisher.  This must be
+   *                                  unique amongst all types given here, and must also match
+   *                                  the name the subscriptions are expecting if it is to
+   *                                  participate in negotiation.
+   * \throws std::invalid_argument if the given publisher is nullptr.
+   * \throws std::invalid_argument if the supported_type_name in the structure is the empty string, OR
+   * \throws std::invalid_argument if the exact same type has already been added.
+   */
+  template<typename MsgT>
+  void add_compatible_publisher(
+    std::shared_ptr<rclcpp::Publisher<MsgT>> pub,
+    const std::string & supported_type_name)
+  {
+    if (pub == nullptr) {
+      throw std::invalid_argument("The passed in publisher pointer must not be null");
+    }
+
+    if (supported_type_name.empty()) {
+      throw std::invalid_argument("The supported_type_name cannot be empty");
+    }
+
+    std::string ros_type_name = rosidl_generator_traits::name<MsgT>();
+    std::string key_name = detail::generate_key(ros_type_name, supported_type_name);
+    if (key_to_supported_types_.count(key_name) != 0) {
+      throw std::invalid_argument("Cannot add duplicate key to supported types");
+    }
+
+    key_to_supported_types_.emplace(key_name, detail::SupportedTypeInfo());
+
+    detail::PublisherGid gid{0};
+    // The weight doesn't actually matter, since we are always going to consider these for
+    // negotiation.
+    key_to_supported_types_[key_name].gid_to_weight[gid] = 1.0;
+    key_to_supported_types_[key_name].ros_type_name = ros_type_name;
+    key_to_supported_types_[key_name].supported_type_name = supported_type_name;
+    key_to_supported_types_[key_name].is_compat = true;
+    key_to_supported_types_[key_name].publisher = pub;
+  }
+
+  /// Remove a compatible publisher.
+  /**
+   * Remove a compatible publisher from this NegotiatedPublisher.  The publisher must have
+   * previously been added by add_compatible_publisher().
+   *
+   * \param[in] pub - The rclcpp::Publisher shared_ptr to remove from negotiation.
+   * \param[in] supported_type_name - The arbitrary name originally given to the compatible
+   *                                  publisher.
+   * \throws std::invalid_argument if the supported_type_name in the structure is the empty string, OR
+   * \throws std::invalid_argument if the type to be removed was not previously added.
+   */
+  template<typename MsgT>
+  void remove_compatible_publisher(
+    std::shared_ptr<rclcpp::Publisher<MsgT>> pub,
+    const std::string & supported_type_name)
+  {
+    (void)pub;
+
+    if (supported_type_name.empty()) {
+      throw std::invalid_argument("The supported_type_name cannot be empty");
+    }
+
+    std::string ros_type_name = rosidl_generator_traits::name<MsgT>();
+    std::string key_name = detail::generate_key(ros_type_name, supported_type_name);
     if (key_to_supported_types_.count(key_name) == 0) {
       throw std::invalid_argument("Specified key does not exist");
     }
@@ -295,7 +393,7 @@ public:
   {
     using ROSMessageType = typename rclcpp::TypeAdapter<typename T::MsgT>::ros_message_type;
     std::string ros_type_name = rosidl_generator_traits::name<ROSMessageType>();
-    std::string key = generate_key(ros_type_name, T::supported_type_name);
+    std::string key = detail::generate_key(ros_type_name, T::supported_type_name);
     if (key_to_supported_types_.count(key) == 0) {
       return 0;
     }
@@ -320,7 +418,7 @@ public:
   {
     using ROSMessageType = typename rclcpp::TypeAdapter<typename T::MsgT>::ros_message_type;
     std::string ros_type_name = rosidl_generator_traits::name<ROSMessageType>();
-    std::string key = generate_key(ros_type_name, T::supported_type_name);
+    std::string key = detail::generate_key(ros_type_name, T::supported_type_name);
 
     if (key_to_supported_types_.count(key) == 0) {
       RCLCPP_INFO(node_logging_->get_logger(), "Negotiation hasn't happened yet, skipping publish");
@@ -356,7 +454,7 @@ public:
   {
     using ROSMessageType = typename rclcpp::TypeAdapter<typename T::MsgT>::ros_message_type;
     std::string ros_type_name = rosidl_generator_traits::name<ROSMessageType>();
-    std::string key = generate_key(ros_type_name, T::supported_type_name);
+    std::string key = detail::generate_key(ros_type_name, T::supported_type_name);
 
     if (key_to_supported_types_.count(key) == 0) {
       RCLCPP_INFO(node_logging_->get_logger(), "Negotiation hasn't happened yet, skipping publish");
@@ -392,19 +490,6 @@ private:
    */
   void graph_change_timer_callback();
 
-  /// Generate the key that is used as an index into the maps.
-  /**
-   * Two of the internal maps are keyed off of the uniqueness of individual types as given by
-   * add_supported_type().  This method is responsible for generating those unique keys.
-   *
-   * \param[in] ros_type_name The canonical ROS type name, like std_msgs/msg/String.
-   * \param[in] supported_type_name The arbitrary (but non-empty) string passed by a user.
-   * \return A string that is the unique key into the maps.
-   */
-  std::string generate_key(
-    const std::string & ros_type_name,
-    const std::string & supported_type_name);
-
   /// The node parameters interface to use.
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_;
   /// The node topics interface to use.
@@ -422,7 +507,7 @@ private:
   /// The original options to this class provided by the user.
   NegotiatedPublisherOptions negotiated_pub_options_;
 
-  /// A map between unique type keys (as returned by generate_key()) and SupportedTypeInfos.
+  /// A map between unique type keys (as returned by detail::generate_key()) and SupportedTypeInfos.
   std::map<std::string, detail::SupportedTypeInfo> key_to_supported_types_;
   /// The publisher used to collect NegotiatedSubscriptions that are part of the network and for
   /// informing those NegotiatedSubscriptions of the chosen types.
@@ -437,8 +522,9 @@ private:
   /// The mutex to protect against concurrent modification of the
   /// negotiated_subscription_type_gids map.
   std::mutex negotiated_subscription_type_mutex_;
-  /// A map between PublisherGids and the list of unique type keys (as returned by generate_key()).
-  /// This is used to track which GIDs preferences have been met during negotiation.
+  /// A map between PublisherGids and the list of unique type keys (as returned by
+  /// detail::generate_key()).  This is used to track which GIDs preferences have been met during
+  /// negotiation.
   std::shared_ptr<std::map<detail::PublisherGid,
     std::vector<std::string>>> negotiated_subscription_type_gids_;
 };
