@@ -204,13 +204,13 @@ NegotiatedPublisher::NegotiatedPublisher(
 
   graph_change_timer_ = rclcpp::create_wall_timer(
     std::chrono::milliseconds(100),
-    std::bind(&NegotiatedPublisher::timer_callback, this),
+    std::bind(&NegotiatedPublisher::graph_change_timer_callback, this),
     nullptr,
     node_base_.get(),
     node_timers_.get());
 }
 
-void NegotiatedPublisher::timer_callback()
+void NegotiatedPublisher::graph_change_timer_callback()
 {
   // What we are doing here is checking the graph for any changes.
   // If the graph has changed, then we iterate over all of the publishers on

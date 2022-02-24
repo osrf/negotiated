@@ -126,7 +126,7 @@ Once it finds at least one combination that works, it creates the appropriate nu
 
 ### Publishing data
 
-If negotation has produced a solution that works on the network, one or more of the preferences that the user expressed via `add_supported_type` are now active.
+If negotiation has produced a solution that works on the network, one or more of the preferences that the user expressed via `add_supported_type` are now active.
 In order to find out which of the supported types is in use, the user can call `type_was_negotiated` with a template argument of the appropriate type.
 If that particular type was one of the ones chosen in negotiation, true will be returned.
 

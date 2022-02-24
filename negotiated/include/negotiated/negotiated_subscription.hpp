@@ -255,7 +255,7 @@ private:
     const std::string & ros_type_name,
     const std::string & supported_type_name);
 
-  /// The callback that is called when the NegotiatedPublisher sends the results of a negotation.
+  /// The callback that is called when the NegotiatedPublisher sends the results of a negotiation.
   /**
    * This method will filter the results to only the ones that this object can possibly support
    * (based on the types registered with add_supported_callback()), and then call the negotiate_cb

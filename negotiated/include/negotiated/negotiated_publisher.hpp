@@ -220,7 +220,11 @@ public:
 
     key_to_supported_types_.emplace(key_name, detail::SupportedTypeInfo());
 
-    auto factory =
+    detail::PublisherGid gid{0};
+    key_to_supported_types_[key_name].gid_to_weight[gid] = weight;
+    key_to_supported_types_[key_name].ros_type_name = ros_type_name;
+    key_to_supported_types_[key_name].supported_type_name = T::supported_type_name;
+    key_to_supported_types_[key_name].pub_factory =
       [this, qos, options](const std::string & topic_name) -> rclcpp::PublisherBase::SharedPtr
       {
         return rclcpp::create_publisher<typename T::MsgT>(
@@ -230,12 +234,6 @@ public:
           qos,
           options);
       };
-    key_to_supported_types_[key_name].pub_factory = factory;
-
-    detail::PublisherGid gid{0};
-    key_to_supported_types_[key_name].gid_to_weight[gid] = weight;
-    key_to_supported_types_[key_name].ros_type_name = ros_type_name;
-    key_to_supported_types_[key_name].supported_type_name = T::supported_type_name;
   }
 
   /// Remove a supported type.
@@ -271,7 +269,7 @@ public:
    */
   void start();
 
-  /// Negotiate between this NegotiatedPublisher and all connected NegotatiedSubscriptions.
+  /// Negotiate between this NegotiatedPublisher and all connected NegotiatedSubscriptions.
   /**
    * This method can be called by the user at any time to negotiate or renegotiate.
    * If the default values for NegotiatedPublisherOptions are taken, this will automatically
@@ -388,7 +386,7 @@ private:
    * removed from the set of participants in the negotiation, and, by default, renegotiation
    * will happen.
    */
-  void timer_callback();
+  void graph_change_timer_callback();
 
   /// Generate the key that is used as an index into the maps.
   /**
