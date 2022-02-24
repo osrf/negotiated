@@ -651,11 +651,12 @@ TEST_F(TestNegotiatedPublisher, negotiation_callback)
 
   negotiated::NegotiatedPublisherOptions options;
   options.negotiation_cb =
-    [](const std::set<negotiated::detail::PublisherGid> & gid_set, const std::map<std::string,
+    [](const std::map<negotiated::detail::PublisherGid,
+      std::vector<std::string>> & negotiated_sub_gid_to_keys, const std::map<std::string,
       negotiated::detail::SupportedTypeInfo> & key_to_supported_types,
       size_t maximum_solutions) -> std::vector<negotiated_interfaces::msg::SupportedType>
     {
-      (void)gid_set;
+      (void)negotiated_sub_gid_to_keys;
       (void)key_to_supported_types;
       (void)maximum_solutions;
 
@@ -724,11 +725,12 @@ TEST_F(TestNegotiatedPublisher, negotiation_callback_empty_set)
 
   negotiated::NegotiatedPublisherOptions options;
   options.negotiation_cb =
-    [](const std::set<negotiated::detail::PublisherGid> & gid_set, const std::map<std::string,
+    [](const std::map<negotiated::detail::PublisherGid,
+      std::vector<std::string>> & negotiated_sub_gid_to_keys, const std::map<std::string,
       negotiated::detail::SupportedTypeInfo> & key_to_supported_types,
       size_t maximum_solutions) -> std::vector<negotiated_interfaces::msg::SupportedType>
     {
-      (void)gid_set;
+      (void)negotiated_sub_gid_to_keys;
       (void)key_to_supported_types;
       (void)maximum_solutions;
 
@@ -783,11 +785,12 @@ TEST_F(TestNegotiatedPublisher, negotiation_callback_bogus_data)
 
   negotiated::NegotiatedPublisherOptions options;
   options.negotiation_cb =
-    [](const std::set<negotiated::detail::PublisherGid> & gid_set, const std::map<std::string,
+    [](const std::map<negotiated::detail::PublisherGid,
+      std::vector<std::string>> & negotiated_sub_gid_to_keys, const std::map<std::string,
       negotiated::detail::SupportedTypeInfo> & key_to_supported_types,
       size_t maximum_solutions) -> std::vector<negotiated_interfaces::msg::SupportedType>
     {
-      (void)gid_set;
+      (void)negotiated_sub_gid_to_keys;
       (void)key_to_supported_types;
       (void)maximum_solutions;
 
@@ -813,4 +816,170 @@ TEST_F(TestNegotiatedPublisher, negotiation_callback_bogus_data)
   spin_while_waiting(negotiated_break_cb);
   ASSERT_FALSE(pub->type_was_negotiated<StringT>());
   ASSERT_FALSE(pub->type_was_negotiated<EmptyT>());
+}
+
+TEST_F(TestNegotiatedPublisher, add_compatible_publisher_nullptr)
+{
+  negotiated::NegotiatedPublisher pub(*node_, "foo");
+
+  EXPECT_THROW(
+    pub.add_compatible_publisher<std_msgs::msg::String>(
+      nullptr, "blah", 1.0), std::invalid_argument);
+}
+
+TEST_F(TestNegotiatedPublisher, add_compatible_publisher_empty_supported_type)
+{
+  negotiated::NegotiatedPublisher pub(*node_, "foo");
+
+  auto compat_pub = node_->create_publisher<std_msgs::msg::String>("compat", 10);
+
+  EXPECT_THROW(pub.add_compatible_publisher(compat_pub, "", 1.0), std::invalid_argument);
+}
+
+TEST_F(TestNegotiatedPublisher, add_compatible_publisher_duplicate_with_compat)
+{
+  negotiated::NegotiatedPublisher pub(*node_, "foo");
+
+  auto compat_pub = node_->create_publisher<std_msgs::msg::String>("compat", 10);
+
+  pub.add_compatible_publisher(compat_pub, "a", 1.0);
+  EXPECT_THROW(pub.add_compatible_publisher(compat_pub, "a", 1.0), std::invalid_argument);
+}
+
+TEST_F(TestNegotiatedPublisher, add_compatible_publisher_duplicate_with_negotiated)
+{
+  negotiated::NegotiatedPublisher pub(*node_, "foo");
+
+  pub.add_supported_type<StringT>(1.0, rclcpp::QoS(10));
+
+  auto compat_pub = node_->create_publisher<std_msgs::msg::String>("compat", 10);
+
+  EXPECT_THROW(pub.add_compatible_publisher(compat_pub, "b", 1.0), std::invalid_argument);
+}
+
+TEST_F(TestNegotiatedPublisher, remove_compatible_publisher_empty_supported_type)
+{
+  negotiated::NegotiatedPublisher pub(*node_, "foo");
+
+  auto compat_pub = node_->create_publisher<std_msgs::msg::String>("compat", 10);
+
+  EXPECT_THROW(pub.remove_compatible_publisher(compat_pub, ""), std::invalid_argument);
+}
+
+TEST_F(TestNegotiatedPublisher, remove_compatible_publisher_non_existent)
+{
+  negotiated::NegotiatedPublisher pub(*node_, "foo");
+
+  auto compat_pub = node_->create_publisher<std_msgs::msg::String>("compat", 10);
+
+  EXPECT_THROW(pub.remove_compatible_publisher(compat_pub, "a"), std::invalid_argument);
+}
+
+TEST_F(TestNegotiatedPublisher, single_compatible_subscription_negotiated)
+{
+  rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr dummy =
+    create_and_publish_foo_supported_types({"std_msgs/msg/String"}, {"b"});
+
+  int string_count = 0;
+  auto dummy_sub_cb = [&string_count](const std_msgs::msg::String & msg)
+    {
+      (void)msg;
+      string_count++;
+    };
+
+  auto dummy_sub = node_->create_subscription<std_msgs::msg::String>(
+    "compat", rclcpp::QoS(10), dummy_sub_cb);
+
+  auto pub = std::make_shared<negotiated::NegotiatedPublisher>(*node_, "foo");
+
+  auto compat_pub = node_->create_publisher<std_msgs::msg::String>("compat", 10);
+
+  pub->add_compatible_publisher(compat_pub, "b", 1.0);
+
+  pub->start();
+
+  auto negotiated_break_cb = [pub]() -> bool
+    {
+      return pub->type_was_negotiated<StringT>();
+    };
+  spin_while_waiting(negotiated_break_cb);
+  ASSERT_TRUE(pub->type_was_negotiated<StringT>());
+
+  // Publish using the compat_pub
+  std_msgs::msg::String str;
+  compat_pub->publish(str);
+
+  // Publish using the negotiated publisher pub
+  pub->publish<StringT>(str);
+
+  auto dummy_data_cb = [&string_count]() -> bool
+    {
+      return string_count > 1;
+    };
+  spin_while_waiting(dummy_data_cb);
+  ASSERT_EQ(string_count, 2);
+}
+
+TEST_F(TestNegotiatedPublisher, one_compat_one_negotiated_sub)
+{
+  rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr dummy =
+    create_and_publish_foo_supported_types({"std_msgs/msg/Empty"}, {"a"});
+
+  rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr dummy2 =
+    create_and_publish_foo_supported_types({"std_msgs/msg/String"}, {"b"});
+
+  int empty_count = 0;
+  auto dummy_sub_cb = [&empty_count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      empty_count++;
+    };
+
+  int string_count = 0;
+  auto dummy_sub_string_cb = [&string_count](const std_msgs::msg::String & msg)
+    {
+      (void)msg;
+      string_count++;
+    };
+
+  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>(
+    "foo/a", rclcpp::QoS(10), dummy_sub_cb);
+
+  auto dummy_sub_string = node_->create_subscription<std_msgs::msg::String>(
+    "compat", rclcpp::QoS(10), dummy_sub_string_cb);
+
+  auto pub = std::make_shared<negotiated::NegotiatedPublisher>(*node_, "foo");
+
+  auto compat_pub = node_->create_publisher<std_msgs::msg::String>("compat", 10);
+
+  pub->add_supported_type<EmptyT>(1.0, rclcpp::QoS(10));
+  pub->add_compatible_publisher(compat_pub, "b", 1.0);
+
+  pub->start();
+
+  auto negotiated_break_cb = [pub]() -> bool
+    {
+      return pub->type_was_negotiated<EmptyT>() && pub->type_was_negotiated<StringT>();
+    };
+  spin_while_waiting(negotiated_break_cb);
+  ASSERT_TRUE(pub->type_was_negotiated<EmptyT>());
+  ASSERT_TRUE(pub->type_was_negotiated<StringT>());
+
+  // Publish using the compat_pub
+  std_msgs::msg::String str;
+  compat_pub->publish(str);
+
+  // Publish using the negotiated publisher pub
+  pub->publish<StringT>(str);
+
+  std_msgs::msg::Empty empty;
+  pub->publish<EmptyT>(empty);
+
+  auto dummy_data_cb = [&string_count, &empty_count]() -> bool
+    {
+      return string_count > 1 && empty_count > 0;
+    };
+  spin_while_waiting(dummy_data_cb);
+  ASSERT_EQ(string_count, 2);
+  ASSERT_EQ(empty_count, 1);
 }
