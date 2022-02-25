@@ -44,11 +44,11 @@ public:
     }
 
     negotiated_pub_->add_supported_type<negotiated_examples::StringT>(
-      1.0,
+      0.2,
       rclcpp::QoS(1),
       pub_options);
     negotiated_pub_->add_supported_type<negotiated_examples::Int32T>(
-      0.5,
+      1.0,
       rclcpp::QoS(1),
       pub_options);
     negotiated_pub_->add_supported_type<negotiated_examples::StringT2>(

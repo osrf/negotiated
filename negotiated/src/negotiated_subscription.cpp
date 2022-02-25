@@ -97,8 +97,8 @@ NegotiatedSubscription::NegotiatedSubscription(
 void NegotiatedSubscription::topicsInfoCb(
   const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)
 {
-  negotiated_interfaces::msg::NegotiatedTopicsInfo supported_topics;
-  supported_topics.success = msg.success;
+  negotiated_topics_.success = msg.success;
+  negotiated_topics_.negotiated_topics.clear();
 
   // Here we filter for only the topic types this subscription can support.
   for (const negotiated_interfaces::msg::NegotiatedTopicInfo & info : msg.negotiated_topics) {
@@ -108,11 +108,11 @@ void NegotiatedSubscription::topicsInfoCb(
       continue;
     }
 
-    supported_topics.negotiated_topics.push_back(info);
+    negotiated_topics_.negotiated_topics.push_back(info);
   }
 
   negotiated_interfaces::msg::NegotiatedTopicInfo matched_info =
-    negotiated_sub_options_.negotiate_cb(existing_topic_info_, supported_topics);
+    negotiated_sub_options_.negotiate_cb(existing_topic_info_, negotiated_topics_);
 
   if (matched_info.ros_type_name.empty() || matched_info.supported_type_name.empty() ||
     matched_info.topic_name.empty())
@@ -149,6 +149,10 @@ void NegotiatedSubscription::topicsInfoCb(
   existing_topic_info_ = matched_info;
 
   subscription_ = key_to_supported_types_[key].sub_factory(existing_topic_info_.topic_name);
+
+  if (after_subscription_cb_ != nullptr) {
+    after_subscription_cb_();
+  }
 }
 
 std::string NegotiatedSubscription::generate_key(
@@ -182,6 +186,34 @@ size_t NegotiatedSubscription::get_data_topic_publisher_count() const
   }
 
   return subscription_->get_publisher_count();
+}
+
+negotiated_interfaces::msg::NegotiatedTopicsInfo
+NegotiatedSubscription::get_negotiated_topics() const
+{
+  return negotiated_topics_;
+}
+
+void
+NegotiatedSubscription::set_after_subscription_callback(
+  const AfterSubscriptionCallbackFunction & cb)
+{
+  if (after_subscription_cb_ != nullptr) {
+    RCLCPP_WARN(node_logging_->get_logger(), "Overriding already set after_subscriptions_callback");
+  }
+
+  after_subscription_cb_ = cb;
+}
+
+void NegotiatedSubscription::remove_after_subscription_callback()
+{
+  if (after_subscription_cb_ == nullptr) {
+    RCLCPP_WARN(
+      node_logging_->get_logger(),
+      "Called remove_after_subscription_callback on already empty callback");
+  }
+
+  after_subscription_cb_ = nullptr;
 }
 
 }  // namespace negotiated

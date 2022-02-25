@@ -76,6 +76,8 @@ class NegotiatedSubscription
 public:
   RCLCPP_SMART_PTR_DEFINITIONS(NegotiatedSubscription)
 
+  using AfterSubscriptionCallbackFunction = std::function<void ()>;
+
   /// Create a new NegotiatedSubscription with the given "base" topic_name.
   /**
    * The topic_name given here will be used to initially contact the NegotiatedPublisher.  It will
@@ -244,6 +246,34 @@ public:
    */
   size_t get_data_topic_publisher_count() const;
 
+  /// Get the list of topics supported by this NegotiatedSubscription and the NegotiatedPublisher.
+  /**
+   * This list may be empty if negotiation has not yet happened, or failed.
+   *
+   * \return The list of negotiated topics supported by both this NegotiatedSubscriptio and
+   *         the connected NegotiatedPublisher.
+   */
+  negotiated_interfaces::msg::NegotiatedTopicsInfo get_negotiated_topics() const;
+
+  /// Set the callback to be called after a subscription is negotiated and created.
+  /**
+   * This is primarily intended for internal use by the NegotiatedPublisher.  Using it for other
+   * purposes may break the use-case of a NegotiatedPublisher and NegotiatedSubscription in the
+   * same rclcpp::Node; use it at your own risk!
+   *
+   * \param[in] cb The callback to call after a subscription is successfully negotiated and creaetd.
+   */
+  void set_after_subscription_callback(const AfterSubscriptionCallbackFunction & cb);
+
+  /// Clear out the after subscription callback.
+  /**
+   * Like set_after_subscription_callback(), this is primarily intended for internal use by the
+   * NegotiatedPublisher.  Using it for other purposes may break the use-case of a
+   * NegotiatedPublisher and NegotiatedSubscription in the same rclcpp::Node; use it at your
+   * own risk!
+   */
+  void remove_after_subscription_callback();
+
 private:
   struct SupportedTypeInfo final
   {
@@ -302,6 +332,12 @@ private:
 
   /// Saved information about the currently connected data topic.
   negotiated_interfaces::msg::NegotiatedTopicInfo existing_topic_info_;
+
+  /// A list of all of the topics that the publisher sent to us, that we also support.
+  negotiated_interfaces::msg::NegotiatedTopicsInfo negotiated_topics_;
+
+  /// An optional callback to be called after a subscription has successfully been created.
+  AfterSubscriptionCallbackFunction after_subscription_cb_{nullptr};
 };
 
 }  // namespace negotiated

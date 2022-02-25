@@ -34,6 +34,8 @@
 #include "negotiated_interfaces/msg/supported_type.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
 
+#include "negotiated/negotiated_subscription.hpp"
+
 namespace negotiated
 {
 
@@ -363,6 +365,29 @@ public:
     key_to_supported_types_.erase(key_name);
   }
 
+  /// Start tracking a NegotiatedSubscription as an upstream of this NegotiatedPublisher.
+  /**
+   * A NegotiatedSubscription added here will be considered "upstream" of this NegotiatedPublisher,
+   * meaning that it has to successfully negotiate with its NegotiatedPublisher before this one
+   * will even consider negotiating with its "downstream" NegotiatedSubscription(s).  This primarily
+   * allows a NegotiatedPublisher/NegotiatedSubscription pair inside of the same rclcpp::Node, where
+   * the results of the upstream negotiations have an effect on the downstream negotiations.
+   *
+   * \param[in] subscription A shared_ptr to the upstream NegotiatedSubscription to start tracking.
+   */
+  void add_upstream_negotiated_subscription(
+    std::shared_ptr<negotiated::NegotiatedSubscription> subscription);
+
+  /// Stop tracking a NegotiatedSubscription as an upstream of this NegotiatedPublisher.
+  /**
+   * Stop tracking a NegotiatedSubscription that was originally added via
+   * add_upstream_negotiated_subscription().
+   *
+   * \param[in] subscription A shared_ptr to the upstream NegotiatedSubscription to stop tracking.
+   */
+  void remove_upstream_negotiated_subscription(
+    std::shared_ptr<negotiated::NegotiatedSubscription> subscription);
+
   /// Start collecting information from the attached NegotiatedSubscriptions.
   /**
    * Until this method is called, no data from NegotiatedSubscriptions will be collected.
@@ -490,43 +515,65 @@ private:
    */
   void graph_change_timer_callback();
 
+  /// The callback that will be called once any upstream NegotiatedSubscriptions have successfully
+  /// negotiated.
+  void negotiate_on_upstream_success();
+
   /// The node parameters interface to use.
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_;
+
   /// The node topics interface to use.
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics_;
+
   /// The node logging interface to use.
   rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr node_logging_;
+
   /// The node graph interface to use.
   rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph_;
+
   /// The node base interface to use.
   rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_base_;
+
   /// The node timers interface to use.
   rclcpp::node_interfaces::NodeTimersInterface::SharedPtr node_timers_;
+
   /// The original topic_name provided by the user.
   std::string topic_name_;
+
   /// The original options to this class provided by the user.
   NegotiatedPublisherOptions negotiated_pub_options_;
 
   /// A map between unique type keys (as returned by detail::generate_key()) and SupportedTypeInfos.
   std::map<std::string, detail::SupportedTypeInfo> key_to_supported_types_;
+
   /// The publisher used to collect NegotiatedSubscriptions that are part of the network and for
   /// informing those NegotiatedSubscriptions of the chosen types.
   rclcpp::Publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr
     negotiated_publisher_;
+
   /// The transient local subscription that gathers supported types from NegotiatedSubscriptions.
   rclcpp::Subscription<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_sub_;
+
   /// The timer used for checking for graph changes.
   rclcpp::TimerBase::SharedPtr graph_change_timer_;
+
   /// The graph event used for checking for graph changes.
   rclcpp::Event::SharedPtr graph_event_;
+
   /// The mutex to protect against concurrent modification of the
   /// negotiated_subscription_type_gids map.
   std::mutex negotiated_subscription_type_mutex_;
+
   /// A map between PublisherGids and the list of unique type keys (as returned by
   /// detail::generate_key()).  This is used to track which GIDs preferences have been met during
   /// negotiation.
   std::shared_ptr<std::map<detail::PublisherGid,
     std::vector<std::string>>> negotiated_subscription_type_gids_;
+
+  /// A map to track any "upstream" negotiated subscriptions that need to be successful before
+  /// this NegotiatedPublisher can negotiate with downstreams.
+  std::map<negotiated::NegotiatedSubscription *,
+    std::shared_ptr<negotiated::NegotiatedSubscription>> upstream_negotiated_subscriptions_;
 };
 
 }  // namespace negotiated

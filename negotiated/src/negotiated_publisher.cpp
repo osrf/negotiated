@@ -32,6 +32,7 @@
 #include "negotiated_interfaces/msg/supported_types.hpp"
 
 #include "negotiated/negotiated_publisher.hpp"
+#include "negotiated/negotiated_subscription.hpp"
 
 #include "combinations.hpp"
 
@@ -356,6 +357,36 @@ void NegotiatedPublisher::graph_change_timer_callback()
   }
 }
 
+void NegotiatedPublisher::negotiate_on_upstream_success()
+{
+  negotiate();
+}
+
+void NegotiatedPublisher::add_upstream_negotiated_subscription(
+  std::shared_ptr<negotiated::NegotiatedSubscription> subscription)
+{
+  if (upstream_negotiated_subscriptions_.count(subscription.get()) > 0) {
+    RCLCPP_WARN(node_logging_->get_logger(), "Replacing subscription that is already in the map");
+  }
+  upstream_negotiated_subscriptions_[subscription.get()] = subscription;
+
+  subscription->set_after_subscription_callback(
+    std::bind(&NegotiatedPublisher::negotiate_on_upstream_success, this));
+}
+
+void NegotiatedPublisher::remove_upstream_negotiated_subscription(
+  std::shared_ptr<negotiated::NegotiatedSubscription> subscription)
+{
+  if (upstream_negotiated_subscriptions_.count(subscription.get()) == 0) {
+    RCLCPP_WARN(node_logging_->get_logger(), "Attempting to remove non-existent subscription");
+    return;
+  }
+
+  subscription->remove_after_subscription_callback();
+
+  upstream_negotiated_subscriptions_.erase(subscription.get());
+}
+
 void NegotiatedPublisher::start()
 {
   auto neg_cb =
@@ -430,12 +461,48 @@ void NegotiatedPublisher::negotiate()
     return;
   }
 
+  // If there are upstream subscriptions that we should wait on before negotiating with our
+  // downstream subscriptions, we'll discover it here.
+  std::map<std::string, detail::SupportedTypeInfo> upstream_filtered_supported_types;
+  if (upstream_negotiated_subscriptions_.size() > 0) {
+    bool all_negotiated = true;
+    for (const std::pair<negotiated::NegotiatedSubscription *,
+      std::shared_ptr<negotiated::NegotiatedSubscription>> & upstream_sub :
+      upstream_negotiated_subscriptions_)
+    {
+      negotiated_interfaces::msg::NegotiatedTopicsInfo topics_info =
+        upstream_sub.second->get_negotiated_topics();
+      if (!topics_info.success || topics_info.negotiated_topics.size() == 0) {
+        all_negotiated = false;
+        break;
+      }
+
+      for (const negotiated_interfaces::msg::NegotiatedTopicInfo & topic_info :
+        topics_info.negotiated_topics)
+      {
+        std::string key = detail::generate_key(
+          topic_info.ros_type_name,
+          topic_info.supported_type_name);
+
+        if (key_to_supported_types_.count(key) > 0) {
+          upstream_filtered_supported_types[key] = key_to_supported_types_.at(key);
+        }
+      }
+    }
+
+    if (!all_negotiated) {
+      return;
+    }
+  } else {
+    upstream_filtered_supported_types = key_to_supported_types_;
+  }
+
   std::vector<negotiated_interfaces::msg::SupportedType> matched_subs;
 
   if (!negotiated_subscription_type_gids_->empty()) {
     matched_subs = negotiated_pub_options_.negotiation_cb(
       *negotiated_subscription_type_gids_,
-      key_to_supported_types_,
+      upstream_filtered_supported_types,
       negotiated_pub_options_.maximum_negotiated_solutions);
   }
 
