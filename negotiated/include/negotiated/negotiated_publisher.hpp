@@ -34,6 +34,8 @@
 #include "negotiated_interfaces/msg/supported_type.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
 
+#include "negotiated/negotiated_subscription.hpp"
+
 namespace negotiated
 {
 
@@ -172,6 +174,15 @@ public:
     rclcpp::node_interfaces::NodeTimersInterface::SharedPtr node_timers,
     const std::string & topic_name,
     const NegotiatedPublisherOptions & negotiated_pub_options = NegotiatedPublisherOptions());
+
+  // Implement Rule of 5 here.  Particularly in cases where we have upstream
+  // NegotiatedSubscriptions, a copy is hard to do reliably.  Mark copy constructors, move
+  // constructors, and assignment operators as deleted.
+  virtual ~NegotiatedPublisher();
+  NegotiatedPublisher(const NegotiatedPublisher &) = delete;
+  NegotiatedPublisher(NegotiatedPublisher &&) = delete;
+  NegotiatedPublisher & operator=(const NegotiatedPublisher &) = delete;
+  NegotiatedPublisher & operator=(NegotiatedPublisher &&) = delete;
 
   /// Create a new NegotiatedPublisher with the given "base" topic_name.
   /**
@@ -365,6 +376,29 @@ public:
     key_to_supported_types_.erase(key_name);
   }
 
+  /// Start tracking a NegotiatedSubscription as an upstream of this NegotiatedPublisher.
+  /**
+   * A NegotiatedSubscription added here will be considered "upstream" of this NegotiatedPublisher,
+   * meaning that it has to successfully negotiate with its NegotiatedPublisher before this one
+   * will even consider negotiating with its "downstream" NegotiatedSubscription(s).  This primarily
+   * allows a NegotiatedPublisher/NegotiatedSubscription pair inside of the same rclcpp::Node, where
+   * the results of the upstream negotiations have an effect on the downstream negotiations.
+   *
+   * \param[in] subscription A shared_ptr to the upstream NegotiatedSubscription to start tracking.
+   */
+  void add_upstream_negotiated_subscription(
+    std::shared_ptr<negotiated::NegotiatedSubscription> subscription);
+
+  /// Stop tracking a NegotiatedSubscription as an upstream of this NegotiatedPublisher.
+  /**
+   * Stop tracking a NegotiatedSubscription that was originally added via
+   * add_upstream_negotiated_subscription().
+   *
+   * \param[in] subscription A shared_ptr to the upstream NegotiatedSubscription to stop tracking.
+   */
+  void remove_upstream_negotiated_subscription(
+    std::shared_ptr<negotiated::NegotiatedSubscription> subscription);
+
   /// Start collecting information from the attached NegotiatedSubscriptions.
   /**
    * Until this method is called, no data from NegotiatedSubscriptions will be collected.
@@ -492,6 +526,10 @@ private:
    */
   void graph_change_timer_callback();
 
+  /// The callback that will be called once any upstream NegotiatedSubscriptions have successfully
+  /// negotiated.
+  void negotiate_on_upstream_success();
+
   /// The node parameters interface to use.
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_;
 
@@ -536,11 +574,16 @@ private:
   /// The mutex to protect against concurrent modification of the
   /// negotiated_subscription_type_gids map.
   std::mutex negotiated_subscription_type_mutex_;
+
   /// A map between PublisherGids and the list of unique type keys (as returned by
   /// detail::generate_key()).  This is used to track which GIDs preferences have been met during
   /// negotiation.
   std::shared_ptr<std::map<detail::PublisherGid,
     std::vector<std::string>>> negotiated_subscription_type_gids_;
+
+  /// A map to track any "upstream" negotiated subscriptions that need to be successful before
+  /// this NegotiatedPublisher can negotiate with downstreams.
+  std::set<std::shared_ptr<negotiated::NegotiatedSubscription>> upstream_negotiated_subscriptions_;
 };
 
 }  // namespace negotiated

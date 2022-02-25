@@ -1104,3 +1104,534 @@ TEST_F(TestNegotiatedSubscription, remove_compatible_subscription_non_existent)
     negotiated_sub->remove_compatible_subscription<std_msgs::msg::Empty>(nullptr, "blah"),
     std::invalid_argument);
 }
+
+TEST_F(TestNegotiatedSubscription, get_empty_supported_topics)
+{
+  auto sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo");
+
+  negotiated_interfaces::msg::NegotiatedTopicsInfo info = sub->get_negotiated_topics();
+  ASSERT_FALSE(info.success);
+  ASSERT_EQ(info.negotiated_topics.size(), 0u);
+}
+
+TEST_F(TestNegotiatedSubscription, get_multiple_supported_topics)
+{
+  // Setup of our dummy publisher
+  auto data_pub = node_->create_publisher<std_msgs::msg::String>("foo/b", rclcpp::QoS(10));
+
+  auto topics_msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
+  topics_msg->success = true;
+
+  negotiated_interfaces::msg::NegotiatedTopicInfo topic_info;
+  topic_info.ros_type_name = "std_msgs/msg/String";
+  topic_info.supported_type_name = "b";
+  topic_info.topic_name = "foo/b";
+  topics_msg->negotiated_topics.push_back(topic_info);
+
+  negotiated_interfaces::msg::NegotiatedTopicInfo topic_info2;
+  topic_info2.ros_type_name = "std_msgs/msg/Empty";
+  topic_info2.supported_type_name = "a";
+  topic_info2.topic_name = "foo/a";
+  topics_msg->negotiated_topics.push_back(topic_info2);
+
+  // Setup and test the subscription
+  auto sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo");
+
+  int empty_count = 0;
+  auto empty_cb = [&empty_count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      empty_count++;
+    };
+
+  int string_count = 0;
+  auto string_cb = [&string_count](const std_msgs::msg::String & msg)
+    {
+      (void)msg;
+      string_count++;
+    };
+
+  sub->add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), empty_cb);
+  sub->add_supported_callback<StringT>(1.0, rclcpp::QoS(10), string_cb);
+
+  sub->start();
+
+  auto negotiated_break_func = [this, sub]() -> bool
+    {
+      return sub->get_negotiated_topic_publisher_count() > 0 &&
+             topics_pub_->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_func));
+
+  topics_pub_->publish(std::move(topics_msg));
+
+  auto data_break_func = [sub, data_pub]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(data_break_func));
+
+  negotiated_interfaces::msg::NegotiatedTopicsInfo info = sub->get_negotiated_topics();
+  ASSERT_TRUE(info.success);
+  ASSERT_EQ(info.negotiated_topics.size(), 2u);
+  ASSERT_EQ(info.negotiated_topics[0].ros_type_name, "std_msgs/msg/String");
+  ASSERT_EQ(info.negotiated_topics[0].supported_type_name, "b");
+  ASSERT_EQ(info.negotiated_topics[1].ros_type_name, "std_msgs/msg/Empty");
+  ASSERT_EQ(info.negotiated_topics[1].supported_type_name, "a");
+}
+
+TEST_F(TestNegotiatedSubscription, after_subscription_callback)
+{
+  // Setup of our dummy publisher
+  auto data_pub = node_->create_publisher<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10));
+
+  auto topics_msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
+  topics_msg->success = true;
+
+  negotiated_interfaces::msg::NegotiatedTopicInfo topic_info;
+  topic_info.ros_type_name = "std_msgs/msg/Empty";
+  topic_info.supported_type_name = "a";
+  topic_info.topic_name = "foo/a";
+  topics_msg->negotiated_topics.push_back(topic_info);
+
+  // Setup and test the subscription
+  auto sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo");
+
+  int count = 0;
+  auto empty_cb = [&count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      count++;
+    };
+
+  bool after_sub_called = false;
+  auto after_sub_cb = [&after_sub_called]() {after_sub_called = true;};
+
+  sub->set_after_subscription_callback(after_sub_cb);
+
+  sub->add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), empty_cb);
+  sub->start();
+
+  auto negotiated_break_func = [this, sub]() -> bool
+    {
+      return sub->get_negotiated_topic_publisher_count() > 0 &&
+             topics_pub_->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_func));
+
+  topics_pub_->publish(std::move(topics_msg));
+
+  auto data_break_func = [sub, data_pub]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(data_break_func));
+  ASSERT_TRUE(after_sub_called);
+
+  std_msgs::msg::Empty data;
+  data_pub->publish(data);
+
+  auto count_break_func = [&count]() -> bool
+    {
+      return count > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(count_break_func));
+
+  ASSERT_EQ(count, 1);
+}
+
+TEST_F(TestNegotiatedSubscription, remove_subscription_callback)
+{
+  // Setup of our dummy publisher
+  auto data_pub = node_->create_publisher<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10));
+
+  auto topics_msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
+  topics_msg->success = true;
+
+  negotiated_interfaces::msg::NegotiatedTopicInfo topic_info;
+  topic_info.ros_type_name = "std_msgs/msg/Empty";
+  topic_info.supported_type_name = "a";
+  topic_info.topic_name = "foo/a";
+  topics_msg->negotiated_topics.push_back(topic_info);
+
+  // Setup and test the subscription
+  auto sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo");
+
+  int count = 0;
+  auto empty_cb = [&count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      count++;
+    };
+
+  bool after_sub_called = false;
+  auto after_sub_cb = [&after_sub_called]() {after_sub_called = true;};
+
+  sub->set_after_subscription_callback(after_sub_cb);
+  sub->remove_after_subscription_callback();
+
+  sub->add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), empty_cb);
+  sub->start();
+
+  auto negotiated_break_func = [this, sub]() -> bool
+    {
+      return sub->get_negotiated_topic_publisher_count() > 0 &&
+             topics_pub_->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_func));
+
+  topics_pub_->publish(std::move(topics_msg));
+
+  auto data_break_func = [sub, data_pub]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(data_break_func));
+  ASSERT_FALSE(after_sub_called);
+
+  std_msgs::msg::Empty data;
+  data_pub->publish(data);
+
+  auto count_break_func = [&count]() -> bool
+    {
+      return count > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(count_break_func));
+
+  ASSERT_EQ(count, 1);
+}
+
+TEST_F(TestNegotiatedSubscription, downstream_supported_types_no_overlap)
+{
+  // Setup of our dummy publisher
+  auto data_pub = node_->create_publisher<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10));
+
+  auto topics_msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
+  topics_msg->success = true;
+
+  negotiated_interfaces::msg::NegotiatedTopicInfo topic_info;
+  topic_info.ros_type_name = "std_msgs/msg/Empty";
+  topic_info.supported_type_name = "a";
+  topic_info.topic_name = "foo/a";
+  topics_msg->negotiated_topics.push_back(topic_info);
+
+  // Setup and test the subscription
+  auto sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo");
+
+  int count = 0;
+  auto empty_cb = [&count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      count++;
+    };
+
+  sub->add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), empty_cb);
+
+  negotiated_interfaces::msg::SupportedTypes downstream_types;
+  negotiated_interfaces::msg::SupportedType downstream_type;
+  downstream_type.ros_type_name = "std_msgs/msg/String";
+  downstream_type.supported_type_name = "b";
+  downstream_type.weight = 1.0;
+  downstream_types.supported_types.push_back(downstream_type);
+  sub->add_downstream_supported_types(downstream_types);
+
+  sub->start();
+
+  auto negotiated_break_func = [this, sub]() -> bool
+    {
+      return sub->get_negotiated_topic_publisher_count() > 0 &&
+             topics_pub_->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_func));
+
+  topics_pub_->publish(std::move(topics_msg));
+
+  auto data_break_func = [sub, data_pub]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
+    };
+  ASSERT_FALSE(spin_while_waiting(data_break_func));
+}
+
+TEST_F(TestNegotiatedSubscription, add_downstream_supported_types_before_start)
+{
+  // Setup of our dummy publisher
+  auto data_pub = node_->create_publisher<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10));
+
+  auto topics_msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
+  topics_msg->success = true;
+
+  negotiated_interfaces::msg::NegotiatedTopicInfo topic_info;
+  topic_info.ros_type_name = "std_msgs/msg/Empty";
+  topic_info.supported_type_name = "a";
+  topic_info.topic_name = "foo/a";
+  topics_msg->negotiated_topics.push_back(topic_info);
+
+  // Setup and test the subscription
+  auto sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo");
+
+  int count = 0;
+  auto empty_cb = [&count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      count++;
+    };
+
+  sub->add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), empty_cb);
+
+  negotiated_interfaces::msg::SupportedTypes downstream_types;
+  negotiated_interfaces::msg::SupportedType downstream_type;
+  downstream_type.ros_type_name = "std_msgs/msg/Empty";
+  downstream_type.supported_type_name = "a";
+  downstream_type.weight = 1.0;
+  downstream_types.supported_types.push_back(downstream_type);
+  sub->add_downstream_supported_types(downstream_types);
+
+  sub->start();
+
+  auto negotiated_break_func = [this, sub]() -> bool
+    {
+      return sub->get_negotiated_topic_publisher_count() > 0 &&
+             topics_pub_->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_func));
+
+  topics_pub_->publish(std::move(topics_msg));
+
+  auto data_break_func = [sub, data_pub]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(data_break_func));
+
+  std_msgs::msg::Empty data;
+  data_pub->publish(data);
+
+  auto count_break_func = [&count]() -> bool
+    {
+      return count > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(count_break_func));
+
+  ASSERT_EQ(count, 1);
+}
+
+TEST_F(TestNegotiatedSubscription, add_downstream_supported_types_after_start)
+{
+  // Setup of our dummy publisher
+  auto data_pub = node_->create_publisher<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10));
+
+  auto data_pub2 = node_->create_publisher<std_msgs::msg::String>("foo/b", rclcpp::QoS(10));
+
+  negotiated_interfaces::msg::NegotiatedTopicsInfo topics_msg;
+  topics_msg.success = true;
+
+  negotiated_interfaces::msg::NegotiatedTopicInfo topic_info;
+  topic_info.ros_type_name = "std_msgs/msg/Empty";
+  topic_info.supported_type_name = "a";
+  topic_info.topic_name = "foo/a";
+  topics_msg.negotiated_topics.push_back(topic_info);
+  negotiated_interfaces::msg::NegotiatedTopicInfo topic_info2;
+  topic_info2.ros_type_name = "std_msgs/msg/String";
+  topic_info2.supported_type_name = "b";
+  topic_info2.topic_name = "foo/b";
+  topics_msg.negotiated_topics.push_back(topic_info2);
+
+  // Setup and test the subscription
+  auto sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo");
+
+  int empty_count = 0;
+  auto empty_cb = [&empty_count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      empty_count++;
+    };
+
+  int string_count = 0;
+  auto string_cb = [&string_count](const std_msgs::msg::String & msg)
+    {
+      (void)msg;
+      string_count++;
+    };
+
+  sub->add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), empty_cb);
+  sub->add_supported_callback<StringT>(0.5, rclcpp::QoS(10), string_cb);
+
+  sub->start();
+
+  auto negotiated_break_func = [this, sub]() -> bool
+    {
+      return sub->get_negotiated_topic_publisher_count() > 0 &&
+             topics_pub_->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_func));
+
+  topics_pub_->publish(topics_msg);
+
+  auto data_break_func = [sub, data_pub]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(data_break_func));
+
+  std_msgs::msg::Empty data;
+  data_pub->publish(data);
+
+  auto count_break_func = [&empty_count]() -> bool
+    {
+      return empty_count > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(count_break_func));
+
+  ASSERT_EQ(empty_count, 1);
+
+  // OK, now add a downstream supported type and cause renegotiation to happen.
+
+  string_count = 0;
+  empty_count = 0;
+
+  negotiated_interfaces::msg::SupportedTypes downstream_types;
+  negotiated_interfaces::msg::SupportedType downstream_type;
+  downstream_type.ros_type_name = "std_msgs/msg/String";
+  downstream_type.supported_type_name = "b";
+  downstream_type.weight = 1.0;
+  downstream_types.supported_types.push_back(downstream_type);
+  sub->add_downstream_supported_types(downstream_types);
+
+  topics_pub_->publish(topics_msg);
+
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_func));
+
+  auto data_break_func2 = [sub, data_pub2]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0 && data_pub2->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(data_break_func2));
+
+  std_msgs::msg::String str_data;
+  data_pub2->publish(str_data);
+
+  auto string_count_break_func = [&string_count]() -> bool
+    {
+      return string_count > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(string_count_break_func));
+
+  ASSERT_EQ(string_count, 1);
+}
+
+TEST_F(TestNegotiatedSubscription, downstream_supported_this_object_not_supported)
+{
+  // Setup of our dummy publisher
+  auto data_pub = node_->create_publisher<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10));
+
+  auto topics_msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
+  topics_msg->success = true;
+
+  negotiated_interfaces::msg::NegotiatedTopicInfo topic_info;
+  topic_info.ros_type_name = "std_msgs/msg/String";
+  topic_info.supported_type_name = "b";
+  topic_info.topic_name = "foo/b";
+  topics_msg->negotiated_topics.push_back(topic_info);
+
+  // Setup and test the subscription
+  auto sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo");
+
+  int count = 0;
+  auto empty_cb = [&count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      count++;
+    };
+
+  sub->add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), empty_cb);
+
+  negotiated_interfaces::msg::SupportedTypes downstream_types;
+  negotiated_interfaces::msg::SupportedType downstream_type;
+  downstream_type.ros_type_name = "std_msgs/msg/String";
+  downstream_type.supported_type_name = "b";
+  downstream_type.weight = 1.0;
+  downstream_types.supported_types.push_back(downstream_type);
+  sub->add_downstream_supported_types(downstream_types);
+
+  sub->start();
+
+  auto negotiated_break_func = [this, sub]() -> bool
+    {
+      return sub->get_negotiated_topic_publisher_count() > 0 &&
+             topics_pub_->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_func));
+
+  topics_pub_->publish(std::move(topics_msg));
+
+  auto data_break_func = [sub, data_pub]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
+    };
+  ASSERT_FALSE(spin_while_waiting(data_break_func));
+}
+
+TEST_F(TestNegotiatedSubscription, remove_downstream_supported_types)
+{
+  // Setup of our dummy publisher
+  auto data_pub = node_->create_publisher<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10));
+
+  auto topics_msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
+  topics_msg->success = true;
+
+  negotiated_interfaces::msg::NegotiatedTopicInfo topic_info;
+  topic_info.ros_type_name = "std_msgs/msg/Empty";
+  topic_info.supported_type_name = "a";
+  topic_info.topic_name = "foo/a";
+  topics_msg->negotiated_topics.push_back(topic_info);
+
+  // Setup and test the subscription
+  auto sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo");
+
+  int count = 0;
+  auto empty_cb = [&count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      count++;
+    };
+
+  sub->add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), empty_cb);
+
+  negotiated_interfaces::msg::SupportedTypes downstream_types;
+  negotiated_interfaces::msg::SupportedType downstream_type;
+  downstream_type.ros_type_name = "std_msgs/msg/String";
+  downstream_type.supported_type_name = "b";
+  downstream_type.weight = 1.0;
+  downstream_types.supported_types.push_back(downstream_type);
+  sub->add_downstream_supported_types(downstream_types);
+  sub->remove_downstream_supported_types(downstream_types);
+
+  sub->start();
+
+  auto negotiated_break_func = [this, sub]() -> bool
+    {
+      return sub->get_negotiated_topic_publisher_count() > 0 &&
+             topics_pub_->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_func));
+
+  topics_pub_->publish(std::move(topics_msg));
+
+  auto data_break_func = [sub, data_pub]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(data_break_func));
+
+  std_msgs::msg::Empty data;
+  data_pub->publish(data);
+
+  auto count_break_func = [&count]() -> bool
+    {
+      return count > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(count_break_func));
+
+  ASSERT_EQ(count, 1);
+}

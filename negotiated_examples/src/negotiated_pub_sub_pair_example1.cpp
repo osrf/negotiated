@@ -56,10 +56,10 @@ public:
     auto int_user_cb = [this](const std_msgs::msg::Int32 & msg)
       {
         RCLCPP_INFO(this->get_logger(), "Int user callback: %d", msg.data);
-        if (negotiated_pub_->type_was_negotiated<negotiated_examples::StringT>()) {
-          std_msgs::msg::String str_msg;
-          str_msg.data = std::to_string(msg.data);
-          negotiated_pub_->publish<negotiated_examples::StringT>(str_msg);
+        if (negotiated_pub_->type_was_negotiated<negotiated_examples::Int32T>()) {
+          std_msgs::msg::Int32 int_msg;
+          int_msg.data = msg.data * 2;
+          negotiated_pub_->publish<negotiated_examples::Int32T>(int_msg);
         }
       };
 
@@ -74,18 +74,9 @@ public:
       int_user_cb,
       sub_options);
 
-    negotiated::NegotiatedPublisherOptions negotiated_pub_options;
-    negotiated_pub_options.successful_negotiation_cb =
-      [this](const negotiated_interfaces::msg::NegotiatedTopicsInfo & topics)
-      {
-        (void)topics;
-        negotiated_sub_->start();
-      };
-
     negotiated_pub_ = std::make_shared<negotiated::NegotiatedPublisher>(
       *this,
-      "downstream/example",
-      negotiated_pub_options);
+      "downstream/example");
 
     rclcpp::PublisherOptions pub_options;
     if (use_intra_process) {
@@ -97,7 +88,24 @@ public:
       rclcpp::QoS(1),
       pub_options);
 
+    negotiated_pub_->add_supported_type<negotiated_examples::Int32T>(
+      0.5,
+      rclcpp::QoS(1),
+      pub_options);
+
+    negotiated_pub_->add_upstream_negotiated_subscription(negotiated_sub_);
+
+    negotiated_sub_->start();
+
     negotiated_pub_->start();
+  }
+
+  ~NegotiatedPubSubPairExample1()
+  {
+    // This isn't strictly necessary, as the component is going down.  However, it drops an
+    // additional reference to the negotiated_sub_, which should allow it to be properly cleaned
+    // up (and reported as so in dynamic memory tracers, like asan).
+    negotiated_pub_->remove_upstream_negotiated_subscription(negotiated_sub_);
   }
 
 private:
