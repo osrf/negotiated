@@ -187,6 +187,7 @@ public:
    * Remove a supported callback from this NegotiatedSubscription.  The template argument must have the
    * same form as in add_supported_callback(), and must have previously been added by
    * add_supported_callback().
+   *
    * \throws std::invalid_argument if the supported_type_name in the structure is the empty string, OR
    * \throws std::invalid_argument if the type to be removed was not previously added.
    */
@@ -205,6 +206,16 @@ public:
     }
 
     key_to_supported_types_.erase(key_name);
+
+    if (ros_type_name == existing_topic_info_.ros_type_name &&
+      T::supported_type_name == existing_topic_info_.supported_type_name)
+    {
+      // We just removed the one we are connected to, disconnect
+      existing_topic_info_.ros_type_name = "";
+      existing_topic_info_.supported_type_name = "";
+      existing_topic_info_.topic_name = "";
+      subscription_.reset();
+    }
   }
 
   /// Start sending preferences to the NegotiatedPublisher.

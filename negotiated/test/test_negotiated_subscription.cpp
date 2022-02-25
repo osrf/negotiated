@@ -755,3 +755,86 @@ TEST_F(TestNegotiatedSubscription, renegotiate_after_remove_topic)
   ASSERT_EQ(empty_count, 0);
   ASSERT_EQ(string_count, 1);
 }
+
+TEST_F(TestNegotiatedSubscription, fail_renegotiate)
+{
+  // Setup of our dummy publisher
+  auto data_pub = node_->create_publisher<std_msgs::msg::String>("foo/b", rclcpp::QoS(10));
+
+  auto data_pub2 = node_->create_publisher<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10));
+
+  negotiated_interfaces::msg::NegotiatedTopicsInfo topics_msg;
+  topics_msg.success = true;
+
+  negotiated_interfaces::msg::NegotiatedTopicInfo topic_info;
+  topic_info.ros_type_name = "std_msgs/msg/String";
+  topic_info.supported_type_name = "b";
+  topic_info.topic_name = "foo/b";
+  topics_msg.negotiated_topics.push_back(topic_info);
+
+  // Setup and test the subscription
+  negotiated::NegotiatedSubscriptionOptions negotiated_sub_options;
+  negotiated_sub_options.disconnect_on_negotiation_failure = false;
+
+  auto sub = std::make_shared<negotiated::NegotiatedSubscription>(
+    *node_,
+    "foo",
+    negotiated_sub_options);
+
+  int empty_count = 0;
+  auto empty_cb = [&empty_count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      empty_count++;
+    };
+
+  int string_count = 0;
+  auto string_cb = [&string_count](const std_msgs::msg::String & msg)
+    {
+      (void)msg;
+      string_count++;
+    };
+
+  sub->add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), empty_cb);
+  sub->add_supported_callback<StringT>(1.0, rclcpp::QoS(10), string_cb);
+
+  sub->start();
+
+  auto negotiated_break_func = [this, sub]() -> bool
+    {
+      return sub->get_negotiated_topic_publisher_count() > 0 &&
+             topics_pub_->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_func));
+
+  topics_pub_->publish(topics_msg);
+
+  auto data_break_func = [sub, data_pub]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(data_break_func));
+
+  std_msgs::msg::String data;
+  data_pub->publish(data);
+
+  auto count_break_func = [&string_count]() -> bool
+    {
+      return string_count > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(count_break_func));
+
+  ASSERT_EQ(empty_count, 0);
+  ASSERT_EQ(string_count, 1);
+
+  // Now remove the only supported type, and cause renegotiation
+  sub->remove_supported_callback<StringT>();
+
+  topics_pub_->publish(topics_msg);
+
+  auto data2_break_func = [sub, data_pub2]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0;
+    };
+  ASSERT_FALSE(spin_while_waiting(data2_break_func));
+}

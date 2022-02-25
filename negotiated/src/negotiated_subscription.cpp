@@ -114,16 +114,17 @@ void NegotiatedSubscription::topicsInfoCb(
   negotiated_interfaces::msg::NegotiatedTopicInfo matched_info =
     negotiated_sub_options_.negotiate_cb(existing_topic_info_, supported_topics);
 
-  if ((matched_info.ros_type_name.empty() || matched_info.supported_type_name.empty() ||
-    matched_info.topic_name.empty()) && negotiated_sub_options_.disconnect_on_negotiation_failure)
+  if (matched_info.ros_type_name.empty() || matched_info.supported_type_name.empty() ||
+    matched_info.topic_name.empty())
   {
-    // We know the publisher attempted to and failed negotiation amongst the various subscriptions.
-    // We also know that it is no longer publishing anything, so disconnect ourselves and hope for
-    // a better result next time.
-    existing_topic_info_.ros_type_name = "";
-    existing_topic_info_.supported_type_name = "";
-    existing_topic_info_.topic_name = "";
-    subscription_.reset();
+    if (negotiated_sub_options_.disconnect_on_negotiation_failure) {
+      // The negotiation failed for one reason or another, so disconnect ourselves and hope for
+      // a better result on the next negotiation.
+      existing_topic_info_.ros_type_name = "";
+      existing_topic_info_.supported_type_name = "";
+      existing_topic_info_.topic_name = "";
+      subscription_.reset();
+    }
     return;
   }
 
