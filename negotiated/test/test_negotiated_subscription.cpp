@@ -838,3 +838,269 @@ TEST_F(TestNegotiatedSubscription, fail_renegotiate)
     };
   ASSERT_FALSE(spin_while_waiting(data2_break_func));
 }
+
+TEST_F(TestNegotiatedSubscription, add_compatible_subscription_nullptr)
+{
+  auto negotiated_sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo");
+  EXPECT_THROW(
+    negotiated_sub->add_compatible_subscription<std_msgs::msg::String>(nullptr, "blah", 1.0),
+    std::invalid_argument);
+}
+
+TEST_F(TestNegotiatedSubscription, add_compatible_subscription_empty_type_name)
+{
+  auto empty_sub_cb = [](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+    };
+
+  auto sub = node_->create_subscription<std_msgs::msg::Empty>(
+    "empty", rclcpp::QoS(10), empty_sub_cb);
+
+  auto negotiated_sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo");
+  EXPECT_THROW(negotiated_sub->add_compatible_subscription(sub, "", 1.0), std::invalid_argument);
+}
+
+TEST_F(TestNegotiatedSubscription, add_duplicate_compatible_subscription)
+{
+  int empty_count = 0;
+  auto empty_sub_cb = [&empty_count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      empty_count++;
+    };
+
+  auto sub = node_->create_subscription<std_msgs::msg::Empty>(
+    "empty", rclcpp::QoS(10), empty_sub_cb);
+
+  auto negotiated_sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo");
+  negotiated_sub->add_compatible_subscription(sub, "blah", 1.0);
+  EXPECT_THROW(
+    negotiated_sub->add_compatible_subscription(sub, "blah", 1.0),
+    std::invalid_argument);
+}
+
+TEST_F(TestNegotiatedSubscription, add_compatible_subscription_only)
+{
+  // Setup of our dummy publisher
+  auto data_pub = node_->create_publisher<std_msgs::msg::String>("compat", rclcpp::QoS(10));
+
+  negotiated_interfaces::msg::NegotiatedTopicsInfo topics_msg;
+  topics_msg.success = true;
+
+  negotiated_interfaces::msg::NegotiatedTopicInfo topic_info1;
+  topic_info1.ros_type_name = "std_msgs/msg/Empty";
+  topic_info1.supported_type_name = "a";
+  topic_info1.topic_name = "foo/a";
+  topics_msg.negotiated_topics.push_back(topic_info1);
+
+  negotiated_interfaces::msg::NegotiatedTopicInfo topic_info2;
+  topic_info2.ros_type_name = "std_msgs/msg/String";
+  topic_info2.supported_type_name = "b";
+  topic_info2.topic_name = "compat";
+  topics_msg.negotiated_topics.push_back(topic_info2);
+
+  int string_count = 0;
+  auto string_cb = [&string_count](const std_msgs::msg::String & msg)
+    {
+      (void)msg;
+      string_count++;
+    };
+
+  auto compat_sub = node_->create_subscription<std_msgs::msg::String>("compat", 10, string_cb);
+
+  // Setup and test the negotiated subscription
+  auto sub = std::make_shared<negotiated::NegotiatedSubscription>(
+    *node_,
+    "foo");
+
+  sub->add_compatible_subscription(compat_sub, "b", 1.0);
+
+  sub->start();
+
+  auto negotiated_break_func = [this, sub]() -> bool
+    {
+      return sub->get_negotiated_topic_publisher_count() > 0 &&
+             topics_pub_->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_func));
+
+  topics_pub_->publish(topics_msg);
+
+  auto data_break_func = [sub, data_pub]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(data_break_func));
+
+  std_msgs::msg::String data;
+  data_pub->publish(data);
+
+  auto count_break_func = [&string_count]() -> bool
+    {
+      return string_count > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(count_break_func));
+
+  ASSERT_EQ(string_count, 1);
+}
+
+TEST_F(TestNegotiatedSubscription, add_compatible_subscription_before_negotiation)
+{
+  // Setup of our dummy publisher
+  auto data_pub = node_->create_publisher<std_msgs::msg::String>("compat", rclcpp::QoS(10));
+
+  negotiated_interfaces::msg::NegotiatedTopicsInfo topics_msg;
+  topics_msg.success = true;
+
+  negotiated_interfaces::msg::NegotiatedTopicInfo topic_info1;
+  topic_info1.ros_type_name = "std_msgs/msg/Empty";
+  topic_info1.supported_type_name = "a";
+  topic_info1.topic_name = "foo/a";
+  topics_msg.negotiated_topics.push_back(topic_info1);
+
+  negotiated_interfaces::msg::NegotiatedTopicInfo topic_info2;
+  topic_info2.ros_type_name = "std_msgs/msg/String";
+  topic_info2.supported_type_name = "b";
+  topic_info2.topic_name = "compat";
+  topics_msg.negotiated_topics.push_back(topic_info2);
+
+  int string_count = 0;
+  auto string_cb = [&string_count](const std_msgs::msg::String & msg)
+    {
+      (void)msg;
+      string_count++;
+    };
+
+  auto compat_sub = node_->create_subscription<std_msgs::msg::String>("compat", 10, string_cb);
+
+  // Setup and test the negotiated subscription
+  auto sub = std::make_shared<negotiated::NegotiatedSubscription>(
+    *node_,
+    "foo");
+
+  int empty_count = 0;
+  auto empty_cb = [&empty_count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      empty_count++;
+    };
+
+  sub->add_compatible_subscription(compat_sub, "b", 1.0);
+
+  sub->add_supported_callback<EmptyT>(0.5, rclcpp::QoS(10), empty_cb);
+
+  sub->start();
+
+  auto negotiated_break_func = [this, sub]() -> bool
+    {
+      return sub->get_negotiated_topic_publisher_count() > 0 &&
+             topics_pub_->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_func));
+
+  topics_pub_->publish(topics_msg);
+
+  auto data_break_func = [sub, data_pub]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(data_break_func));
+
+  std_msgs::msg::String data;
+  data_pub->publish(data);
+
+  auto count_break_func = [&string_count]() -> bool
+    {
+      return string_count > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(count_break_func));
+
+  ASSERT_EQ(empty_count, 0);
+  ASSERT_EQ(string_count, 1);
+}
+
+TEST_F(TestNegotiatedSubscription, compatible_subscription_switch_away)
+{
+  // Setup of our dummy publisher
+  auto data_pub = node_->create_publisher<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10));
+
+  negotiated_interfaces::msg::NegotiatedTopicsInfo topics_msg;
+  topics_msg.success = true;
+
+  negotiated_interfaces::msg::NegotiatedTopicInfo topic_info1;
+  topic_info1.ros_type_name = "std_msgs/msg/Empty";
+  topic_info1.supported_type_name = "a";
+  topic_info1.topic_name = "foo/a";
+  topics_msg.negotiated_topics.push_back(topic_info1);
+
+  int string_count = 0;
+  auto string_cb = [&string_count](const std_msgs::msg::String & msg)
+    {
+      (void)msg;
+      string_count++;
+    };
+
+  auto compat_sub = node_->create_subscription<std_msgs::msg::String>("compat", 10, string_cb);
+
+  // Setup and test the negotiated subscription
+  auto sub = std::make_shared<negotiated::NegotiatedSubscription>(
+    *node_,
+    "foo");
+
+  int empty_count = 0;
+  auto empty_cb = [&empty_count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      empty_count++;
+    };
+
+  sub->add_compatible_subscription(compat_sub, "b", 1.0);
+
+  sub->add_supported_callback<EmptyT>(0.5, rclcpp::QoS(10), empty_cb);
+
+  sub->start();
+
+  auto negotiated_break_func = [this, sub]() -> bool
+    {
+      return sub->get_negotiated_topic_publisher_count() > 0 &&
+             topics_pub_->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_func));
+
+  topics_pub_->publish(topics_msg);
+
+  auto data_break_func = [sub, data_pub]() -> bool
+    {
+      return sub->get_data_topic_publisher_count() > 0 && data_pub->get_subscription_count() > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(data_break_func));
+
+  std_msgs::msg::Empty data;
+  data_pub->publish(data);
+
+  auto count_break_func = [&empty_count]() -> bool
+    {
+      return empty_count > 0;
+    };
+  ASSERT_TRUE(spin_while_waiting(count_break_func));
+
+  ASSERT_EQ(empty_count, 1);
+  ASSERT_EQ(string_count, 0);
+}
+
+TEST_F(TestNegotiatedSubscription, remove_compatible_subscription_empty_type_name)
+{
+  auto negotiated_sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo");
+  EXPECT_THROW(
+    negotiated_sub->remove_compatible_subscription<std_msgs::msg::Empty>(nullptr, ""),
+    std::invalid_argument);
+}
+
+TEST_F(TestNegotiatedSubscription, remove_compatible_subscription_non_existent)
+{
+  auto negotiated_sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo");
+  EXPECT_THROW(
+    negotiated_sub->remove_compatible_subscription<std_msgs::msg::Empty>(nullptr, "blah"),
+    std::invalid_argument);
+}

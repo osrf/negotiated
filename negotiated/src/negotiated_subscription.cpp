@@ -148,7 +148,13 @@ void NegotiatedSubscription::topicsInfoCb(
 
   existing_topic_info_ = matched_info;
 
-  subscription_ = key_to_supported_types_[key].sub_factory(existing_topic_info_.topic_name);
+  if (key_to_supported_types_[key].is_compat) {
+    subscription_ = key_to_supported_types_[key].subscription;
+    current_subscription_is_compat_ = true;
+  } else {
+    subscription_ = key_to_supported_types_[key].sub_factory(existing_topic_info_.topic_name);
+    current_subscription_is_compat_ = false;
+  }
 }
 
 std::string NegotiatedSubscription::generate_key(
