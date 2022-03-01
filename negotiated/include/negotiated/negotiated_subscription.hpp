@@ -49,7 +49,8 @@ namespace detail
  */
 negotiated_interfaces::msg::NegotiatedTopicInfo default_negotiate_cb(
   const negotiated_interfaces::msg::NegotiatedTopicInfo & existing_info,
-  const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg);
+  const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg,
+  bool attempt_to_keep_subscription_connected);
 
 }  // namespace detail
 
@@ -61,10 +62,16 @@ struct NegotiatedSubscriptionOptions
   /// has failed renegotiation.
   bool disconnect_on_negotiation_failure{true};
 
+  /// When negotiating, attempt to keep the current subscription (if any) connected, rather than
+  /// choosing the highest priority connection.  If set to false, will always choose the highest
+  /// priority connection even if the existing connection is in the list of negotiated types.
+  bool attempt_to_keep_subscription_connected{true};
+
   /// A user settable callback to call instead of the default_negotiate_cb().
   std::function<negotiated_interfaces::msg::NegotiatedTopicInfo(
-      const negotiated_interfaces::msg::NegotiatedTopicInfo & existing_info,
-      const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)> negotiate_cb{
+      const negotiated_interfaces::msg::NegotiatedTopicInfo &,
+      const negotiated_interfaces::msg::NegotiatedTopicsInfo &,
+      bool)> negotiate_cb{
     detail::default_negotiate_cb};
 };
 

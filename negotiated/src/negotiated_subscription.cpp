@@ -32,7 +32,8 @@ namespace detail
 
 negotiated_interfaces::msg::NegotiatedTopicInfo default_negotiate_cb(
   const negotiated_interfaces::msg::NegotiatedTopicInfo & existing_info,
-  const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)
+  const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg,
+  bool attempt_to_keep_subscription_connected)
 {
   negotiated_interfaces::msg::NegotiatedTopicInfo matched_info;
 
@@ -41,7 +42,8 @@ negotiated_interfaces::msg::NegotiatedTopicInfo default_negotiate_cb(
   }
 
   for (const negotiated_interfaces::msg::NegotiatedTopicInfo & info : msg.negotiated_topics) {
-    if (info.ros_type_name == existing_info.ros_type_name &&
+    if (attempt_to_keep_subscription_connected &&
+      info.ros_type_name == existing_info.ros_type_name &&
       info.supported_type_name == existing_info.supported_type_name &&
       info.topic_name == existing_info.topic_name)
     {
@@ -60,6 +62,12 @@ negotiated_interfaces::msg::NegotiatedTopicInfo default_negotiate_cb(
       matched_info.topic_name.empty())
     {
       matched_info = info;
+
+      // Small optimization; if we aren't trying to keep the existing connection, we can stop after
+      // we've found the first match.
+      if (!attempt_to_keep_subscription_connected) {
+        break;
+      }
     }
   }
 
@@ -112,7 +120,10 @@ void NegotiatedSubscription::topicsInfoCb(
   }
 
   negotiated_interfaces::msg::NegotiatedTopicInfo matched_info =
-    negotiated_sub_options_.negotiate_cb(existing_topic_info_, supported_topics);
+    negotiated_sub_options_.negotiate_cb(
+    existing_topic_info_,
+    supported_topics,
+    negotiated_sub_options_.attempt_to_keep_subscription_connected);
 
   if (matched_info.ros_type_name.empty() || matched_info.supported_type_name.empty() ||
     matched_info.topic_name.empty())
