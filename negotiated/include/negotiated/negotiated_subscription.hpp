@@ -218,7 +218,7 @@ public:
   /// Start sending preferences to the NegotiatedPublisher.
   /**
    * This is separated from the constructor to give the user time to call add_supported_callback()
-   * to express all preferences.  Once that is done, the user should call start.  This may be
+   * to express all preferences.  Once that is done, the user should call start.  This may be called
    * more than once to express new preferences to the NegotiatedPublisher, which will generally
    * cause a renegotiation.
    */
@@ -246,6 +246,7 @@ private:
   {
     /// The supported type info associated with this type.
     negotiated_interfaces::msg::SupportedType supported_type;
+
     /// The factory function associated with this type.
     std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)> sub_factory;
   };
@@ -279,21 +280,27 @@ private:
 
   /// The node parameters interface to use.
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_;
+
   /// The node topics interface to use.
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics_;
+
   /// The node logging interface to use.
   rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr node_logging_;
+
   /// The original options to this class provided by the user.
   NegotiatedSubscriptionOptions negotiated_sub_options_;
 
   /// A map between unique type keys (as returned by generate_key()) and the SupportedTypeInfos.
   std::unordered_map<std::string, SupportedTypeInfo> key_to_supported_types_;
+
   /// The subscription used to include this class in the NegotiatedPublisher network and to
   /// receive preferences from the NegotiatedPublisher once they have been negotiated.
   rclcpp::Subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr
     negotiated_subscription_;
+
   /// The subscription that data flows over once negotiation has happened.
   std::shared_ptr<rclcpp::SubscriptionBase> subscription_;
+
   /// The transient local publisher that informs the NegotiatedPublisher of preferences.
   rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_pub_;
 

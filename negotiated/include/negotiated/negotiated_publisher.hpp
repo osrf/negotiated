@@ -407,36 +407,49 @@ private:
 
   /// The node parameters interface to use.
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_;
+
   /// The node topics interface to use.
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics_;
+
   /// The node logging interface to use.
   rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr node_logging_;
+
   /// The node graph interface to use.
   rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph_;
+
   /// The node base interface to use.
   rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_base_;
+
   /// The node timers interface to use.
   rclcpp::node_interfaces::NodeTimersInterface::SharedPtr node_timers_;
+
   /// The original topic_name provided by the user.
   std::string topic_name_;
+
   /// The original options to this class provided by the user.
   NegotiatedPublisherOptions negotiated_pub_options_;
 
   /// A map between unique type keys (as returned by generate_key()) and SupportedTypeInfos.
   std::map<std::string, detail::SupportedTypeInfo> key_to_supported_types_;
+
   /// The publisher used to collect NegotiatedSubscriptions that are part of the network and for
   /// informing those NegotiatedSubscriptions of the chosen types.
   rclcpp::Publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr
     negotiated_publisher_;
+
   /// The transient local subscription that gathers supported types from NegotiatedSubscriptions.
   rclcpp::Subscription<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_sub_;
+
   /// The timer used for checking for graph changes.
   rclcpp::TimerBase::SharedPtr graph_change_timer_;
+
   /// The graph event used for checking for graph changes.
   rclcpp::Event::SharedPtr graph_event_;
+
   /// The mutex to protect against concurrent modification of the
   /// negotiated_subscription_type_gids map.
   std::mutex negotiated_subscription_type_mutex_;
+
   /// A map between PublisherGids and the list of unique type keys (as returned by generate_key()).
   /// This is used to track which GIDs preferences have been met during negotiation.
   std::shared_ptr<std::map<detail::PublisherGid,
