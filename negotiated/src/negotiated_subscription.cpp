@@ -90,7 +90,7 @@ NegotiatedSubscription::NegotiatedSubscription(
   supported_types_pub_ = rclcpp::create_publisher<negotiated_interfaces::msg::SupportedTypes>(
     node_parameters_,
     node_topics_,
-    negotiated_subscription_->get_topic_name() + std::string("/supported_types"),
+    negotiated_subscription_->get_topic_name() + std::string("/_supported_types"),
     rclcpp::QoS(100).transient_local());
 }
 

@@ -85,7 +85,7 @@ protected:
 
     auto dummy_foo_supported_types =
       node_->create_publisher<negotiated_interfaces::msg::SupportedTypes>(
-      "foo/supported_types", rclcpp::QoS(10).transient_local());
+      "foo/_supported_types", rclcpp::QoS(10).transient_local());
 
     negotiated_interfaces::msg::SupportedTypes dummy_supported_types;
 
