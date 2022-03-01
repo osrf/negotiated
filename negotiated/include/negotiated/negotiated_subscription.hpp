@@ -165,6 +165,7 @@ public:
     key_to_supported_types_[key_name].supported_type.ros_type_name = ros_type_name;
     key_to_supported_types_[key_name].supported_type.supported_type_name = T::supported_type_name;
     key_to_supported_types_[key_name].supported_type.weight = weight;
+    key_to_supported_types_[key_name].is_compat = false;
     key_to_supported_types_[key_name].sub_factory =
       [this, qos, callback,
         options](const std::string & topic_name) -> rclcpp::SubscriptionBase::SharedPtr
@@ -215,6 +216,105 @@ public:
     }
   }
 
+  /// Add a compatible subscription with a weight.
+  /**
+   * Add a compatible subscription to this NegotiatedSubscription.  A compatible subscription is
+   * one that has already been created by the user (using the normal rclcpp methods), but is
+   * intended as a fallback option in case negotiation fails or no NegotiatedPublisher ever
+   * attaches.  Note that there can only ever be one of these in this NegotiatedSubscription.
+   *
+   * \param[in] sub - The already created subscription to add as a compatible subscription.
+   * \param[in] supported_type_name - The supported type name to associate with this compatible
+   *                                  subscription.
+   * \param[in] weight - The relative weight to assign this supported type; types with higher
+   *                     weights are more likely to be chosen.
+   * \throws std::invalid_argument if the supported_type_name in the structure is the empty string, OR
+   * \throws std::invalid_argument if the exact same type has already been added.
+   */
+  template<typename MsgT>
+  void add_compatible_subscription(
+    std::shared_ptr<rclcpp::Subscription<MsgT>> sub,
+    const std::string & supported_type_name,
+    double weight)
+  {
+    if (sub == nullptr) {
+      throw std::invalid_argument("The passed in subscription pointer must not be null");
+    }
+
+    if (supported_type_name.empty()) {
+      throw std::invalid_argument("The supported_type_name cannot be empty");
+    }
+
+    if (current_subscription_is_compat_) {
+      throw std::invalid_argument(
+              "The current subscription is already compat; remove that one first");
+    }
+
+    std::string ros_type_name = rosidl_generator_traits::name<MsgT>();
+    std::string key_name = generate_key(ros_type_name, supported_type_name);
+    if (key_to_supported_types_.count(key_name) != 0) {
+      throw std::invalid_argument("Cannot add duplicate key to supported types");
+    }
+
+    key_to_supported_types_.emplace(key_name, SupportedTypeInfo());
+    key_to_supported_types_[key_name].supported_type.ros_type_name = ros_type_name;
+    key_to_supported_types_[key_name].supported_type.supported_type_name = supported_type_name;
+    key_to_supported_types_[key_name].supported_type.weight = weight;
+    key_to_supported_types_[key_name].is_compat = true;
+    key_to_supported_types_[key_name].subscription = sub;
+    key_to_supported_types_[key_name].sub_factory = nullptr;
+
+    // If we have already previously negotiated for something else, then we will *not* replace
+    // it here and instead will just put this in the list as something that could be negotiated
+    // for.  If nothing has been negotiated yet, then we will automatically use it.
+    if (subscription_ == nullptr) {
+      existing_topic_info_.ros_type_name = ros_type_name;
+      existing_topic_info_.supported_type_name = supported_type_name;
+      existing_topic_info_.topic_name = sub->get_topic_name();
+      subscription_ = sub;
+      current_subscription_is_compat_ = true;
+    }
+  }
+
+  /// Remove a compatible subscription.
+  /**
+   * Remove a compatible publisher from this NegotiatedSubscription.  The subscription must have
+   * previously been added by add_compatible_subscription().
+   *
+   * \param[in] sub - The rclcpp::Subscription shared_ptr to remove from negotiation.
+   * \param[in] supported_type_name - The arbitrary name originally given to the compatible
+   *                                  subscription.
+   * \throws std::invalid_argument if the supported_type_name in the structure is the empty string, OR
+   * \throws std::invalid_argument if the type to be removed was not previously added.
+   */
+  template<typename MsgT>
+  void remove_compatible_subscription(
+    std::shared_ptr<rclcpp::Subscription<MsgT>> sub,
+    const std::string & supported_type_name)
+  {
+    (void)sub;
+
+    if (supported_type_name.empty()) {
+      throw std::invalid_argument("The supported_type_name cannot be empty");
+    }
+
+    std::string ros_type_name = rosidl_generator_traits::name<MsgT>();
+    std::string key_name = generate_key(ros_type_name, supported_type_name);
+    if (key_to_supported_types_.count(key_name) == 0) {
+      throw std::invalid_argument("Specified key does not exist");
+    }
+
+    key_to_supported_types_.erase(key_name);
+
+    if (current_subscription_is_compat_) {
+      existing_topic_info_.ros_type_name = "";
+      existing_topic_info_.supported_type_name = "";
+      existing_topic_info_.topic_name = "";
+      subscription_ = nullptr;
+      current_subscription_is_compat_ = false;
+    }
+  }
+
   /// Start sending preferences to the NegotiatedPublisher.
   /**
    * This is separated from the constructor to give the user time to call add_supported_callback()
@@ -246,6 +346,14 @@ private:
   {
     /// The supported type info associated with this type.
     negotiated_interfaces::msg::SupportedType supported_type;
+
+    /// Whether this supported type is a compatible subscription, i.e. one created outside of this
+    /// NegotiatedSubscription.
+    bool is_compat;
+
+    /// The saved subscription pointer, which is used in the case that this is a compatible
+    /// subscription.
+    rclcpp::SubscriptionBase::SharedPtr subscription;
 
     /// The factory function associated with this type.
     std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)> sub_factory;
@@ -298,8 +406,11 @@ private:
   rclcpp::Subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>::SharedPtr
     negotiated_subscription_;
 
+  /// Whether the current subscription we are using is a compatible one or not.
+  bool current_subscription_is_compat_{false};
+
   /// The subscription that data flows over once negotiation has happened.
-  std::shared_ptr<rclcpp::SubscriptionBase> subscription_;
+  std::shared_ptr<rclcpp::SubscriptionBase> subscription_{nullptr};
 
   /// The transient local publisher that informs the NegotiatedPublisher of preferences.
   rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_pub_;
