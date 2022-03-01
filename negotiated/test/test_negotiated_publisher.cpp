@@ -63,7 +63,7 @@ protected:
     std::future<bool> future = promise.get_future();
     auto shared_future = future.share();
 
-    for (int i = 0; i < 20; ++i) {
+    for (int i = 0; i < 50; ++i) {
       if (break_func()) {
         return true;
       }
