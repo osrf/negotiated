@@ -107,7 +107,10 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
     double max_weight = 0.0;
 
     auto check_combination =
-      [key_to_supported_types, gid_set, &max_weight, &matched_subs](
+      [&key_to_supported_types = std::as_const(key_to_supported_types),
+        & gid_set = std::as_const(gid_set),
+        &max_weight,
+        &matched_subs](
       std::vector<std::string>::iterator first,
       std::vector<std::string>::iterator last) -> bool
       {
