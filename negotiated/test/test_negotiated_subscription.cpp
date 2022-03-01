@@ -588,7 +588,7 @@ TEST_F(TestNegotiatedSubscription, custom_negotiated_cb)
   // would choose.  The custom negotiation function below chooses the std_msgs/msg/String
   // one instead.
   auto custom_negotiate_cb =
-    [](const negotiated_interfaces::msg::NegotiatedTopicInfo & existing_info,
+    [](const negotiated_interfaces::msg::SupportedType & existing_info,
       const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg) ->
     negotiated_interfaces::msg::NegotiatedTopicInfo
     {

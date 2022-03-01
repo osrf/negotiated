@@ -48,7 +48,7 @@ namespace detail
  *         case no connection will be made.
  */
 negotiated_interfaces::msg::NegotiatedTopicInfo default_negotiate_cb(
-  const negotiated_interfaces::msg::NegotiatedTopicInfo & existing_info,
+  const negotiated_interfaces::msg::SupportedType & existing_info,
   const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg);
 
 }  // namespace detail
@@ -63,8 +63,8 @@ struct NegotiatedSubscriptionOptions
 
   /// A user settable callback to call instead of the default_negotiate_cb().
   std::function<negotiated_interfaces::msg::NegotiatedTopicInfo(
-      const negotiated_interfaces::msg::NegotiatedTopicInfo & existing_info,
-      const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)> negotiate_cb{
+      const negotiated_interfaces::msg::SupportedType &,
+      const negotiated_interfaces::msg::NegotiatedTopicsInfo &)> negotiate_cb{
     detail::default_negotiate_cb};
 };
 
@@ -204,13 +204,9 @@ public:
 
     key_to_supported_types_.erase(key_name);
 
-    if (ros_type_name == existing_topic_info_.ros_type_name &&
-      T::supported_type_name == existing_topic_info_.supported_type_name)
-    {
+    if (key_name == existing_key_) {
       // We just removed the one we are connected to, disconnect
-      existing_topic_info_.ros_type_name = "";
-      existing_topic_info_.supported_type_name = "";
-      existing_topic_info_.topic_name = "";
+      existing_key_ = "";
       subscription_.reset();
     }
   }
@@ -304,8 +300,9 @@ private:
   /// The transient local publisher that informs the NegotiatedPublisher of preferences.
   rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr supported_types_pub_;
 
-  /// Saved information about the currently connected data topic.
-  negotiated_interfaces::msg::NegotiatedTopicInfo existing_topic_info_;
+  /// The key into our map about the currently connected data topic.  If nothing is connected,
+  /// then this will be empty.
+  std::string existing_key_;
 };
 
 }  // namespace negotiated

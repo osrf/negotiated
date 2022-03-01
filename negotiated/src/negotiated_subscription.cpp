@@ -31,7 +31,7 @@ namespace detail
 {
 
 negotiated_interfaces::msg::NegotiatedTopicInfo default_negotiate_cb(
-  const negotiated_interfaces::msg::NegotiatedTopicInfo & existing_info,
+  const negotiated_interfaces::msg::SupportedType & existing_info,
   const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)
 {
   negotiated_interfaces::msg::NegotiatedTopicInfo matched_info;
@@ -42,8 +42,7 @@ negotiated_interfaces::msg::NegotiatedTopicInfo default_negotiate_cb(
 
   for (const negotiated_interfaces::msg::NegotiatedTopicInfo & info : msg.negotiated_topics) {
     if (info.ros_type_name == existing_info.ros_type_name &&
-      info.supported_type_name == existing_info.supported_type_name &&
-      info.topic_name == existing_info.topic_name)
+      info.supported_type_name == existing_info.supported_type_name)
     {
       // The publisher renegotiated, but still supports the one we were already connected to.  We
       // keep using the old type to ensure we don't lose data.
@@ -111,8 +110,13 @@ void NegotiatedSubscription::topicsInfoCb(
     supported_topics.negotiated_topics.push_back(info);
   }
 
+  negotiated_interfaces::msg::SupportedType existing_topic_info;
+  if (!existing_key_.empty()) {
+    existing_topic_info = key_to_supported_types_.at(existing_key_).supported_type;
+  }
+
   negotiated_interfaces::msg::NegotiatedTopicInfo matched_info =
-    negotiated_sub_options_.negotiate_cb(existing_topic_info_, supported_topics);
+    negotiated_sub_options_.negotiate_cb(existing_topic_info, supported_topics);
 
   if (matched_info.ros_type_name.empty() || matched_info.supported_type_name.empty() ||
     matched_info.topic_name.empty())
@@ -120,17 +124,14 @@ void NegotiatedSubscription::topicsInfoCb(
     if (negotiated_sub_options_.disconnect_on_negotiation_failure) {
       // The negotiation failed for one reason or another, so disconnect ourselves and hope for
       // a better result on the next negotiation.
-      existing_topic_info_.ros_type_name = "";
-      existing_topic_info_.supported_type_name = "";
-      existing_topic_info_.topic_name = "";
+      existing_key_ = "";
       subscription_.reset();
     }
     return;
   }
 
-  if (matched_info.ros_type_name == existing_topic_info_.ros_type_name &&
-    matched_info.supported_type_name == existing_topic_info_.supported_type_name &&
-    matched_info.topic_name == existing_topic_info_.topic_name)
+  if (matched_info.ros_type_name == existing_topic_info.ros_type_name &&
+    matched_info.supported_type_name == existing_topic_info.supported_type_name)
   {
     // This is exactly the same as what we are already connected to, so no work to do.
     return;
@@ -146,9 +147,9 @@ void NegotiatedSubscription::topicsInfoCb(
     return;
   }
 
-  existing_topic_info_ = matched_info;
+  existing_key_ = key;
 
-  subscription_ = key_to_supported_types_[key].sub_factory(existing_topic_info_.topic_name);
+  subscription_ = key_to_supported_types_[key].sub_factory(matched_info.topic_name);
 }
 
 std::string NegotiatedSubscription::generate_key(
@@ -175,9 +176,7 @@ size_t NegotiatedSubscription::get_negotiated_topic_publisher_count() const
 
 size_t NegotiatedSubscription::get_data_topic_publisher_count() const
 {
-  if (existing_topic_info_.ros_type_name.empty() ||
-    existing_topic_info_.supported_type_name.empty() || existing_topic_info_.topic_name.empty())
-  {
+  if (existing_key_.empty()) {
     return 0;
   }
 
