@@ -50,7 +50,7 @@ protected:
     node_ = std::make_shared<rclcpp::Node>("test_negotiated_subscription");
 
     topics_pub_ = node_->create_publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
-      "foo", rclcpp::QoS(10));
+      "foo/_negotiated_types", rclcpp::QoS(10));
   }
 
   void TearDown()

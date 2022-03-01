@@ -94,7 +94,7 @@ public:
     rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_,
     rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics_,
     rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr node_logging,
-    const std::string & topic_name,
+    const std::string & base_topic_name,
     const NegotiatedSubscriptionOptions & negotiated_sub_options = NegotiatedSubscriptionOptions());
 
   /// Create a new NegotiatedSubscription with the given "base" topic_name.
@@ -110,13 +110,13 @@ public:
   template<typename NodeT>
   explicit NegotiatedSubscription(
     NodeT & node,
-    const std::string & topic_name,
+    const std::string & base_topic_name,
     const NegotiatedSubscriptionOptions & negotiated_sub_options = NegotiatedSubscriptionOptions())
   : NegotiatedSubscription(
       node.get_node_parameters_interface(),
       node.get_node_topics_interface(),
       node.get_node_logging_interface(),
-      topic_name,
+      base_topic_name,
       negotiated_sub_options)
   {
   }

@@ -72,7 +72,7 @@ NegotiatedSubscription::NegotiatedSubscription(
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters,
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics,
   rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr node_logging,
-  const std::string & topic_name,
+  const std::string & base_topic_name,
   const NegotiatedSubscriptionOptions & negotiated_sub_options)
 : node_parameters_(node_parameters),
   node_topics_(node_topics),
@@ -83,7 +83,7 @@ NegotiatedSubscription::NegotiatedSubscription(
     rclcpp::create_subscription<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
     node_parameters_,
     node_topics_,
-    topic_name,
+    base_topic_name + "/_negotiated_types",
     rclcpp::QoS(10),
     std::bind(&NegotiatedSubscription::topicsInfoCb, this, std::placeholders::_1));
 

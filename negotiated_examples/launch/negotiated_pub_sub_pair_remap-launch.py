@@ -29,7 +29,7 @@ def generate_launch_description():
                     package='negotiated_examples',
                     plugin='negotiated_examples::NegotiatedSubExample1',
                     name='negotiated_sub_example1',
-                    remappings=[('example', 'downstream/example')]),
+                    remappings=[('example/_negotiated_types', 'downstream/example/_negotiated_types')]),
                 ComposableNode(
                     package='negotiated_examples',
                     plugin='negotiated_examples::NegotiatedPubSubPairExample1',

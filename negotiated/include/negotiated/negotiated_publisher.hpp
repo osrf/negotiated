@@ -151,8 +151,9 @@ public:
 
   /// Create a new NegotiatedPublisher with the given "base" topic_name.
   /**
-   * The topic_name given here will be used to determine the list of NegotiatedSubscriptions in the
-   * network.  It will also be used to communicate the chosen topic_name at the end of negotiation.
+   * The base_topic_name given here will be used to determine the NegotiatedSubscriptions in the
+   * network.  It will also be used to communicate the chosen topic name for data transfer at the
+   * end of negotiation.
    *
    * \param[in] node_parameters The node parameters interface to use.
    * \param[in] node_topics The node topics interface to use.
@@ -160,8 +161,8 @@ public:
    * \param[in] node_graph The node graph interface to use.
    * \param[in] node_base The node base interface to use.
    * \param[in] node_timers The node timers interface to use.
-   * \param[in] topic_name The topic name to use for the "base" topic and as the prefix for the
-   *                       final topic name.
+   * \param[in] base_topic_name The topic name to use for the "base" topic and as the prefix for the
+   *                            final topic name.
    * \param[in] negotiated_pub_options The options to use.
    */
   explicit NegotiatedPublisher(
@@ -171,23 +172,24 @@ public:
     rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph,
     rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_base,
     rclcpp::node_interfaces::NodeTimersInterface::SharedPtr node_timers,
-    const std::string & topic_name,
+    const std::string & base_topic_name,
     const NegotiatedPublisherOptions & negotiated_pub_options = NegotiatedPublisherOptions());
 
   /// Create a new NegotiatedPublisher with the given "base" topic_name.
   /**
-   * The topic_name given here will be used to determine the list of NegotiatedSubscriptions in the
-   * network.  It will also be used to communicate the chosen topic_name at the end of negotiation.
+   * The base_topic_name given here will be used to determine the NegotiatedSubscriptions in the
+   * network.  It will also be used to communicate the chosen topic name for data transfer at the
+   * end of negotiation.
    *
    * \param[in] node The node to use to create the publishers and subscriptions.
-   * \param[in] topic_name The topic name to use for the "base" topic and as the prefix for the
-   *                       final topic name.
+   * \param[in] base_topic_name The topic name to use for the "base" topic and as the prefix for the
+   *                            final topic name.
    * \param[in] negotiated_pub_options The options to use.
    */
   template<typename NodeT>
   explicit NegotiatedPublisher(
     NodeT & node,
-    const std::string & topic_name,
+    const std::string & base_topic_name,
     const NegotiatedPublisherOptions & negotiated_pub_options = NegotiatedPublisherOptions())
   : NegotiatedPublisher(
       node.get_node_parameters_interface(),
@@ -196,7 +198,7 @@ public:
       node.get_node_graph_interface(),
       node.get_node_base_interface(),
       node.get_node_timers_interface(),
-      topic_name,
+      base_topic_name,
       negotiated_pub_options)
   {
   }
@@ -537,8 +539,8 @@ private:
   /// The node timers interface to use.
   rclcpp::node_interfaces::NodeTimersInterface::SharedPtr node_timers_;
 
-  /// The original topic_name provided by the user.
-  std::string topic_name_;
+  /// The "base" topic_name provided by the user.
+  std::string base_topic_name_;
 
   /// The original options to this class provided by the user.
   NegotiatedPublisherOptions negotiated_pub_options_;

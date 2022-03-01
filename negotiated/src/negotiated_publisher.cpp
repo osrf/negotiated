@@ -233,7 +233,7 @@ NegotiatedPublisher::NegotiatedPublisher(
   rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph,
   rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_base,
   rclcpp::node_interfaces::NodeTimersInterface::SharedPtr node_timers,
-  const std::string & topic_name,
+  const std::string & base_topic_name,
   const NegotiatedPublisherOptions & negotiated_pub_options)
 : node_parameters_(node_parameters),
   node_topics_(node_topics),
@@ -241,7 +241,7 @@ NegotiatedPublisher::NegotiatedPublisher(
   node_graph_(node_graph),
   node_base_(node_base),
   node_timers_(node_timers),
-  topic_name_(topic_name),
+  base_topic_name_(base_topic_name),
   negotiated_pub_options_(negotiated_pub_options)
 {
   if (negotiated_pub_options_.maximum_negotiated_solutions == 0) {
@@ -255,7 +255,7 @@ NegotiatedPublisher::NegotiatedPublisher(
     rclcpp::create_publisher<negotiated_interfaces::msg::NegotiatedTopicsInfo>(
     node_parameters_,
     node_topics_,
-    topic_name_,
+    base_topic_name_ + "/_negotiated_types",
     rclcpp::QoS(10));
 
   graph_event_ = node_graph_->get_graph_event();
@@ -291,7 +291,7 @@ void NegotiatedPublisher::graph_change_timer_callback()
   auto new_negotiated_subscription_gids = std::make_shared<std::map<detail::PublisherGid,
       std::vector<std::string>>>();
   std::vector<rclcpp::TopicEndpointInfo> endpoints = node_graph_->get_publishers_info_by_topic(
-    topic_name_ + "/_supported_types");
+    base_topic_name_ + "/_supported_types");
 
   // We need to hold the lock across this entire operation
   std::lock_guard<std::mutex> lg(negotiated_subscription_type_mutex_);
@@ -428,7 +428,7 @@ void NegotiatedPublisher::start()
       }
     };
 
-  std::string supported_type_name = topic_name_ + "/_supported_types";
+  std::string supported_type_name = base_topic_name_ + "/_supported_types";
   supported_types_sub_ = rclcpp::create_subscription<negotiated_interfaces::msg::SupportedTypes>(
     node_parameters_,
     node_topics_,
@@ -555,7 +555,7 @@ void NegotiatedPublisher::negotiate()
       keys_to_preserve.insert(key);
       if (supported_type_info.publisher == nullptr) {
         // We need to create this publisher.
-        std::string topic_name = topic_name_ + "/" + type.supported_type_name;
+        std::string topic_name = base_topic_name_ + "/" + type.supported_type_name;
         supported_type_info.publisher = supported_type_info.pub_factory(topic_name);
       }
 
