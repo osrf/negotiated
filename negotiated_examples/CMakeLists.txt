@@ -44,6 +44,19 @@ rclcpp_components_register_node(negotiated_sub_example2_node
   PLUGIN "negotiated_examples::NegotiatedSubExample2"
   EXECUTABLE negotiated_sub_example2)
 
+add_library(negotiated_sub_example3_node SHARED
+  src/negotiated_sub_example3.cpp
+)
+target_link_libraries(negotiated_sub_example3_node
+  negotiated::negotiated
+  rclcpp::rclcpp
+  ${rclcpp_components_TARGETS}
+  ${std_msgs_TARGETS}
+)
+rclcpp_components_register_node(negotiated_sub_example3_node
+  PLUGIN "negotiated_examples::NegotiatedSubExample3"
+  EXECUTABLE negotiated_sub_example3)
+
 add_library(negotiated_pub_example1_node SHARED
   src/negotiated_pub_example1.cpp
 )
@@ -121,6 +134,7 @@ rclcpp_components_register_node(negotiated_pub_compatible_example1_node
 install(
   TARGETS negotiated_sub_example1_node
           negotiated_sub_example2_node
+          negotiated_sub_example3_node
           negotiated_pub_example1_node
           negotiated_pub_sub_pair_example1_node
           negotiated_pub_type_adapt_example1_node
