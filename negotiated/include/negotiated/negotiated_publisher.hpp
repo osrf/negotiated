@@ -365,6 +365,20 @@ public:
     key_to_supported_types_.erase(key_name);
   }
 
+  /// Set a callback to be called after a successful negotiation.
+  /**
+   * \param[in] cb The callback to call after a successful negotiation.
+   */
+  void add_successful_negotiation_callback(
+    const std::function<void(const negotiated_interfaces::msg::NegotiatedTopicsInfo &)> & cb);
+
+  /// Remove a callback to be called after a successful negotiation.
+  /**
+   * \param[in] cb The callback to remove.
+   */
+  void remove_successful_negotiation_callback(
+    const std::function<void(const negotiated_interfaces::msg::NegotiatedTopicsInfo &)> & cb);
+
   /// Start collecting information from the attached NegotiatedSubscriptions.
   /**
    * Until this method is called, no data from NegotiatedSubscriptions will be collected.
@@ -541,6 +555,9 @@ private:
   /// negotiation.
   std::shared_ptr<std::map<detail::PublisherGid,
     std::vector<std::string>>> negotiated_subscription_type_gids_;
+
+  std::vector<std::function<void(const negotiated_interfaces::msg::NegotiatedTopicsInfo &)>>
+  successful_negotiation_cb_list_;
 };
 
 }  // namespace negotiated

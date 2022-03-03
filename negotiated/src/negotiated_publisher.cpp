@@ -266,6 +266,10 @@ NegotiatedPublisher::NegotiatedPublisher(
     nullptr,
     node_base_.get(),
     node_timers_.get());
+
+  if (negotiated_pub_options.successful_negotiation_cb != nullptr) {
+    successful_negotiation_cb_list_.push_back(negotiated_pub_options.successful_negotiation_cb);
+  }
 }
 
 void NegotiatedPublisher::graph_change_timer_callback()
@@ -355,6 +359,29 @@ void NegotiatedPublisher::graph_change_timer_callback()
   if (different_maps && negotiated_pub_options_.negotiate_on_subscription_removal) {
     negotiate();
   }
+}
+
+void NegotiatedPublisher::add_successful_negotiation_callback(
+  const std::function<void(const negotiated_interfaces::msg::NegotiatedTopicsInfo &)> & cb)
+{
+  if (cb == nullptr) {
+    RCLCPP_WARN(node_logging_->get_logger(), "Failed to add null callback");
+    return;
+  }
+
+  successful_negotiation_cb_list_.push_back(cb);
+}
+
+void NegotiatedPublisher::remove_successful_negotiation_callback(
+  const std::function<void(const negotiated_interfaces::msg::NegotiatedTopicsInfo &)> & cb)
+{
+  if (cb == nullptr) {
+    RCLCPP_WARN(node_logging_->get_logger(), "Failed to remove null callback");
+    return;
+  }
+
+  // TODO(clalancette): Is this the right thing?  Could this remove other callbacks that just happen to use the same function?
+  successful_negotiation_cb_list_.erase(std::remove_if(successful_negotiation_cb_list_.begin(), successful_negotiation_cb_list_.end(), [cb](const std::function<void(const negotiated_interfaces::msg::NegotiatedTopicsInfo &)> & listcb){return &listcb == &cb;}), successful_negotiation_cb_list_.end());
 }
 
 void NegotiatedPublisher::start()
@@ -512,8 +539,10 @@ void NegotiatedPublisher::negotiate()
       }
     }
 
-    if (negotiated_pub_options_.successful_negotiation_cb != nullptr) {
-      negotiated_pub_options_.successful_negotiation_cb(*msg);
+    for (const std::function<void(const negotiated_interfaces::msg::NegotiatedTopicsInfo &)> & cb :
+      successful_negotiation_cb_list_)
+    {
+      cb(*msg);
     }
   }
 

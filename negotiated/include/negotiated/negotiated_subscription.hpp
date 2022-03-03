@@ -28,6 +28,8 @@
 #include "negotiated_interfaces/msg/supported_type.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
 
+#include "negotiated/negotiated_publisher.hpp"
+
 namespace negotiated
 {
 
@@ -118,6 +120,9 @@ public:
       negotiated_sub_options)
   {
   }
+
+  // TODO(clalancette): We probably need a copy and move constructor, maybe an operator=?
+  virtual ~NegotiatedSubscription();
 
   /// Add a supported callback with a weight.
   /**
@@ -315,6 +320,12 @@ public:
     }
   }
 
+  void add_downstream_negotiated_publisher(
+    std::shared_ptr<negotiated::NegotiatedPublisher> publisher);
+
+  void remove_downstream_negotiated_publisher(
+    std::shared_ptr<negotiated::NegotiatedPublisher> publisher);
+
   /// Start sending preferences to the NegotiatedPublisher.
   /**
    * This is separated from the constructor to give the user time to call add_supported_callback()
@@ -386,6 +397,8 @@ private:
    */
   void topicsInfoCb(const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg);
 
+  void send_data_on_downstream_success(const negotiated_interfaces::msg::NegotiatedTopicsInfo & topics_info);
+
   /// The node parameters interface to use.
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_;
 
@@ -417,6 +430,11 @@ private:
 
   /// Saved information about the currently connected data topic.
   negotiated_interfaces::msg::NegotiatedTopicInfo existing_topic_info_;
+
+  /// A map to track any "upstream" negotiated subscriptions that need to be successful before
+  /// this NegotiatedPublisher can negotiate with downstreams.
+  std::unordered_map<negotiated::NegotiatedPublisher *,
+    std::shared_ptr<negotiated::NegotiatedPublisher>> downstream_negotiated_publishers_;
 };
 
 }  // namespace negotiated

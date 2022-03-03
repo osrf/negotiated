@@ -94,6 +94,13 @@ NegotiatedSubscription::NegotiatedSubscription(
     rclcpp::QoS(100).transient_local());
 }
 
+NegotiatedSubscription::~NegotiatedSubscription()
+{
+  for (const std::pair<negotiated::NegotiatedPublisher *, std::shared_ptr<negotiated::NegotiatedPublisher>> & pubs : downstream_negotiated_publishers_) {
+    pubs.first->remove_successful_negotiation_callback(std::bind(&NegotiatedSubscription::send_data_on_downstream_success, this, std::placeholders::_1));
+  }
+}
+
 void NegotiatedSubscription::topicsInfoCb(
   const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)
 {
@@ -164,8 +171,42 @@ std::string NegotiatedSubscription::generate_key(
   return ros_type_name + "+" + supported_type_name;
 }
 
+void NegotiatedSubscription::send_data_on_downstream_success(const negotiated_interfaces::msg::NegotiatedTopicsInfo & topics_info)
+{
+  (void)topics_info;
+  // TODO(clalancette): What we need to do here is to mark the fact that this particular downstream
+  // publisher negotiated.  At that point, if start() has been called *and* all of our downstreams
+  // have been marked as negotiated, we can publish our supported types.
+}
+
+void NegotiatedSubscription::add_downstream_negotiated_publisher(
+  std::shared_ptr<negotiated::NegotiatedPublisher> publisher)
+{
+  if (downstream_negotiated_publishers_.count(publisher.get()) > 0) {
+    RCLCPP_WARN(node_logging_->get_logger(), "Replacing publisher that is already in the map");
+  }
+
+  publisher->add_successful_negotiation_callback(std::bind(&NegotiatedSubscription::send_data_on_downstream_success, this, std::placeholders::_1));
+
+  downstream_negotiated_publishers_[publisher.get()] = publisher;
+}
+
+void NegotiatedSubscription::remove_downstream_negotiated_publisher(
+  std::shared_ptr<negotiated::NegotiatedPublisher> publisher)
+{
+  if (downstream_negotiated_publishers_.count(publisher.get()) == 0) {
+    RCLCPP_WARN(node_logging_->get_logger(), "Attempting to remove non-existent publisher");
+    return;
+  }
+
+  publisher->remove_successful_negotiation_callback(std::bind(&NegotiatedSubscription::send_data_on_downstream_success, this, std::placeholders::_1));
+
+  downstream_negotiated_publishers_.erase(publisher.get());
+}
+
 void NegotiatedSubscription::start()
 {
+  // TODO(clalancette): only start negotiating if we've gotten data from all of our downstreams
   auto supported_types = negotiated_interfaces::msg::SupportedTypes();
   for (const std::pair<const std::string, SupportedTypeInfo> & pair : key_to_supported_types_) {
     supported_types.supported_types.push_back(pair.second.supported_type);
