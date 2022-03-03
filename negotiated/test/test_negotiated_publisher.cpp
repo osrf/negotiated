@@ -213,7 +213,7 @@ TEST_F(TestNegotiatedPublisher, single_subscription_negotiated)
     {
       return pub->type_was_negotiated<EmptyT>();
     };
-  spin_while_waiting(negotiated_break_cb);
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_cb));
   ASSERT_TRUE(pub->type_was_negotiated<EmptyT>());
 
   std_msgs::msg::Empty empty;
@@ -223,7 +223,7 @@ TEST_F(TestNegotiatedPublisher, single_subscription_negotiated)
     {
       return empty_count > 0;
     };
-  spin_while_waiting(dummy_data_cb);
+  ASSERT_TRUE(spin_while_waiting(dummy_data_cb));
   ASSERT_EQ(empty_count, 1);
 }
 
@@ -242,7 +242,7 @@ TEST_F(TestNegotiatedPublisher, single_failed_negotiation)
     {
       return pub->type_was_negotiated<EmptyT>();
     };
-  spin_while_waiting(negotiated_break_cb);
+  ASSERT_FALSE(spin_while_waiting(negotiated_break_cb));
   ASSERT_FALSE(pub->type_was_negotiated<EmptyT>());
 }
 
@@ -277,7 +277,7 @@ TEST_F(TestNegotiatedPublisher, two_subscriptions_same_type)
     {
       return pub->type_was_negotiated<EmptyT>();
     };
-  spin_while_waiting(negotiated_break_cb);
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_cb));
   ASSERT_TRUE(pub->type_was_negotiated<EmptyT>());
 
   std_msgs::msg::Empty empty;
@@ -287,7 +287,7 @@ TEST_F(TestNegotiatedPublisher, two_subscriptions_same_type)
     {
       return empty_count > 1;
     };
-  spin_while_waiting(dummy_data_cb);
+  ASSERT_TRUE(spin_while_waiting(dummy_data_cb));
   ASSERT_EQ(empty_count, 2);
 }
 
@@ -330,7 +330,7 @@ TEST_F(TestNegotiatedPublisher, two_subscriptions_different_types)
     {
       return pub->type_was_negotiated<EmptyT>() && pub->type_was_negotiated<StringT>();
     };
-  spin_while_waiting(negotiated_break_cb);
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_cb));
   ASSERT_TRUE(pub->type_was_negotiated<EmptyT>());
   ASSERT_TRUE(pub->type_was_negotiated<StringT>());
 
@@ -344,7 +344,7 @@ TEST_F(TestNegotiatedPublisher, two_subscriptions_different_types)
     {
       return empty_count > 0 && string_count > 0;
     };
-  spin_while_waiting(dummy_data_cb);
+  ASSERT_TRUE(spin_while_waiting(dummy_data_cb));
   ASSERT_EQ(empty_count, 1);
   ASSERT_EQ(string_count, 1);
 }
@@ -388,7 +388,7 @@ TEST_F(TestNegotiatedPublisher, disconnect_supported_types)
     {
       return pub->type_was_negotiated<EmptyT>() && pub->type_was_negotiated<StringT>();
     };
-  spin_while_waiting(negotiated_break_cb);
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_cb));
   ASSERT_TRUE(pub->type_was_negotiated<EmptyT>());
   ASSERT_TRUE(pub->type_was_negotiated<StringT>());
 
@@ -399,7 +399,7 @@ TEST_F(TestNegotiatedPublisher, disconnect_supported_types)
     {
       return pub->type_was_negotiated<EmptyT>() && !pub->type_was_negotiated<StringT>();
     };
-  spin_while_waiting(negotiated_break_cb2);
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_cb2));
   ASSERT_TRUE(pub->type_was_negotiated<EmptyT>());
   ASSERT_FALSE(pub->type_was_negotiated<StringT>());
 }
@@ -446,13 +446,13 @@ TEST_F(TestNegotiatedPublisher, dont_negotiate_on_subscription_add)
     {
       return pub->type_was_negotiated<EmptyT>() && pub->type_was_negotiated<StringT>();
     };
-  spin_while_waiting(negotiated_break_cb);
+  ASSERT_FALSE(spin_while_waiting(negotiated_break_cb));
   ASSERT_FALSE(pub->type_was_negotiated<EmptyT>());
   ASSERT_FALSE(pub->type_was_negotiated<StringT>());
 
   pub->negotiate();
 
-  spin_while_waiting(negotiated_break_cb);
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_cb));
   ASSERT_TRUE(pub->type_was_negotiated<EmptyT>());
   ASSERT_TRUE(pub->type_was_negotiated<StringT>());
 }
@@ -499,7 +499,7 @@ TEST_F(TestNegotiatedPublisher, dont_negotiate_on_disconnect)
     {
       return pub->type_was_negotiated<EmptyT>() && pub->type_was_negotiated<StringT>();
     };
-  spin_while_waiting(negotiated_break_cb);
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_cb));
   ASSERT_TRUE(pub->type_was_negotiated<EmptyT>());
   ASSERT_TRUE(pub->type_was_negotiated<StringT>());
 
@@ -515,7 +515,7 @@ TEST_F(TestNegotiatedPublisher, dont_negotiate_on_disconnect)
     {
       return pub->type_was_negotiated<EmptyT>() && !pub->type_was_negotiated<StringT>();
     };
-  spin_while_waiting(negotiated_break_cb2);
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_cb2));
   ASSERT_TRUE(pub->type_was_negotiated<EmptyT>());
   ASSERT_FALSE(pub->type_was_negotiated<StringT>());
 }
@@ -562,7 +562,7 @@ TEST_F(TestNegotiatedPublisher, two_subscriptions_different_types_no_multiple_ty
     {
       return pub->type_was_negotiated<EmptyT>() && pub->type_was_negotiated<StringT>();
     };
-  spin_while_waiting(negotiated_break_cb);
+  ASSERT_FALSE(spin_while_waiting(negotiated_break_cb));
   ASSERT_FALSE(pub->type_was_negotiated<EmptyT>());
   ASSERT_FALSE(pub->type_was_negotiated<StringT>());
 
@@ -605,7 +605,7 @@ TEST_F(TestNegotiatedPublisher, successful_negotiation_callback)
     {
       return pub->type_was_negotiated<EmptyT>();
     };
-  spin_while_waiting(negotiated_break_cb);
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_cb));
   ASSERT_TRUE(pub->type_was_negotiated<EmptyT>());
 
   std_msgs::msg::Empty empty;
@@ -615,7 +615,7 @@ TEST_F(TestNegotiatedPublisher, successful_negotiation_callback)
     {
       return empty_count > 0;
     };
-  spin_while_waiting(dummy_data_cb);
+  ASSERT_TRUE(spin_while_waiting(dummy_data_cb));
   ASSERT_EQ(empty_count, 1);
 
   // And now let's ensure that the negotiated callback was called
@@ -679,7 +679,7 @@ TEST_F(TestNegotiatedPublisher, negotiation_callback)
     {
       return pub->type_was_negotiated<StringT>();
     };
-  spin_while_waiting(negotiated_break_cb);
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_cb));
   ASSERT_TRUE(pub->type_was_negotiated<StringT>());
   ASSERT_FALSE(pub->type_was_negotiated<EmptyT>());
 
@@ -690,7 +690,7 @@ TEST_F(TestNegotiatedPublisher, negotiation_callback)
     {
       return string_count > 0;
     };
-  spin_while_waiting(dummy_data_cb);
+  ASSERT_TRUE(spin_while_waiting(dummy_data_cb));
   ASSERT_EQ(string_count, 1);
   ASSERT_EQ(empty_count, 0);
 }
@@ -749,7 +749,7 @@ TEST_F(TestNegotiatedPublisher, negotiation_callback_empty_set)
     {
       return pub->type_was_negotiated<StringT>();
     };
-  spin_while_waiting(negotiated_break_cb);
+  ASSERT_FALSE(spin_while_waiting(negotiated_break_cb));
   ASSERT_FALSE(pub->type_was_negotiated<StringT>());
   ASSERT_FALSE(pub->type_was_negotiated<EmptyT>());
 }
@@ -810,7 +810,7 @@ TEST_F(TestNegotiatedPublisher, negotiation_callback_bogus_data)
     {
       return pub->type_was_negotiated<StringT>();
     };
-  spin_while_waiting(negotiated_break_cb);
+  ASSERT_FALSE(spin_while_waiting(negotiated_break_cb));
   ASSERT_FALSE(pub->type_was_negotiated<StringT>());
   ASSERT_FALSE(pub->type_was_negotiated<EmptyT>());
 }
@@ -858,7 +858,7 @@ TEST_F(TestNegotiatedPublisher, remove_supported_type)
     {
       return pub->type_was_negotiated<EmptyT>();
     };
-  spin_while_waiting(negotiated_break_cb);
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_cb));
   ASSERT_TRUE(pub->type_was_negotiated<EmptyT>());
   ASSERT_FALSE(pub->type_was_negotiated<StringT>());
 
@@ -869,7 +869,7 @@ TEST_F(TestNegotiatedPublisher, remove_supported_type)
     {
       return empty_count > 0;
     };
-  spin_while_waiting(dummy_data_cb);
+  ASSERT_TRUE(spin_while_waiting(dummy_data_cb));
   ASSERT_EQ(string_count, 0);
   ASSERT_EQ(empty_count, 1);
 
@@ -891,7 +891,7 @@ TEST_F(TestNegotiatedPublisher, remove_supported_type)
     {
       return pub->type_was_negotiated<StringT>();
     };
-  spin_while_waiting(negotiated_break_cb2);
+  ASSERT_TRUE(spin_while_waiting(negotiated_break_cb2));
   ASSERT_TRUE(pub->type_was_negotiated<StringT>());
   ASSERT_FALSE(pub->type_was_negotiated<EmptyT>());
 
@@ -902,7 +902,7 @@ TEST_F(TestNegotiatedPublisher, remove_supported_type)
     {
       return string_count > 0;
     };
-  spin_while_waiting(dummy_data_cb2);
+  ASSERT_TRUE(spin_while_waiting(dummy_data_cb2));
   ASSERT_EQ(string_count, 1);
   ASSERT_EQ(empty_count, 0);
 }
