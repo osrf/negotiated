@@ -321,6 +321,31 @@ void NegotiatedPublisher::start()
         std::end(msg_info.get_rmw_message_info().publisher_gid.data),
         std::begin(gid_key));
 
+      if (negotiated_subscription_type_gids_->count(gid_key) > 0) {
+        // This NegotiatedSubscription has already given us previous types that we now need to
+        // forget about.
+        for (const std::string & key : negotiated_subscription_type_gids_->at(gid_key)) {
+          if (key_to_supported_types_.count(key) == 0) {
+            // Odd, but just continue on.
+            continue;
+          }
+
+          if (key_to_supported_types_[key].gid_to_weight.count(gid_key) == 0) {
+            // Odd, but just continue on.
+            continue;
+          }
+
+          key_to_supported_types_[key].gid_to_weight.erase(gid_key);
+
+          // In theory, we should check to see if the gid_to_weight map size dropped to zero, and
+          // if so, remove that type from the key_to_supported_types_ map completely.  However, we
+          // only ever store information about NegotiatedSubscriptions that match something in this
+          // NegotiatedPublisher, so in practice that list will never be of size 0.
+        }
+
+        negotiated_subscription_type_gids_->erase(gid_key);
+      }
+
       std::vector<std::string> key_list;
 
       for (const negotiated_interfaces::msg::SupportedType & supported_type :

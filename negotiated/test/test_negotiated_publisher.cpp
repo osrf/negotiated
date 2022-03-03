@@ -814,3 +814,95 @@ TEST_F(TestNegotiatedPublisher, negotiation_callback_bogus_data)
   ASSERT_FALSE(pub->type_was_negotiated<StringT>());
   ASSERT_FALSE(pub->type_was_negotiated<EmptyT>());
 }
+
+TEST_F(TestNegotiatedPublisher, remove_supported_type)
+{
+  rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr dummy =
+    create_and_publish_foo_supported_types(
+    {"std_msgs/msg/Empty", "std_msgs/msg/String"},
+    {"a", "b"});
+
+  rclcpp::Publisher<negotiated_interfaces::msg::SupportedTypes>::SharedPtr dummy2 =
+    create_and_publish_foo_supported_types(
+    {"std_msgs/msg/Empty", "std_msgs/msg/String"},
+    {"a", "b"});
+
+  int empty_count = 0;
+  auto dummy_sub_cb = [&empty_count](const std_msgs::msg::Empty & msg)
+    {
+      (void)msg;
+      empty_count++;
+    };
+
+  int string_count = 0;
+  auto dummy_sub_cb2 = [&string_count](const std_msgs::msg::String & msg)
+    {
+      (void)msg;
+      string_count++;
+    };
+
+  auto dummy_sub = node_->create_subscription<std_msgs::msg::Empty>(
+    "foo/a", rclcpp::QoS(10), dummy_sub_cb);
+
+  auto dummy_sub2 = node_->create_subscription<std_msgs::msg::String>(
+    "foo/b", rclcpp::QoS(10), dummy_sub_cb2);
+
+  auto pub = std::make_shared<negotiated::NegotiatedPublisher>(*node_, "foo");
+
+  pub->add_supported_type<EmptyT>(1.0, rclcpp::QoS(10));
+  pub->add_supported_type<StringT>(0.1, rclcpp::QoS(10));
+
+  pub->start();
+
+  auto negotiated_break_cb = [pub]() -> bool
+    {
+      return pub->type_was_negotiated<EmptyT>();
+    };
+  spin_while_waiting(negotiated_break_cb);
+  ASSERT_TRUE(pub->type_was_negotiated<EmptyT>());
+  ASSERT_FALSE(pub->type_was_negotiated<StringT>());
+
+  std_msgs::msg::Empty empty;
+  pub->publish<EmptyT>(empty);
+
+  auto dummy_data_cb = [&empty_count]() -> bool
+    {
+      return empty_count > 0;
+    };
+  spin_while_waiting(dummy_data_cb);
+  ASSERT_EQ(string_count, 0);
+  ASSERT_EQ(empty_count, 1);
+
+  // Now we publish a new set to our first dummy, causing negotiation to choose a different type.
+
+  string_count = 0;
+  empty_count = 0;
+
+  negotiated_interfaces::msg::SupportedTypes dummy_supported_types;
+  negotiated_interfaces::msg::SupportedType supported_type;
+  supported_type.ros_type_name = "std_msgs/msg/String";
+  supported_type.supported_type_name = "b";
+  supported_type.weight = 1.0;
+  dummy_supported_types.supported_types.push_back(supported_type);
+
+  dummy->publish(dummy_supported_types);
+
+  auto negotiated_break_cb2 = [pub]() -> bool
+    {
+      return pub->type_was_negotiated<StringT>();
+    };
+  spin_while_waiting(negotiated_break_cb2);
+  ASSERT_TRUE(pub->type_was_negotiated<StringT>());
+  ASSERT_FALSE(pub->type_was_negotiated<EmptyT>());
+
+  std_msgs::msg::String str;
+  pub->publish<StringT>(str);
+
+  auto dummy_data_cb2 = [&string_count]() -> bool
+    {
+      return string_count > 0;
+    };
+  spin_while_waiting(dummy_data_cb2);
+  ASSERT_EQ(string_count, 1);
+  ASSERT_EQ(empty_count, 0);
+}
