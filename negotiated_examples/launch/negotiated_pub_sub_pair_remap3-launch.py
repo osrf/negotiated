@@ -25,11 +25,11 @@ def generate_launch_description():
             package='rclcpp_components',
             executable='component_container',
             composable_node_descriptions=[
-                ComposableNode(
-                    package='negotiated_examples',
-                    plugin='negotiated_examples::NegotiatedSubExample3',
-                    name='negotiated_sub_example3',
-                    remappings=[('example', 'downstream/example2')]),
+                # ComposableNode(
+                #     package='negotiated_examples',
+                #     plugin='negotiated_examples::NegotiatedSubExample3',
+                #     name='negotiated_sub_example3',
+                #     remappings=[('example', 'downstream/example2')]),
                 ComposableNode(
                     package='negotiated_examples',
                     plugin='negotiated_examples::NegotiatedSubExample2',

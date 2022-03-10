@@ -188,16 +188,22 @@ void NegotiatedSubscription::send_preferences()
   auto supported_types = negotiated_interfaces::msg::SupportedTypes();
 
   if (downstream_key_to_supported_types_.size() == 0) {
+    RCLCPP_INFO(node_logging_->get_logger(), "Sending this NegotiatedSubscription types");
     for (const std::pair<const std::string, SupportedTypeInfo> & pair : key_to_supported_types_) {
+      RCLCPP_INFO(node_logging_->get_logger(), "    %s", pair.first.c_str());
       supported_types.supported_types.push_back(pair.second.supported_type);
     }
   } else {
+    RCLCPP_INFO(node_logging_->get_logger(), "Sending downstream types");
     for (const std::pair<const std::string,
       SupportedTypeInfo> & pair : downstream_key_to_supported_types_)
     {
       // We only send along types that both this object and its downstreams support.
       if (key_to_supported_types_.count(pair.first) > 0) {
+        RCLCPP_INFO(node_logging_->get_logger(), "    %s", pair.first.c_str());
         supported_types.supported_types.push_back(pair.second.supported_type);
+      } else {
+        RCLCPP_INFO(node_logging_->get_logger(), "    %s (skipped)", pair.first.c_str());
       }
     }
   }
@@ -265,6 +271,7 @@ void NegotiatedSubscription::add_downstream_supported_types(
   for (const negotiated_interfaces::msg::SupportedType & type : downstream_types.supported_types) {
     std::string key_name = generate_key(type.ros_type_name, type.supported_type_name);
 
+    RCLCPP_INFO(node_logging_->get_logger(), "Adding key %s (%s %s)", key_name.c_str(), type.ros_type_name.c_str(), type.supported_type_name.c_str());
     if (downstream_key_to_supported_types_.count(key_name) > 0) {
       // This type is already in the downstream map, we don't need to add it again
       continue;

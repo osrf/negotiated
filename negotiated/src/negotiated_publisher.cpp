@@ -436,6 +436,7 @@ void NegotiatedPublisher::start()
     [this](const negotiated_interfaces::msg::SupportedTypes & supported_types,
       const rclcpp::MessageInfo & msg_info)
     {
+      RCLCPP_INFO(node_logging_->get_logger(), "%s received supported_types callback", topic_name_.c_str());
       detail::PublisherGid gid_key;
       std::copy(
         std::begin(msg_info.get_rmw_message_info().publisher_gid.data),
@@ -458,10 +459,12 @@ void NegotiatedPublisher::start()
 
           key_to_supported_types_[key].gid_to_weight.erase(gid_key);
 
-          // In theory, we should check to see if the gid_to_weight map size dropped to zero, and
-          // if so, remove that type from the key_to_supported_types_ map completely.  However, we
-          // only ever store information about NegotiatedSubscriptions that match something in this
-          // NegotiatedPublisher, so in practice that list will never be of size 0.
+          // This can only drop to 0 if this is a type that is only supported
+          // by upstream negotiated subscriptions.  Ones that are supported
+          // by *this* NegotiatedPublisher will never drop to zero here.
+          if (key_to_supported_types_[key].gid_to_weight.size() == 0) {
+            key_to_supported_types_.erase(key);
+          }
         }
 
         negotiated_subscription_type_gids_->erase(gid_key);
@@ -475,11 +478,15 @@ void NegotiatedPublisher::start()
         std::string key = detail::generate_key(
           supported_type.ros_type_name,
           supported_type.supported_type_name);
-        if (key_to_supported_types_.count(key) == 0) {
-          // This key is not something the publisher supports, so we can ignore it completely
-          continue;
-        }
 
+        RCLCPP_INFO(node_logging_->get_logger(), "Looking at key %s", key.c_str());
+
+        if (key_to_supported_types_.count(key) == 0) {
+          key_to_supported_types_.emplace(key_name, detail::SupportedTypeInfo());
+          key_to_supported_types_[key].ros_type_name = supported_type.ros_type_name;
+          key_to_supported_types_[key].supported_type_name = supported_type.supported_type_name;
+          key_to_supported_types_[key].is_compat = false;
+        }
         key_to_supported_types_[key].gid_to_weight[gid_key] = supported_type.weight;
 
         key_list.push_back(key);
@@ -494,9 +501,9 @@ void NegotiatedPublisher::start()
           negotiated_interfaces::msg::SupportedTypes downstream_types;
           for (const std::string & key : key_list) {
             negotiated_interfaces::msg::SupportedType downstream_type;
-            downstream_type.ros_type_name = key_to_supported_types_[key].ros_type_name;
-            downstream_type.supported_type_name = key_to_supported_types_[key].supported_type_name;
-            downstream_type.weight = key_to_supported_types_[key].gid_to_weight[gid_key];
+            downstream_type.ros_type_name = key_to_supported_types_.at(key).ros_type_name;
+            downstream_type.supported_type_name = key_to_supported_types_.at(key).supported_type_name;
+            downstream_type.weight = key_to_supported_types_.at(key).gid_to_weight[gid_key];
             downstream_types.supported_types.push_back(downstream_type);
           }
 
@@ -506,6 +513,8 @@ void NegotiatedPublisher::start()
             handle->subscription->add_downstream_supported_types(downstream_types);
           }
         }
+      } else {
+        RCLCPP_INFO(node_logging_->get_logger(), "%s got supported types, but no keys matched", topic_name_.c_str());
       }
 
       if (negotiated_pub_options_.negotiate_on_subscription_add) {
@@ -537,7 +546,7 @@ void NegotiatedPublisher::stop()
 
 void NegotiatedPublisher::negotiate()
 {
-  RCLCPP_INFO(node_logging_->get_logger(), "Negotiating");
+  RCLCPP_INFO(node_logging_->get_logger(), "Negotiating %s", topic_name_.c_str());
 
   if (key_to_supported_types_.empty()) {
     RCLCPP_INFO(
@@ -588,13 +597,15 @@ void NegotiatedPublisher::negotiate()
       *negotiated_subscription_type_gids_,
       upstream_filtered_supported_types,
       negotiated_pub_options_.maximum_negotiated_solutions);
+  } else {
+    RCLCPP_INFO(node_logging_->get_logger(), "%s Skipping negotiate_cb because GIDs empty", topic_name_.c_str());
   }
 
   auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
 
   if (matched_subs.empty()) {
     // We couldn't find any match, so don't setup anything
-    RCLCPP_INFO(node_logging_->get_logger(), "Could not negotiate");
+    RCLCPP_INFO(node_logging_->get_logger(), "Could not negotiate %s", topic_name_.c_str());
     if (negotiated_pub_options_.disconnect_publishers_on_failure) {
       for (std::pair<const std::string,
         detail::SupportedTypeInfo> & supported_info : key_to_supported_types_)
@@ -607,6 +618,8 @@ void NegotiatedPublisher::negotiate()
 
     msg->success = false;
   } else {
+
+    RCLCPP_INFO(node_logging_->get_logger(), "Negotiated %s", topic_name_.c_str());
     // Now that we've run the algorithm and figured out what our actual publication
     // "type" is going to be, create the publisher(s) and inform the subscriptions
     // the name(s) of them.
