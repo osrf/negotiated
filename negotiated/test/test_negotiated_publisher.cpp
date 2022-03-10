@@ -1156,7 +1156,7 @@ TEST_F(TestNegotiatedPublisher, single_subscription_with_upstream_sub)
   auto pub = std::make_shared<negotiated::NegotiatedPublisher>(*node_, "foo");
 
   pub->add_supported_type<EmptyT>(1.0, rclcpp::QoS(10));
-  pub->add_upstream_negotiated_subscription(upstream_negotiated_sub);
+  auto handle = pub->add_upstream_negotiated_subscription(upstream_negotiated_sub);
 
   pub->start();
 
@@ -1257,7 +1257,7 @@ TEST_F(TestNegotiatedPublisher, single_subscription_with_upstream_sub_no_overlap
   auto pub = std::make_shared<negotiated::NegotiatedPublisher>(*node_, "foo");
 
   pub->add_supported_type<StringT>(1.0, rclcpp::QoS(10));
-  pub->add_upstream_negotiated_subscription(upstream_negotiated_sub);
+  auto handle = pub->add_upstream_negotiated_subscription(upstream_negotiated_sub);
 
   pub->start();
 
@@ -1348,8 +1348,8 @@ TEST_F(TestNegotiatedPublisher, single_subscription_with_remove_upstream_sub)
   auto pub = std::make_shared<negotiated::NegotiatedPublisher>(*node_, "foo");
 
   pub->add_supported_type<StringT>(1.0, rclcpp::QoS(10));
-  pub->add_upstream_negotiated_subscription(upstream_negotiated_sub);
-  pub->remove_upstream_negotiated_subscription(upstream_negotiated_sub);
+  auto handle = pub->add_upstream_negotiated_subscription(upstream_negotiated_sub);
+  pub->remove_upstream_negotiated_subscription(handle.get());
 
   pub->start();
 

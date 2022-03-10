@@ -279,10 +279,14 @@ NegotiatedPublisher::~NegotiatedPublisher()
       downstream_type.supported_type_name = type.second.supported_type_name;
       downstream_types.supported_types.push_back(downstream_type);
     }
-    for (const std::shared_ptr<NegotiatedSubscription> & sub : upstream_negotiated_subscriptions_) {
-      sub->remove_downstream_supported_types(downstream_types);
+    for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
+      upstream_negotiated_subscriptions_)
+    {
+      handle->subscription->remove_downstream_supported_types(downstream_types);
     }
   }
+
+  // TODO(clalancette): I think we also need to remove upstream callbacks
 }
 
 void NegotiatedPublisher::graph_change_timer_callback()
@@ -379,30 +383,51 @@ void NegotiatedPublisher::negotiate_on_upstream_success()
   negotiate();
 }
 
-void NegotiatedPublisher::add_upstream_negotiated_subscription(
+std::shared_ptr<NegotiatedPublisher::UpstreamNegotiatedSubscriptionHandle>
+NegotiatedPublisher::add_upstream_negotiated_subscription(
   std::shared_ptr<negotiated::NegotiatedSubscription> subscription)
 {
-  if (upstream_negotiated_subscriptions_.count(subscription) > 0) {
-    RCLCPP_WARN(node_logging_->get_logger(), "Replacing subscription that is already in the map");
+  auto it = std::find_if(
+    upstream_negotiated_subscriptions_.begin(),
+    upstream_negotiated_subscriptions_.end(),
+    [&subscription =
+    std::as_const(subscription)](
+      const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & check_handle) {
+      return subscription == check_handle->subscription;
+    });
+
+  if (it != upstream_negotiated_subscriptions_.end()) {
+    RCLCPP_WARN(node_logging_->get_logger(), "Adding duplicate upstream negotiated subscription!");
   }
 
-  upstream_negotiated_subscriptions_.insert(subscription);
-
-  subscription->set_after_subscription_callback(
+  auto upstream_handle = std::make_shared<UpstreamNegotiatedSubscriptionHandle>();
+  upstream_handle->subscription = subscription;
+  upstream_handle->handle =
+    subscription->set_after_subscription_callback(
     std::bind(&NegotiatedPublisher::negotiate_on_upstream_success, this));
+
+  upstream_negotiated_subscriptions_.insert(upstream_handle);
+
+  return upstream_handle;
 }
 
 void NegotiatedPublisher::remove_upstream_negotiated_subscription(
-  std::shared_ptr<negotiated::NegotiatedSubscription> subscription)
+  const UpstreamNegotiatedSubscriptionHandle * const handle)
 {
-  if (upstream_negotiated_subscriptions_.count(subscription) == 0) {
-    RCLCPP_WARN(node_logging_->get_logger(), "Attempting to remove non-existent subscription");
-    return;
+  auto it = std::find_if(
+    upstream_negotiated_subscriptions_.begin(),
+    upstream_negotiated_subscriptions_.end(),
+    [handle](const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & check_handle) {
+      return handle == check_handle.get();
+    });
+  if (it != upstream_negotiated_subscriptions_.end()) {
+    (*it)->subscription->remove_after_subscription_callback((*it)->handle.get());
+    upstream_negotiated_subscriptions_.erase(it);
+  } else {
+    RCLCPP_WARN(
+      node_logging_->get_logger(),
+      "Attempted to remove upstream negotiated subscription that didn't exist");
   }
-
-  subscription->remove_after_subscription_callback();
-
-  upstream_negotiated_subscriptions_.erase(subscription);
 }
 
 void NegotiatedPublisher::start()
@@ -475,10 +500,10 @@ void NegotiatedPublisher::start()
             downstream_types.supported_types.push_back(downstream_type);
           }
 
-          for (const std::shared_ptr<NegotiatedSubscription> & sub :
+          for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
             upstream_negotiated_subscriptions_)
           {
-            sub->add_downstream_supported_types(downstream_types);
+            handle->subscription->add_downstream_supported_types(downstream_types);
           }
         }
       }
@@ -526,11 +551,11 @@ void NegotiatedPublisher::negotiate()
   std::map<std::string, detail::SupportedTypeInfo> upstream_filtered_supported_types;
   if (upstream_negotiated_subscriptions_.size() > 0) {
     bool all_negotiated = true;
-    for (const std::shared_ptr<negotiated::NegotiatedSubscription> & upstream_sub :
+    for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
       upstream_negotiated_subscriptions_)
     {
       negotiated_interfaces::msg::NegotiatedTopicsInfo topics_info =
-        upstream_sub->get_negotiated_topics();
+        handle->subscription->get_negotiated_topics();
       if (!topics_info.success || topics_info.negotiated_topics.size() == 0) {
         all_negotiated = false;
         break;

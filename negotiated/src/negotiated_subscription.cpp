@@ -171,8 +171,8 @@ void NegotiatedSubscription::topicsInfoCb(
     current_subscription_is_compat_ = false;
   }
 
-  if (after_subscription_cb_ != nullptr) {
-    after_subscription_cb_();
+  for (const std::shared_ptr<AfterSubscriptionCallbackHandle> & handle : after_subscription_cbs_) {
+    handle->callback();
   }
 }
 
@@ -233,26 +233,30 @@ NegotiatedSubscription::get_negotiated_topics() const
   return negotiated_topics_;
 }
 
-void
+std::shared_ptr<NegotiatedSubscription::AfterSubscriptionCallbackHandle>
 NegotiatedSubscription::set_after_subscription_callback(
   const AfterSubscriptionCallbackFunction & cb)
 {
-  if (after_subscription_cb_ != nullptr) {
-    RCLCPP_WARN(node_logging_->get_logger(), "Overriding already set after_subscriptions_callback");
-  }
-
-  after_subscription_cb_ = cb;
+  auto handle = std::make_shared<AfterSubscriptionCallbackHandle>();
+  handle->callback = cb;
+  after_subscription_cbs_.emplace_front(handle);
+  return handle;
 }
 
-void NegotiatedSubscription::remove_after_subscription_callback()
+void NegotiatedSubscription::remove_after_subscription_callback(
+  const NegotiatedSubscription::AfterSubscriptionCallbackHandle * const handle)
 {
-  if (after_subscription_cb_ == nullptr) {
-    RCLCPP_WARN(
-      node_logging_->get_logger(),
-      "Called remove_after_subscription_callback on already empty callback");
+  auto it = std::find_if(
+    after_subscription_cbs_.begin(),
+    after_subscription_cbs_.end(),
+    [handle](const std::shared_ptr<AfterSubscriptionCallbackHandle> & check_handle) {
+      return handle == check_handle.get();
+    });
+  if (it != after_subscription_cbs_.end()) {
+    after_subscription_cbs_.erase(it);
+  } else {
+    RCLCPP_WARN(node_logging_->get_logger(), "Attempted to remove callback that didn't exist");
   }
-
-  after_subscription_cb_ = nullptr;
 }
 
 void NegotiatedSubscription::add_downstream_supported_types(

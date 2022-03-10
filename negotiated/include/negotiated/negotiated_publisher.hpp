@@ -21,9 +21,9 @@
 #include <map>
 #include <memory>
 #include <mutex>
-#include <set>
 #include <stdexcept>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -149,6 +149,12 @@ class NegotiatedPublisher
 {
 public:
   RCLCPP_SMART_PTR_DEFINITIONS(NegotiatedPublisher)
+
+  struct UpstreamNegotiatedSubscriptionHandle
+  {
+    std::shared_ptr<negotiated::NegotiatedSubscription> subscription;
+    std::shared_ptr<negotiated::NegotiatedSubscription::AfterSubscriptionCallbackHandle> handle;
+  };
 
   /// Create a new NegotiatedPublisher with the given "base" topic_name.
   /**
@@ -386,7 +392,7 @@ public:
    *
    * \param[in] subscription A shared_ptr to the upstream NegotiatedSubscription to start tracking.
    */
-  void add_upstream_negotiated_subscription(
+  std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> add_upstream_negotiated_subscription(
     std::shared_ptr<negotiated::NegotiatedSubscription> subscription);
 
   /// Stop tracking a NegotiatedSubscription as an upstream of this NegotiatedPublisher.
@@ -397,7 +403,7 @@ public:
    * \param[in] subscription A shared_ptr to the upstream NegotiatedSubscription to stop tracking.
    */
   void remove_upstream_negotiated_subscription(
-    std::shared_ptr<negotiated::NegotiatedSubscription> subscription);
+    const UpstreamNegotiatedSubscriptionHandle * const handle);
 
   /// Start collecting information from the attached NegotiatedSubscriptions.
   /**
@@ -583,7 +589,8 @@ private:
 
   /// A map to track any "upstream" negotiated subscriptions that need to be successful before
   /// this NegotiatedPublisher can negotiate with downstreams.
-  std::set<std::shared_ptr<negotiated::NegotiatedSubscription>> upstream_negotiated_subscriptions_;
+  std::unordered_set<std::shared_ptr<UpstreamNegotiatedSubscriptionHandle>>
+  upstream_negotiated_subscriptions_;
 };
 
 }  // namespace negotiated

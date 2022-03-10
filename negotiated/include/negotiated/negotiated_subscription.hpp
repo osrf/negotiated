@@ -16,6 +16,7 @@
 #define NEGOTIATED__NEGOTIATED_SUBSCRIPTION_HPP_
 
 #include <functional>
+#include <list>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -77,6 +78,10 @@ public:
   RCLCPP_SMART_PTR_DEFINITIONS(NegotiatedSubscription)
 
   using AfterSubscriptionCallbackFunction = std::function<void ()>;
+  struct AfterSubscriptionCallbackHandle
+  {
+    AfterSubscriptionCallbackFunction callback;
+  };
 
   /// Create a new NegotiatedSubscription with the given "base" topic_name.
   /**
@@ -376,16 +381,19 @@ public:
    *
    * \param[in] cb The callback to call after a subscription is successfully negotiated and created.
    */
-  void set_after_subscription_callback(const AfterSubscriptionCallbackFunction & cb);
+  std::shared_ptr<AfterSubscriptionCallbackHandle> set_after_subscription_callback(
+    const AfterSubscriptionCallbackFunction & cb);
 
-  /// Clear out the after subscription callback.
+  /// Remove the after subscription callback.
   /**
    * Like set_after_subscription_callback(), this is primarily intended for internal use by the
    * NegotiatedPublisher.  Using it for other purposes may break the use-case of a
    * NegotiatedPublisher and NegotiatedSubscription in the same rclcpp::Node; use it at your
    * own risk!
+   *
+   * \param[in] cb The callback to remove.
    */
-  void remove_after_subscription_callback();
+  void remove_after_subscription_callback(const AfterSubscriptionCallbackHandle * const handle);
 
 private:
   struct SupportedTypeInfo final
@@ -481,8 +489,8 @@ private:
   /// A list of all of the topics that the publisher sent to us, that we also support.
   negotiated_interfaces::msg::NegotiatedTopicsInfo negotiated_topics_;
 
-  /// An optional callback to be called after a subscription has successfully been created.
-  AfterSubscriptionCallbackFunction after_subscription_cb_{nullptr};
+  /// An list of callbacks to be called after a subscription has successfully been created.
+  std::list<std::shared_ptr<AfterSubscriptionCallbackHandle>> after_subscription_cbs_;
 };
 
 }  // namespace negotiated
