@@ -85,7 +85,7 @@ NegotiatedSubscription::NegotiatedSubscription(
     node_topics_,
     topic_name,
     rclcpp::QoS(10),
-    std::bind(&NegotiatedSubscription::topicsInfoCb, this, std::placeholders::_1));
+    std::bind(&NegotiatedSubscription::topics_info_cb, this, std::placeholders::_1));
 
   supported_types_pub_ = rclcpp::create_publisher<negotiated_interfaces::msg::SupportedTypes>(
     node_parameters_,
@@ -94,7 +94,7 @@ NegotiatedSubscription::NegotiatedSubscription(
     rclcpp::QoS(100).transient_local());
 }
 
-void NegotiatedSubscription::topicsInfoCb(
+void NegotiatedSubscription::topics_info_cb(
   const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)
 {
   negotiated_topics_.success = msg.success;

@@ -438,7 +438,7 @@ private:
    *
    * \param[in] msg The NegotiatedTopicsInfo that contains the results of negotiation.
    */
-  void topicsInfoCb(const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg);
+  void topics_info_cb(const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg);
 
   /// Send our preferences to any connected NegotiatedPublisher.
   /**
