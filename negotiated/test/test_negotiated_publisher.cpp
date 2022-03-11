@@ -95,6 +95,8 @@ protected:
       supported_type.ros_type_name = ros_type_names[i];
       supported_type.supported_type_name = supported_type_names[i];
       supported_type.weight = 1.0;
+      rmw_gid_t gid = dummy_foo_supported_types->get_gid();
+      std::copy(std::begin(gid.data), std::end(gid.data), std::begin(supported_type.child_gid));
       dummy_supported_types.supported_types.push_back(supported_type);
     }
 
@@ -903,6 +905,8 @@ TEST_F(TestNegotiatedPublisher, remove_supported_type)
   supported_type.ros_type_name = "std_msgs/msg/String";
   supported_type.supported_type_name = "b";
   supported_type.weight = 1.0;
+  rmw_gid_t gid = dummy->get_gid();
+  std::copy(std::begin(gid.data), std::end(gid.data), std::begin(supported_type.child_gid));
   dummy_supported_types.supported_types.push_back(supported_type);
 
   dummy->publish(dummy_supported_types);

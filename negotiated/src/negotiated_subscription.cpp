@@ -197,6 +197,7 @@ void NegotiatedSubscription::send_preferences()
     {
       // We only send along types that both this object and its downstreams support.
       if (key_to_supported_types_.count(pair.first) > 0) {
+        supported_types.supported_types.push_back(key_to_supported_types_.at(pair.first).supported_type);
         supported_types.supported_types.push_back(pair.second.supported_type);
       }
     }
@@ -275,6 +276,7 @@ void NegotiatedSubscription::add_downstream_supported_types(
     downstream_key_to_supported_types_[key_name].supported_type.supported_type_name =
       type.supported_type_name;
     downstream_key_to_supported_types_[key_name].supported_type.weight = type.weight;
+    downstream_key_to_supported_types_[key_name].supported_type.child_gid = type.child_gid;
   }
 
   // If the user has started negotiation we should resend our preferences

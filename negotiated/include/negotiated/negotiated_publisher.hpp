@@ -559,8 +559,7 @@ private:
   void negotiate_on_upstream_success();
 
   void supported_types_cb(
-    const negotiated_interfaces::msg::SupportedTypes & supported_types,
-    const rclcpp::MessageInfo & msg_info);
+    const negotiated_interfaces::msg::SupportedTypes & supported_types);
 
   /// The node parameters interface to use.
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_;

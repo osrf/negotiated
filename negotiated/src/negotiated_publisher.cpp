@@ -311,25 +311,33 @@ void NegotiatedPublisher::graph_change_timer_callback()
 
   auto new_negotiated_subscription_gids = std::make_shared<std::map<detail::PublisherGid,
       std::vector<std::string>>>();
-  std::vector<rclcpp::TopicEndpointInfo> endpoints = node_graph_->get_publishers_info_by_topic(
-    topic_name_ + "/_supported_types");
 
   // We need to hold the lock across this entire operation
   std::lock_guard<std::mutex> lg(negotiated_subscription_type_mutex_);
 
-  for (const rclcpp::TopicEndpointInfo & endpoint : endpoints) {
-    if (endpoint.endpoint_type() != rclcpp::EndpointType::Publisher) {
-      // This should never happen, but just be safe
+  // TODO(clalancette): This is completely broken; if a negotiated subscription goes away, then
+  // we should remove that negotiated subscription and all downstreams of it.  But we don't
+  // currently do that here.
+  for (const std::pair<std::string, std::vector<std::string>> & names_and_types : node_graph_->get_topic_names_and_types()) {
+    const std::string & topic_name = names_and_types.first;
+    if (topic_name.find("_supported_types") == std::string::npos) {
       continue;
     }
 
-    // We only want to add GIDs to the new map if they were already in the existing map.
-    // That way we avoid potential race conditions where the graph contains the information,
-    // but we have not yet gotten a publication of supported types from it.
-    if (negotiated_subscription_type_gids_->count(endpoint.endpoint_gid()) > 0) {
-      std::vector<std::string> old_type =
-        negotiated_subscription_type_gids_->at(endpoint.endpoint_gid());
-      new_negotiated_subscription_gids->emplace(endpoint.endpoint_gid(), old_type);
+    for (const rclcpp::TopicEndpointInfo & endpoint : node_graph_->get_publishers_info_by_topic(topic_name)) {
+      if (endpoint.endpoint_type() != rclcpp::EndpointType::Publisher) {
+        // This should never happen, but just be safe
+        continue;
+      }
+
+      // We only want to add GIDs to the new map if they were already in the existing map.
+      // That way we avoid potential race conditions where the graph contains the information,
+      // but we have not yet gotten a publication of supported types from it.
+      if (negotiated_subscription_type_gids_->count(endpoint.endpoint_gid()) > 0) {
+        std::vector<std::string> old_type =
+          negotiated_subscription_type_gids_->at(endpoint.endpoint_gid());
+        new_negotiated_subscription_gids->emplace(endpoint.endpoint_gid(), old_type);
+      }
     }
   }
 
@@ -431,29 +439,32 @@ void NegotiatedPublisher::remove_upstream_negotiated_subscription(
 }
 
 void NegotiatedPublisher::supported_types_cb(
-  const negotiated_interfaces::msg::SupportedTypes & supported_types,
-  const rclcpp::MessageInfo & msg_info)
+  const negotiated_interfaces::msg::SupportedTypes & supported_types)
 {
-  detail::PublisherGid gid_key;
-  std::copy(
-    std::begin(msg_info.get_rmw_message_info().publisher_gid.data),
-    std::end(msg_info.get_rmw_message_info().publisher_gid.data),
-    std::begin(gid_key));
+  RCLCPP_INFO(node_logging_->get_logger(), "Got supported types for %s", topic_name_.c_str());
 
-  if (negotiated_subscription_type_gids_->count(gid_key) > 0) {
+  for (const negotiated_interfaces::msg::SupportedType & supported_type :
+    supported_types.supported_types)
+  {
+    if (negotiated_subscription_type_gids_->count(supported_type.child_gid) == 0) {
+      continue;
+    }
+
     // This NegotiatedSubscription has already given us previous types that we need to forget about.
-    for (const std::string & key : negotiated_subscription_type_gids_->at(gid_key)) {
+    for (const std::string & key : negotiated_subscription_type_gids_->at(supported_type.child_gid)) {
       if (key_to_supported_types_.count(key) == 0) {
         // Odd, but just continue on.
         continue;
       }
 
-      if (key_to_supported_types_[key].gid_to_weight.count(gid_key) == 0) {
+      if (key_to_supported_types_[key].gid_to_weight.count(supported_type.child_gid) == 0) {
         // Odd, but just continue on.
         continue;
       }
 
-      key_to_supported_types_[key].gid_to_weight.erase(gid_key);
+      RCLCPP_INFO(node_logging_->get_logger(), "%s removing weight for key %s", topic_name_.c_str(), key.c_str());
+
+      key_to_supported_types_[key].gid_to_weight.erase(supported_type.child_gid);
 
       // In theory, we should check to see if the gid_to_weight map size dropped to zero, and if so,
       // remove that type from the key_to_supported_types_ map completely.  However, we only ever
@@ -461,10 +472,9 @@ void NegotiatedPublisher::supported_types_cb(
       // NegotiatedPublisher, so in practice that list will never be of size 0.
     }
 
-    negotiated_subscription_type_gids_->erase(gid_key);
+    negotiated_subscription_type_gids_->erase(supported_type.child_gid);
   }
 
-  std::vector<std::string> key_list;
   negotiated_interfaces::msg::SupportedTypes downstream_types;
 
   for (const negotiated_interfaces::msg::SupportedType & supported_type :
@@ -473,28 +483,23 @@ void NegotiatedPublisher::supported_types_cb(
     std::string key = detail::generate_key(
       supported_type.ros_type_name,
       supported_type.supported_type_name);
+    RCLCPP_INFO(node_logging_->get_logger(), "%s examining key %s", topic_name_.c_str(), key.c_str());
+
     if (key_to_supported_types_.count(key) == 0) {
       // This key is not something the publisher supports, so we can ignore it completely
       continue;
     }
 
-    key_to_supported_types_[key].gid_to_weight[gid_key] = supported_type.weight;
+    key_to_supported_types_[key].gid_to_weight[supported_type.child_gid] = supported_type.weight;
 
-    key_list.push_back(key);
+    print_gid("Adding gid for", supported_type.child_gid);
+    RCLCPP_INFO(node_logging_->get_logger(), "%s adding weight for key %s", topic_name_.c_str(), key.c_str());
+
+    (*negotiated_subscription_type_gids_)[supported_type.child_gid].push_back(key);
 
     if (upstream_negotiated_subscriptions_.size() > 0) {
-      negotiated_interfaces::msg::SupportedType downstream_type;
-      downstream_type.ros_type_name = key_to_supported_types_[key].ros_type_name;
-      downstream_type.supported_type_name = key_to_supported_types_[key].supported_type_name;
-      downstream_type.weight = key_to_supported_types_[key].gid_to_weight[gid_key];
-      downstream_types.supported_types.push_back(downstream_type);
+      downstream_types.supported_types.push_back(supported_type);
     }
-  }
-
-  // Only add a new subscription to the GID map if any of the keys matched.
-  if (!key_list.empty()) {
-    std::lock_guard<std::mutex> lg(negotiated_subscription_type_mutex_);
-    negotiated_subscription_type_gids_->emplace(gid_key, key_list);
   }
 
   for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
@@ -517,8 +522,7 @@ void NegotiatedPublisher::start()
     supported_type_name,
     rclcpp::QoS(100).transient_local(),
     std::bind(
-      &NegotiatedPublisher::supported_types_cb, this, std::placeholders::_1,
-      std::placeholders::_2));
+      &NegotiatedPublisher::supported_types_cb, this, std::placeholders::_1));
 }
 
 void NegotiatedPublisher::stop()
@@ -536,7 +540,7 @@ void NegotiatedPublisher::stop()
 
 void NegotiatedPublisher::negotiate()
 {
-  RCLCPP_INFO(node_logging_->get_logger(), "Negotiating");
+  RCLCPP_INFO(node_logging_->get_logger(), "Negotiating %s", topic_name_.c_str());
 
   if (key_to_supported_types_.empty()) {
     RCLCPP_INFO(

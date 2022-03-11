@@ -189,6 +189,8 @@ public:
     key_to_supported_types_[key_name].supported_type.ros_type_name = ros_type_name;
     key_to_supported_types_[key_name].supported_type.supported_type_name = T::supported_type_name;
     key_to_supported_types_[key_name].supported_type.weight = weight;
+    rmw_gid_t gid = supported_types_pub_->get_gid();
+    std::copy(std::begin(gid.data), std::end(gid.data), std::begin(key_to_supported_types_[key_name].supported_type.child_gid));
     key_to_supported_types_[key_name].is_compat = false;
     key_to_supported_types_[key_name].sub_factory =
       [this, qos, callback,
@@ -285,6 +287,8 @@ public:
     key_to_supported_types_[key_name].supported_type.ros_type_name = ros_type_name;
     key_to_supported_types_[key_name].supported_type.supported_type_name = supported_type_name;
     key_to_supported_types_[key_name].supported_type.weight = weight;
+    rmw_gid_t gid = supported_types_pub_->get_gid();
+    std::copy(std::begin(gid.data), std::end(gid.data), std::begin(key_to_supported_types_[key_name].supported_type.child_gid));
     key_to_supported_types_[key_name].is_compat = true;
     key_to_supported_types_[key_name].subscription = sub;
     key_to_supported_types_[key_name].sub_factory = nullptr;
