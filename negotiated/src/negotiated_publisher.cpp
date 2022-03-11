@@ -468,6 +468,7 @@ void NegotiatedPublisher::start()
       }
 
       std::vector<std::string> key_list;
+      negotiated_interfaces::msg::SupportedTypes downstream_types;
 
       for (const negotiated_interfaces::msg::SupportedType & supported_type :
         supported_types.supported_types)
@@ -483,29 +484,26 @@ void NegotiatedPublisher::start()
         key_to_supported_types_[key].gid_to_weight[gid_key] = supported_type.weight;
 
         key_list.push_back(key);
+
+        if (upstream_negotiated_subscriptions_.size() > 0) {
+          negotiated_interfaces::msg::SupportedType downstream_type;
+          downstream_type.ros_type_name = key_to_supported_types_[key].ros_type_name;
+          downstream_type.supported_type_name = key_to_supported_types_[key].supported_type_name;
+          downstream_type.weight = key_to_supported_types_[key].gid_to_weight[gid_key];
+          downstream_types.supported_types.push_back(downstream_type);
+        }
       }
 
       // Only add a new subscription to the GID map if any of the keys matched.
       if (!key_list.empty()) {
         std::lock_guard<std::mutex> lg(negotiated_subscription_type_mutex_);
         negotiated_subscription_type_gids_->emplace(gid_key, key_list);
+      }
 
-        if (upstream_negotiated_subscriptions_.size() > 0) {
-          negotiated_interfaces::msg::SupportedTypes downstream_types;
-          for (const std::string & key : key_list) {
-            negotiated_interfaces::msg::SupportedType downstream_type;
-            downstream_type.ros_type_name = key_to_supported_types_[key].ros_type_name;
-            downstream_type.supported_type_name = key_to_supported_types_[key].supported_type_name;
-            downstream_type.weight = key_to_supported_types_[key].gid_to_weight[gid_key];
-            downstream_types.supported_types.push_back(downstream_type);
-          }
-
-          for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
-            upstream_negotiated_subscriptions_)
-          {
-            handle->subscription->add_downstream_supported_types(downstream_types);
-          }
-        }
+      for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
+        upstream_negotiated_subscriptions_)
+      {
+        handle->subscription->add_downstream_supported_types(downstream_types);
       }
 
       if (negotiated_pub_options_.negotiate_on_subscription_add) {
