@@ -487,6 +487,7 @@ void NegotiatedPublisher::supported_types_cb(
       downstream_type.ros_type_name = key_to_supported_types_[key].ros_type_name;
       downstream_type.supported_type_name = key_to_supported_types_[key].supported_type_name;
       downstream_type.weight = key_to_supported_types_[key].gid_to_weight[gid_key];
+      downstream_type.is_downstream = true;
       downstream_types.supported_types.push_back(downstream_type);
     }
   }

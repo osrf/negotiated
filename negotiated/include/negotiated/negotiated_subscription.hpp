@@ -172,6 +172,7 @@ public:
     key_to_supported_types_[key_name].supported_type.ros_type_name = ros_type_name;
     key_to_supported_types_[key_name].supported_type.supported_type_name = T::supported_type_name;
     key_to_supported_types_[key_name].supported_type.weight = weight;
+    key_to_supported_types_[key_name].supported_type.is_downstream = false;
     key_to_supported_types_[key_name].is_compat = false;
     key_to_supported_types_[key_name].sub_factory =
       [this, qos, callback,

@@ -1,3 +1,4 @@
 string ros_type_name
 string supported_type_name
 float64 weight
+bool is_downstream

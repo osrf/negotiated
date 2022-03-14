@@ -275,6 +275,7 @@ void NegotiatedSubscription::add_downstream_supported_types(
     downstream_key_to_supported_types_[key_name].supported_type.supported_type_name =
       type.supported_type_name;
     downstream_key_to_supported_types_[key_name].supported_type.weight = type.weight;
+    downstream_key_to_supported_types_[key_name].supported_type.is_downstream = type.is_downstream;
   }
 
   // If the user has started negotiation we should resend our preferences
