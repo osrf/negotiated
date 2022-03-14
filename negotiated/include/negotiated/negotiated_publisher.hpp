@@ -335,7 +335,8 @@ public:
       throw std::invalid_argument("The supported_type_name cannot be empty");
     }
 
-    std::string ros_type_name = rosidl_generator_traits::name<MsgT>();
+    using ROSMessageType = typename rclcpp::TypeAdapter<MsgT>::ros_message_type;
+    std::string ros_type_name = rosidl_generator_traits::name<ROSMessageType>();
     std::string key_name = detail::generate_key(ros_type_name, supported_type_name);
     if (key_to_supported_types_.count(key_name) != 0) {
       throw std::invalid_argument("Cannot add duplicate key to supported types");
@@ -373,7 +374,8 @@ public:
       throw std::invalid_argument("The supported_type_name cannot be empty");
     }
 
-    std::string ros_type_name = rosidl_generator_traits::name<MsgT>();
+    using ROSMessageType = typename rclcpp::TypeAdapter<MsgT>::ros_message_type;
+    std::string ros_type_name = rosidl_generator_traits::name<ROSMessageType>();
     std::string key_name = detail::generate_key(ros_type_name, supported_type_name);
     if (key_to_supported_types_.count(key_name) == 0) {
       throw std::invalid_argument("Specified key does not exist");
