@@ -116,13 +116,23 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
   for (const std::pair<const std::string,
     detail::SupportedTypeInfo> & supported_info : key_to_supported_types)
   {
-    keys.push_back(supported_info.first);
+    if (supported_info.second.is_downstream) {
+      // Since this is downstream, this is one we *must* choose.  Just choose it now and don't
+      // bother negotiating with it.
+      negotiated_interfaces::msg::SupportedType match;
+      match.ros_type_name = supported_info.second.ros_type_name;
+      match.supported_type_name = supported_info.second.supported_type_name;
+      matched_subs.push_back(match);
+    } else {
+      keys.push_back(supported_info.first);
+    }
     if (supported_info.second.is_compat) {
       compatible_supported_types.push_back(supported_info.second);
     }
   }
 
-  for (size_t i = 1; i <= key_to_supported_types.size(); ++i) {
+  bool found_solution = false;
+  for (size_t i = 1; i <= keys.size(); ++i) {
     double max_weight = 0.0;
 
     auto check_combination =
@@ -131,6 +141,7 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
         & compatible_supported_types = std::as_const(compatible_supported_types),
         & negotiated_sub_gid_to_keys = std::as_const(negotiated_sub_gid_to_keys),
         &max_weight,
+        &found_solution,
         &matched_subs](
       std::vector<std::string>::iterator first,
       std::vector<std::string>::iterator last) -> bool
@@ -195,9 +206,11 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
 
           if (sum_of_weights > max_weight) {
             max_weight = sum_of_weights;
+            found_solution = true;
 
-            matched_subs.clear();
-            matched_subs = compatible_subs;
+            for (negotiated_interfaces::msg::SupportedType type : compatible_subs) {
+              matched_subs.push_back(type);
+            }
             for (std::vector<std::string>::iterator it = first; it != last; ++it) {
               detail::SupportedTypeInfo supported_type_info = key_to_supported_types.at(*it);
               negotiated_interfaces::msg::SupportedType match;
@@ -213,13 +226,17 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
 
     for_each_combination(keys.begin(), keys.begin() + i, keys.end(), check_combination);
 
-    if (!matched_subs.empty()) {
+    if (found_solution) {
       break;
     }
 
     if (i == maximum_solutions) {
       break;
     }
+  }
+
+  if (keys.size() > 0 && !found_solution) {
+    matched_subs.clear();
   }
 
   return matched_subs;
@@ -570,6 +587,7 @@ void NegotiatedPublisher::negotiate()
 
         if (key_to_supported_types_.count(key) > 0) {
           upstream_filtered_supported_types[key] = key_to_supported_types_.at(key);
+          upstream_filtered_supported_types[key].is_downstream = true;
         }
       }
     }

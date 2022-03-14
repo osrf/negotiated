@@ -70,6 +70,8 @@ struct SupportedTypeInfo final
   /// The arbitrary supported_type_name string associated with this type.
   std::string supported_type_name;
 
+  bool is_downstream;
+
   /// Whether this supported type info is a compatible one (a regular publisher that the user
   /// gave to us), or a NegotiatedPublisher.
   bool is_compat;
@@ -263,6 +265,7 @@ public:
     key_to_supported_types_[key_name].gid_to_weight[gid] = weight;
     key_to_supported_types_[key_name].ros_type_name = ros_type_name;
     key_to_supported_types_[key_name].supported_type_name = T::supported_type_name;
+    key_to_supported_types_[key_name].is_downstream = false;
     key_to_supported_types_[key_name].is_compat = false;
     key_to_supported_types_[key_name].pub_factory =
       [this, qos, options](const std::string & topic_name) -> rclcpp::PublisherBase::SharedPtr
@@ -347,6 +350,7 @@ public:
     key_to_supported_types_[key_name].gid_to_weight[gid] = weight;
     key_to_supported_types_[key_name].ros_type_name = ros_type_name;
     key_to_supported_types_[key_name].supported_type_name = supported_type_name;
+    key_to_supported_types_[key_name].is_downstream = false;
     key_to_supported_types_[key_name].is_compat = true;
     key_to_supported_types_[key_name].publisher = pub;
   }
