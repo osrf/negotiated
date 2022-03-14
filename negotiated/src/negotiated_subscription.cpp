@@ -97,8 +97,8 @@ NegotiatedSubscription::NegotiatedSubscription(
 void NegotiatedSubscription::topics_info_cb(
   const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg)
 {
-  negotiated_topics_.success = msg.success;
-  negotiated_topics_.negotiated_topics.clear();
+  negotiated_interfaces::msg::NegotiatedTopicsInfo negotiated_topics;
+  negotiated_topics.success = msg.success;
 
   // Here we filter for only the topic types this subscription can support.
   for (const negotiated_interfaces::msg::NegotiatedTopicInfo & info : msg.negotiated_topics) {
@@ -108,17 +108,11 @@ void NegotiatedSubscription::topics_info_cb(
       continue;
     }
 
-    if (downstream_key_to_supported_types_.size() > 0) {
-      if (downstream_key_to_supported_types_.count(tmp_key) == 0) {
-        continue;
-      }
-    }
-
-    negotiated_topics_.negotiated_topics.push_back(info);
+    negotiated_topics.negotiated_topics.push_back(info);
   }
 
   negotiated_interfaces::msg::NegotiatedTopicInfo matched_info =
-    negotiated_sub_options_.negotiate_cb(existing_topic_info_, negotiated_topics_);
+    negotiated_sub_options_.negotiate_cb(existing_topic_info_, negotiated_topics);
 
   if (matched_info.ros_type_name.empty() || matched_info.supported_type_name.empty() ||
     matched_info.topic_name.empty())
@@ -152,15 +146,6 @@ void NegotiatedSubscription::topics_info_cb(
     return;
   }
 
-  if (downstream_key_to_supported_types_.size() > 0) {
-    if (downstream_key_to_supported_types_.count(key) == 0) {
-      RCLCPP_WARN(
-        node_logging_->get_logger(),
-        "Returned matched type is not supported by downstreams, ignoring");
-      return;
-    }
-  }
-
   existing_topic_info_ = matched_info;
 
   if (key_to_supported_types_[key].is_compat) {
@@ -169,10 +154,6 @@ void NegotiatedSubscription::topics_info_cb(
   } else {
     subscription_ = key_to_supported_types_[key].sub_factory(existing_topic_info_.topic_name);
     current_subscription_is_compat_ = false;
-  }
-
-  for (const std::shared_ptr<AfterSubscriptionCallbackHandle> & handle : after_subscription_cbs_) {
-    handle->callback();
   }
 }
 
@@ -183,32 +164,14 @@ std::string NegotiatedSubscription::generate_key(
   return ros_type_name + "+" + supported_type_name;
 }
 
-void NegotiatedSubscription::send_preferences()
+void NegotiatedSubscription::start()
 {
   auto supported_types = negotiated_interfaces::msg::SupportedTypes();
-
-  if (downstream_key_to_supported_types_.size() == 0) {
-    for (const std::pair<const std::string, SupportedTypeInfo> & pair : key_to_supported_types_) {
-      supported_types.supported_types.push_back(pair.second.supported_type);
-    }
-  } else {
-    for (const std::pair<const std::string,
-      SupportedTypeInfo> & pair : downstream_key_to_supported_types_)
-    {
-      // We only send along types that both this object and its downstreams support.
-      if (key_to_supported_types_.count(pair.first) > 0) {
-        supported_types.supported_types.push_back(pair.second.supported_type);
-      }
-    }
+  for (const std::pair<const std::string, SupportedTypeInfo> & pair : key_to_supported_types_) {
+    supported_types.supported_types.push_back(pair.second.supported_type);
   }
 
   supported_types_pub_->publish(supported_types);
-}
-
-void NegotiatedSubscription::start()
-{
-  user_called_start_ = true;
-  send_preferences();
 }
 
 size_t NegotiatedSubscription::get_negotiated_topic_publisher_count() const
@@ -225,89 +188,6 @@ size_t NegotiatedSubscription::get_data_topic_publisher_count() const
   }
 
   return subscription_->get_publisher_count();
-}
-
-const negotiated_interfaces::msg::NegotiatedTopicsInfo &
-NegotiatedSubscription::get_negotiated_topics() const
-{
-  return negotiated_topics_;
-}
-
-std::shared_ptr<NegotiatedSubscription::AfterSubscriptionCallbackHandle>
-NegotiatedSubscription::set_after_subscription_callback(
-  const AfterSubscriptionCallbackFunction & cb)
-{
-  auto handle = std::make_shared<AfterSubscriptionCallbackHandle>();
-  handle->callback = cb;
-  after_subscription_cbs_.emplace_front(handle);
-  return handle;
-}
-
-void NegotiatedSubscription::remove_after_subscription_callback(
-  const NegotiatedSubscription::AfterSubscriptionCallbackHandle * const handle)
-{
-  auto it = std::find_if(
-    after_subscription_cbs_.begin(),
-    after_subscription_cbs_.end(),
-    [handle](const std::shared_ptr<AfterSubscriptionCallbackHandle> & check_handle) {
-      return handle == check_handle.get();
-    });
-  if (it != after_subscription_cbs_.end()) {
-    after_subscription_cbs_.erase(it);
-  } else {
-    RCLCPP_WARN(node_logging_->get_logger(), "Attempted to remove callback that didn't exist");
-  }
-}
-
-void NegotiatedSubscription::add_downstream_supported_types(
-  const negotiated_interfaces::msg::SupportedTypes & downstream_types)
-{
-  for (const negotiated_interfaces::msg::SupportedType & type : downstream_types.supported_types) {
-    std::string key_name = generate_key(type.ros_type_name, type.supported_type_name);
-
-    if (downstream_key_to_supported_types_.count(key_name) > 0) {
-      // This type is already in the downstream map, we don't need to add it again
-      continue;
-    }
-
-    downstream_key_to_supported_types_.emplace(key_name, SupportedTypeInfo());
-    downstream_key_to_supported_types_[key_name].supported_type.ros_type_name = type.ros_type_name;
-    downstream_key_to_supported_types_[key_name].supported_type.supported_type_name =
-      type.supported_type_name;
-    downstream_key_to_supported_types_[key_name].supported_type.weight = type.weight;
-  }
-
-  // If the user has started negotiation we should resend our preferences
-  if (user_called_start_) {
-    send_preferences();
-  }
-}
-
-void NegotiatedSubscription::remove_downstream_supported_types(
-  const negotiated_interfaces::msg::SupportedTypes & downstream_types)
-{
-  for (const negotiated_interfaces::msg::SupportedType & type : downstream_types.supported_types) {
-    std::string key_name = generate_key(type.ros_type_name, type.supported_type_name);
-
-    if (downstream_key_to_supported_types_.count(key_name) == 0) {
-      // The type to be removed was not in the map, so just skip it.
-      continue;
-    }
-
-    downstream_key_to_supported_types_.erase(key_name);
-  }
-}
-
-const std::unordered_map<std::string, NegotiatedSubscription::SupportedTypeInfo> &
-NegotiatedSubscription::get_supported_types() const
-{
-  return key_to_supported_types_;
-}
-
-const negotiated_interfaces::msg::NegotiatedTopicInfo &
-NegotiatedSubscription::get_existing_topic_info() const
-{
-  return existing_topic_info_;
 }
 
 }  // namespace negotiated

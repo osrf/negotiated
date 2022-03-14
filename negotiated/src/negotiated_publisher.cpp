@@ -269,26 +269,6 @@ NegotiatedPublisher::NegotiatedPublisher(
     node_timers_.get());
 }
 
-NegotiatedPublisher::~NegotiatedPublisher()
-{
-  if (upstream_negotiated_subscriptions_.size() > 0) {
-    negotiated_interfaces::msg::SupportedTypes downstream_types;
-    for (const std::pair<std::string, detail::SupportedTypeInfo> & type : key_to_supported_types_) {
-      negotiated_interfaces::msg::SupportedType downstream_type;
-      downstream_type.ros_type_name = type.second.ros_type_name;
-      downstream_type.supported_type_name = type.second.supported_type_name;
-      downstream_types.supported_types.push_back(downstream_type);
-    }
-    for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
-      upstream_negotiated_subscriptions_)
-    {
-      handle->subscription->remove_downstream_supported_types(downstream_types);
-    }
-  }
-
-  // TODO(clalancette): I think we also need to remove upstream callbacks
-}
-
 void NegotiatedPublisher::graph_change_timer_callback()
 {
   // What we are doing here is checking the graph for any changes.
@@ -378,58 +358,6 @@ void NegotiatedPublisher::graph_change_timer_callback()
   }
 }
 
-void NegotiatedPublisher::negotiate_on_upstream_success()
-{
-  negotiate();
-}
-
-std::shared_ptr<NegotiatedPublisher::UpstreamNegotiatedSubscriptionHandle>
-NegotiatedPublisher::add_upstream_negotiated_subscription(
-  std::shared_ptr<negotiated::NegotiatedSubscription> subscription)
-{
-  auto it = std::find_if(
-    upstream_negotiated_subscriptions_.begin(),
-    upstream_negotiated_subscriptions_.end(),
-    [&subscription =
-    std::as_const(subscription)](
-      const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & check_handle) {
-      return subscription == check_handle->subscription;
-    });
-
-  if (it != upstream_negotiated_subscriptions_.end()) {
-    RCLCPP_WARN(node_logging_->get_logger(), "Adding duplicate upstream negotiated subscription!");
-  }
-
-  auto upstream_handle = std::make_shared<UpstreamNegotiatedSubscriptionHandle>();
-  upstream_handle->subscription = subscription;
-  upstream_handle->handle =
-    subscription->set_after_subscription_callback(
-    std::bind(&NegotiatedPublisher::negotiate_on_upstream_success, this));
-
-  upstream_negotiated_subscriptions_.insert(upstream_handle);
-
-  return upstream_handle;
-}
-
-void NegotiatedPublisher::remove_upstream_negotiated_subscription(
-  const UpstreamNegotiatedSubscriptionHandle * const handle)
-{
-  auto it = std::find_if(
-    upstream_negotiated_subscriptions_.begin(),
-    upstream_negotiated_subscriptions_.end(),
-    [handle](const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & check_handle) {
-      return handle == check_handle.get();
-    });
-  if (it != upstream_negotiated_subscriptions_.end()) {
-    (*it)->subscription->remove_after_subscription_callback((*it)->handle.get());
-    upstream_negotiated_subscriptions_.erase(it);
-  } else {
-    RCLCPP_WARN(
-      node_logging_->get_logger(),
-      "Attempted to remove upstream negotiated subscription that didn't exist");
-  }
-}
-
 void NegotiatedPublisher::supported_types_cb(
   const negotiated_interfaces::msg::SupportedTypes & supported_types,
   const rclcpp::MessageInfo & msg_info)
@@ -481,26 +409,12 @@ void NegotiatedPublisher::supported_types_cb(
     key_to_supported_types_[key].gid_to_weight[gid_key] = supported_type.weight;
 
     key_list.push_back(key);
-
-    if (upstream_negotiated_subscriptions_.size() > 0) {
-      negotiated_interfaces::msg::SupportedType downstream_type;
-      downstream_type.ros_type_name = key_to_supported_types_[key].ros_type_name;
-      downstream_type.supported_type_name = key_to_supported_types_[key].supported_type_name;
-      downstream_type.weight = key_to_supported_types_[key].gid_to_weight[gid_key];
-      downstream_types.supported_types.push_back(downstream_type);
-    }
   }
 
   // Only add a new subscription to the GID map if any of the keys matched.
   if (!key_list.empty()) {
     std::lock_guard<std::mutex> lg(negotiated_subscription_type_mutex_);
     negotiated_subscription_type_gids_->emplace(gid_key, key_list);
-  }
-
-  for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
-    upstream_negotiated_subscriptions_)
-  {
-    handle->subscription->add_downstream_supported_types(downstream_types);
   }
 
   if (negotiated_pub_options_.negotiate_on_subscription_add) {
@@ -545,51 +459,16 @@ void NegotiatedPublisher::negotiate()
     return;
   }
 
-  // If there are upstream subscriptions that we should wait on before negotiating with our
-  // downstream subscriptions, we'll discover it here.
-  std::map<std::string, detail::SupportedTypeInfo> upstream_filtered_supported_types;
-  if (upstream_negotiated_subscriptions_.size() > 0) {
-    bool all_negotiated = true;
-    for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
-      upstream_negotiated_subscriptions_)
-    {
-      negotiated_interfaces::msg::NegotiatedTopicsInfo topics_info =
-        handle->subscription->get_negotiated_topics();
-      if (!topics_info.success || topics_info.negotiated_topics.size() == 0) {
-        all_negotiated = false;
-        break;
-      }
-
-      for (const negotiated_interfaces::msg::NegotiatedTopicInfo & topic_info :
-        topics_info.negotiated_topics)
-      {
-        std::string key = detail::generate_key(
-          topic_info.ros_type_name,
-          topic_info.supported_type_name);
-
-        if (key_to_supported_types_.count(key) > 0) {
-          upstream_filtered_supported_types[key] = key_to_supported_types_.at(key);
-        }
-      }
-    }
-
-    if (!all_negotiated) {
-      return;
-    }
-  } else {
-    upstream_filtered_supported_types = key_to_supported_types_;
-  }
-
   std::vector<negotiated_interfaces::msg::SupportedType> matched_subs;
 
   if (!negotiated_subscription_type_gids_->empty()) {
     matched_subs = negotiated_pub_options_.negotiation_cb(
       *negotiated_subscription_type_gids_,
-      upstream_filtered_supported_types,
+      key_to_supported_types_,
       negotiated_pub_options_.maximum_negotiated_solutions);
   }
 
-  negotiated_topics_info_.negotiated_topics.clear();
+  negotiated_interfaces::msg::NegotiatedTopicsInfo negotiated_topics_info;
 
   if (matched_subs.empty()) {
     // We couldn't find any match, so don't setup anything
@@ -604,7 +483,7 @@ void NegotiatedPublisher::negotiate()
       }
     }
 
-    negotiated_topics_info_.success = false;
+    negotiated_topics_info.success = false;
   } else {
     // Now that we've run the algorithm and figured out what our actual publication
     // "type" is going to be, create the publisher(s) and inform the subscriptions
@@ -616,7 +495,7 @@ void NegotiatedPublisher::negotiate()
     // the same as last time.  In all cases, though, we send out the information to the
     // subscriptions so they can act accordingly (even new ones).
 
-    negotiated_topics_info_.success = true;
+    negotiated_topics_info.success = true;
 
     std::set<std::string> keys_to_preserve;
     for (const negotiated_interfaces::msg::SupportedType & type : matched_subs) {
@@ -647,7 +526,7 @@ void NegotiatedPublisher::negotiate()
       info.supported_type_name = type.supported_type_name;
       info.topic_name = supported_type_info.publisher->get_topic_name();
 
-      negotiated_topics_info_.negotiated_topics.push_back(info);
+      negotiated_topics_info.negotiated_topics.push_back(info);
     }
 
     // Now go through and remove any publishers that are no longer needed.
@@ -662,23 +541,11 @@ void NegotiatedPublisher::negotiate()
     }
 
     if (negotiated_pub_options_.successful_negotiation_cb != nullptr) {
-      negotiated_pub_options_.successful_negotiation_cb(negotiated_topics_info_);
+      negotiated_pub_options_.successful_negotiation_cb(negotiated_topics_info);
     }
   }
 
-  negotiated_publisher_->publish(negotiated_topics_info_);
-}
-
-const std::map<std::string, detail::SupportedTypeInfo> &
-NegotiatedPublisher::get_supported_types() const
-{
-  return key_to_supported_types_;
-}
-
-const negotiated_interfaces::msg::NegotiatedTopicsInfo &
-NegotiatedPublisher::get_negotiated_topics_info() const
-{
-  return negotiated_topics_info_;
+  negotiated_publisher_->publish(negotiated_topics_info);
 }
 
 }  // namespace negotiated

@@ -16,7 +16,6 @@
 #define NEGOTIATED__NEGOTIATED_SUBSCRIPTION_HPP_
 
 #include <functional>
-#include <list>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -76,29 +75,6 @@ class NegotiatedSubscription
 {
 public:
   RCLCPP_SMART_PTR_DEFINITIONS(NegotiatedSubscription)
-
-  using AfterSubscriptionCallbackFunction = std::function<void ()>;
-  struct AfterSubscriptionCallbackHandle
-  {
-    AfterSubscriptionCallbackFunction callback;
-  };
-
-  struct SupportedTypeInfo final
-  {
-    /// The supported type info associated with this type.
-    negotiated_interfaces::msg::SupportedType supported_type;
-
-    /// Whether this supported type is a compatible subscription, i.e. one created outside of this
-    /// NegotiatedSubscription.
-    bool is_compat;
-
-    /// The saved subscription pointer, which is used in the case that this is a compatible
-    /// subscription.
-    rclcpp::SubscriptionBase::SharedPtr subscription;
-
-    /// The factory function associated with this type.
-    std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)> sub_factory;
-  };
 
   /// Create a new NegotiatedSubscription with the given "base" topic_name.
   /**
@@ -341,22 +317,6 @@ public:
     }
   }
 
-  /// Add supported types from a downstream NegotiatedPublisher.
-  /**
-   * These types will be provided to our connected NegotiatedPublisher during our negotiation.
-   *
-   * \param[in] downstream_types The SupportedTypes list of downstream types to add.
-   */
-  void add_downstream_supported_types(
-    const negotiated_interfaces::msg::SupportedTypes & downstream_types);
-
-  /// Remove a supported type from a downstream NegotiatedPublisher.
-  /**
-   * \param[in] downstream_types The SupportedTypes list of downstream types to add.
-   */
-  void remove_downstream_supported_types(
-    const negotiated_interfaces::msg::SupportedTypes & downstream_types);
-
   /// Start sending preferences to the NegotiatedPublisher.
   /**
    * This is separated from the constructor to give the user time to call add_supported_callback()
@@ -383,61 +343,24 @@ public:
    */
   size_t get_data_topic_publisher_count() const;
 
-  /// Get the list of topics supported by this NegotiatedSubscription and the NegotiatedPublisher.
-  /**
-   * This list may be empty if negotiation has not yet happened, or failed.
-   *
-   * \return The list of negotiated topics supported by both this NegotiatedSubscription and
-   *         the connected NegotiatedPublisher.
-   */
-  const negotiated_interfaces::msg::NegotiatedTopicsInfo & get_negotiated_topics() const;
-
-  /// Set the callback to be called after a subscription is negotiated and created.
-  /**
-   * This is primarily intended for internal use by the NegotiatedPublisher.  Using it for other
-   * purposes may break the use-case of a NegotiatedPublisher and NegotiatedSubscription in the
-   * same rclcpp::Node; use it at your own risk!
-   *
-   * \param[in] cb The callback to call after a subscription is successfully negotiated and created.
-   */
-  std::shared_ptr<AfterSubscriptionCallbackHandle> set_after_subscription_callback(
-    const AfterSubscriptionCallbackFunction & cb);
-
-  /// Remove the after subscription callback.
-  /**
-   * Like set_after_subscription_callback(), this is primarily intended for internal use by the
-   * NegotiatedPublisher.  Using it for other purposes may break the use-case of a
-   * NegotiatedPublisher and NegotiatedSubscription in the same rclcpp::Node; use it at your
-   * own risk!
-   *
-   * \param[in] cb The callback to remove.
-   */
-  void remove_after_subscription_callback(const AfterSubscriptionCallbackHandle * const handle);
-
-  /// Get the types supported by this NegotiatedSubscription.
-  /**
-   * Note that this is only the types as set by add_supported_callback() and
-   * add_compatible_subscription().  In particular, it does not contain any types from
-   * downstream publishers.
-   *
-   * \return An unordered map between the keys and SupportedTypeInfo structures that
-   *         represent each of the supported types.
-   */
-  const std::unordered_map<std::string, SupportedTypeInfo> & get_supported_types() const;
-
-  /// Get the info about the negotiated topic that was chosen.
-  /**
-   * This is the stored version of the topic that was chosen by negotiation between this
-   * NegotiatedSubscription and it's upstream NegotiatedPublisher.  Note that in the case that
-   * negotiation hasn't happened yet, or failed for some reason, this will be a default-initialized
-   * structure (i.e. the structure fields of ros_type_name, supported_type_name, and topic_name
-   * will all be the empty string).
-   *
-   * \return A NegotiatedTopicInfo structure containing the topic that was chosen by negotiation.
-   */
-  const negotiated_interfaces::msg::NegotiatedTopicInfo & get_existing_topic_info() const;
-
 private:
+  struct SupportedTypeInfo final
+  {
+    /// The supported type info associated with this type.
+    negotiated_interfaces::msg::SupportedType supported_type;
+
+    /// Whether this supported type is a compatible subscription, i.e. one created outside of this
+    /// NegotiatedSubscription.
+    bool is_compat;
+
+    /// The saved subscription pointer, which is used in the case that this is a compatible
+    /// subscription.
+    rclcpp::SubscriptionBase::SharedPtr subscription;
+
+    /// The factory function associated with this type.
+    std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)> sub_factory;
+  };
+
   /// Generate the key that is used as an index into the maps.
   /**
    * Two of the internal maps are keyed off of the uniqueness of individual types as given by
@@ -465,13 +388,6 @@ private:
    */
   void topics_info_cb(const negotiated_interfaces::msg::NegotiatedTopicsInfo & msg);
 
-  /// Send our preferences to any connected NegotiatedPublisher.
-  /**
-   * This is separated from the call to start() so that we can separate whether the user told
-   * us to start negotiating from any downstream information we may be given.
-   */
-  void send_preferences();
-
   /// The node parameters interface to use.
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_;
 
@@ -486,13 +402,6 @@ private:
 
   /// A map between unique type keys (as returned by generate_key()) and the SupportedTypeInfos.
   std::unordered_map<std::string, SupportedTypeInfo> key_to_supported_types_;
-
-  /// Whether the user has called start() yet.
-  bool user_called_start_{false};
-
-  /// A map of any downstream types between unique type keys (as returned by generate_key()) and
-  /// the SupportedTypeInfos.
-  std::unordered_map<std::string, SupportedTypeInfo> downstream_key_to_supported_types_;
 
   /// The subscription used to include this class in the NegotiatedPublisher network and to
   /// receive preferences from the NegotiatedPublisher once they have been negotiated.
@@ -510,12 +419,6 @@ private:
 
   /// Saved information about the currently connected data topic.
   negotiated_interfaces::msg::NegotiatedTopicInfo existing_topic_info_;
-
-  /// A list of all of the topics that the publisher sent to us, that we also support.
-  negotiated_interfaces::msg::NegotiatedTopicsInfo negotiated_topics_;
-
-  /// A list of callbacks to be called after a subscription has successfully been created.
-  std::list<std::shared_ptr<AfterSubscriptionCallbackHandle>> after_subscription_cbs_;
 };
 
 }  // namespace negotiated
