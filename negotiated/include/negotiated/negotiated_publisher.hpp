@@ -484,6 +484,8 @@ public:
    */
   void stop();
 
+  negotiated_interfaces::msg::SupportedTypes get_supported_types() const;
+
 private:
   /// The timer callback to use to keep an eye on the network graph.
   /**

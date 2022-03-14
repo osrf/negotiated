@@ -20,6 +20,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "rclcpp/rclcpp.hpp"
 
@@ -27,6 +28,8 @@
 #include "negotiated_interfaces/msg/negotiated_topics_info.hpp"
 #include "negotiated_interfaces/msg/supported_type.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
+
+#include "negotiated/negotiated_publisher.hpp"
 
 namespace negotiated
 {
@@ -75,6 +78,12 @@ class NegotiatedSubscription
 {
 public:
   RCLCPP_SMART_PTR_DEFINITIONS(NegotiatedSubscription)
+
+  struct DownstreamNegotiatedPublisherHandle final
+  {
+    std::shared_ptr<negotiated::NegotiatedPublisher> publisher;
+    // std::shared_ptr<std::function<void(const negotiated_interfaces::msg::NegotiatedTopicsInfo &)>> handle;
+  };
 
   /// Create a new NegotiatedSubscription with the given "base" topic_name.
   /**
@@ -343,6 +352,11 @@ public:
    */
   size_t get_data_topic_publisher_count() const;
 
+  std::shared_ptr<DownstreamNegotiatedPublisherHandle> add_downstream_negotiated_publisher(
+    std::shared_ptr<negotiated::NegotiatedPublisher> publisher);
+
+  void remove_downstream_negotiated_publisher(const DownstreamNegotiatedPublisherHandle * const handle);
+
 private:
   struct SupportedTypeInfo final
   {
@@ -419,6 +433,11 @@ private:
 
   /// Saved information about the currently connected data topic.
   negotiated_interfaces::msg::NegotiatedTopicInfo existing_topic_info_;
+
+  /// A map to track any "upstream" negotiated subscriptions that need to be successful before
+  /// this NegotiatedPublisher can negotiate with downstreams.
+  std::unordered_set<std::shared_ptr<DownstreamNegotiatedPublisherHandle>>
+  downstream_negotiated_publishers_;
 };
 
 }  // namespace negotiated

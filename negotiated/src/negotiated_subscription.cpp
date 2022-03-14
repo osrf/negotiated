@@ -166,12 +166,23 @@ std::string NegotiatedSubscription::generate_key(
 
 void NegotiatedSubscription::start()
 {
-  auto supported_types = negotiated_interfaces::msg::SupportedTypes();
-  for (const std::pair<const std::string, SupportedTypeInfo> & pair : key_to_supported_types_) {
-    supported_types.supported_types.push_back(pair.second.supported_type);
-  }
+  // TODO(clalancette): Besides at start time, we also need to get informed when the publisher gets additional downstream data
 
-  supported_types_pub_->publish(supported_types);
+  if (downstream_negotiated_publishers_.size() == 0) {
+    auto supported_types = negotiated_interfaces::msg::SupportedTypes();
+    for (const std::pair<const std::string, SupportedTypeInfo> & pair : key_to_supported_types_) {
+      supported_types.supported_types.push_back(pair.second.supported_type);
+    }
+
+    supported_types_pub_->publish(supported_types);
+  } else {
+    auto supported_types = negotiated_interfaces::msg::SupportedTypes();
+    for (const std::shared_ptr<DownstreamNegotiatedPublisherHandle> & handle : downstream_negotiated_publishers_) {
+      // negotiated_interfaces::msg::SupportedTypes supported_types = handle->publisher->get_supported_types();
+    }
+
+    supported_types_pub_->publish(supported_types);
+  }
 }
 
 size_t NegotiatedSubscription::get_negotiated_topic_publisher_count() const
@@ -188,6 +199,53 @@ size_t NegotiatedSubscription::get_data_topic_publisher_count() const
   }
 
   return subscription_->get_publisher_count();
+}
+
+std::shared_ptr<NegotiatedSubscription::DownstreamNegotiatedPublisherHandle>
+NegotiatedSubscription::add_downstream_negotiated_publisher(
+  std::shared_ptr<negotiated::NegotiatedPublisher> publisher)
+{
+  auto it = std::find_if(
+    downstream_negotiated_publishers_.begin(),
+    downstream_negotiated_publishers_.end(),
+    [&publisher =
+    std::as_const(publisher)](
+      const std::shared_ptr<DownstreamNegotiatedPublisherHandle> & check_handle) {
+      return publisher == check_handle->publisher;
+    });
+
+  if (it != downstream_negotiated_publishers_.end()) {
+    RCLCPP_WARN(node_logging_->get_logger(), "Adding duplicate downstream negotiated publisher!");
+  }
+
+  auto downstream_handle = std::make_shared<DownstreamNegotiatedPublisherHandle>();
+  downstream_handle->publisher = publisher;
+  // downstream_handle->handle =
+  //   subscription->set_after_subscription_callback(
+  //   std::bind(&NegotiatedPublisher::negotiate_on_upstream_success, this));
+
+  downstream_negotiated_publishers_.insert(downstream_handle);
+
+  return downstream_handle;
+}
+
+void NegotiatedSubscription::remove_downstream_negotiated_publisher(
+  const DownstreamNegotiatedPublisherHandle * const handle)
+{
+  auto it = std::find_if(
+    downstream_negotiated_publishers_.begin(),
+    downstream_negotiated_publishers_.end(),
+    [handle](const std::shared_ptr<DownstreamNegotiatedPublisherHandle> & check_handle) {
+      return handle == check_handle.get();
+    });
+  if (it != downstream_negotiated_publishers_.end()) {
+    // (*it)->subscription->remove_after_subscription_callback((*it)->handle.get());
+    downstream_negotiated_publishers_.erase(it);
+  } else {
+    RCLCPP_WARN(
+      node_logging_->get_logger(),
+      "Attempted to remove downstream negotiated publisher that didn't exist");
+  }
 }
 
 }  // namespace negotiated
