@@ -83,6 +83,23 @@ public:
     AfterSubscriptionCallbackFunction callback;
   };
 
+  struct SupportedTypeInfo final
+  {
+    /// The supported type info associated with this type.
+    negotiated_interfaces::msg::SupportedType supported_type;
+
+    /// Whether this supported type is a compatible subscription, i.e. one created outside of this
+    /// NegotiatedSubscription.
+    bool is_compat;
+
+    /// The saved subscription pointer, which is used in the case that this is a compatible
+    /// subscription.
+    rclcpp::SubscriptionBase::SharedPtr subscription;
+
+    /// The factory function associated with this type.
+    std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)> sub_factory;
+  };
+
   /// Create a new NegotiatedSubscription with the given "base" topic_name.
   /**
    * The topic_name given here will be used to initially contact the NegotiatedPublisher.  It will
@@ -370,10 +387,10 @@ public:
   /**
    * This list may be empty if negotiation has not yet happened, or failed.
    *
-   * \return The list of negotiated topics supported by both this NegotiatedSubscriptio and
+   * \return The list of negotiated topics supported by both this NegotiatedSubscription and
    *         the connected NegotiatedPublisher.
    */
-  negotiated_interfaces::msg::NegotiatedTopicsInfo get_negotiated_topics() const;
+  const negotiated_interfaces::msg::NegotiatedTopicsInfo & get_negotiated_topics() const;
 
   /// Set the callback to be called after a subscription is negotiated and created.
   /**
@@ -397,24 +414,30 @@ public:
    */
   void remove_after_subscription_callback(const AfterSubscriptionCallbackHandle * const handle);
 
+  /// Get the types supported by this NegotiatedSubscription.
+  /**
+   * Note that this is only the types as set by add_supported_callback() and
+   * add_compatible_subscription().  In particular, it does not contain any types from
+   * downstream publishers.
+   *
+   * \return An unordered map between the keys and SupportedTypeInfo structures that
+   *         represent each of the supported types.
+   */
+  const std::unordered_map<std::string, SupportedTypeInfo> & get_supported_types() const;
+
+  /// Get the info about the negotiated topic that was chosen.
+  /**
+   * This is the stored version of the topic that was chosen by negotiation between this
+   * NegotiatedSubscription and it's upstream NegotiatedPublisher.  Note that in the case that
+   * negotiation hasn't happened yet, or failed for some reason, this will be a default-initialized
+   * structure (i.e. the structure fields of ros_type_name, supported_type_name, and topic_name
+   * will all be the empty string).
+   *
+   * \return A NegotiatedTopicInfo structure containing the topic that was chosen by negotiation.
+   */
+  const negotiated_interfaces::msg::NegotiatedTopicInfo & get_existing_topic_info() const;
+
 private:
-  struct SupportedTypeInfo final
-  {
-    /// The supported type info associated with this type.
-    negotiated_interfaces::msg::SupportedType supported_type;
-
-    /// Whether this supported type is a compatible subscription, i.e. one created outside of this
-    /// NegotiatedSubscription.
-    bool is_compat;
-
-    /// The saved subscription pointer, which is used in the case that this is a compatible
-    /// subscription.
-    rclcpp::SubscriptionBase::SharedPtr subscription;
-
-    /// The factory function associated with this type.
-    std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)> sub_factory;
-  };
-
   /// Generate the key that is used as an index into the maps.
   /**
    * Two of the internal maps are keyed off of the uniqueness of individual types as given by
@@ -491,7 +514,7 @@ private:
   /// A list of all of the topics that the publisher sent to us, that we also support.
   negotiated_interfaces::msg::NegotiatedTopicsInfo negotiated_topics_;
 
-  /// An list of callbacks to be called after a subscription has successfully been created.
+  /// A list of callbacks to be called after a subscription has successfully been created.
   std::list<std::shared_ptr<AfterSubscriptionCallbackHandle>> after_subscription_cbs_;
 };
 

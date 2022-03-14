@@ -226,6 +226,22 @@ TEST_F(TestNegotiatedPublisher, single_subscription_negotiated)
     };
   ASSERT_TRUE(spin_while_waiting(dummy_data_cb));
   ASSERT_EQ(empty_count, 1);
+
+  std::map<std::string, negotiated::detail::SupportedTypeInfo> supported_types =
+    pub->get_supported_types();
+  ASSERT_EQ(supported_types.size(), 1u);
+  negotiated::detail::SupportedTypeInfo empty_type_info =
+    supported_types.at("std_msgs/msg/Empty+a");
+  ASSERT_EQ(empty_type_info.ros_type_name, "std_msgs/msg/Empty");
+  ASSERT_EQ(empty_type_info.supported_type_name, "a");
+  ASSERT_FALSE(empty_type_info.is_compat);
+
+  negotiated_interfaces::msg::NegotiatedTopicsInfo topics_info = pub->get_negotiated_topics_info();
+  ASSERT_TRUE(topics_info.success);
+  ASSERT_EQ(topics_info.negotiated_topics.size(), 1u);
+  ASSERT_EQ(topics_info.negotiated_topics[0].ros_type_name, "std_msgs/msg/Empty");
+  ASSERT_EQ(topics_info.negotiated_topics[0].supported_type_name, "a");
+  ASSERT_EQ(topics_info.negotiated_topics[0].topic_name, "/foo/a");
 }
 
 TEST_F(TestNegotiatedPublisher, single_failed_negotiation)

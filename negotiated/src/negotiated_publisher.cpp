@@ -589,7 +589,7 @@ void NegotiatedPublisher::negotiate()
       negotiated_pub_options_.maximum_negotiated_solutions);
   }
 
-  auto msg = std::make_unique<negotiated_interfaces::msg::NegotiatedTopicsInfo>();
+  negotiated_topics_info_.negotiated_topics.clear();
 
   if (matched_subs.empty()) {
     // We couldn't find any match, so don't setup anything
@@ -604,7 +604,7 @@ void NegotiatedPublisher::negotiate()
       }
     }
 
-    msg->success = false;
+    negotiated_topics_info_.success = false;
   } else {
     // Now that we've run the algorithm and figured out what our actual publication
     // "type" is going to be, create the publisher(s) and inform the subscriptions
@@ -616,7 +616,7 @@ void NegotiatedPublisher::negotiate()
     // the same as last time.  In all cases, though, we send out the information to the
     // subscriptions so they can act accordingly (even new ones).
 
-    msg->success = true;
+    negotiated_topics_info_.success = true;
 
     std::set<std::string> keys_to_preserve;
     for (const negotiated_interfaces::msg::SupportedType & type : matched_subs) {
@@ -647,7 +647,7 @@ void NegotiatedPublisher::negotiate()
       info.supported_type_name = type.supported_type_name;
       info.topic_name = supported_type_info.publisher->get_topic_name();
 
-      msg->negotiated_topics.push_back(info);
+      negotiated_topics_info_.negotiated_topics.push_back(info);
     }
 
     // Now go through and remove any publishers that are no longer needed.
@@ -662,11 +662,23 @@ void NegotiatedPublisher::negotiate()
     }
 
     if (negotiated_pub_options_.successful_negotiation_cb != nullptr) {
-      negotiated_pub_options_.successful_negotiation_cb(*msg);
+      negotiated_pub_options_.successful_negotiation_cb(negotiated_topics_info_);
     }
   }
 
-  negotiated_publisher_->publish(std::move(msg));
+  negotiated_publisher_->publish(negotiated_topics_info_);
+}
+
+const std::map<std::string, detail::SupportedTypeInfo> &
+NegotiatedPublisher::get_supported_types() const
+{
+  return key_to_supported_types_;
+}
+
+const negotiated_interfaces::msg::NegotiatedTopicsInfo &
+NegotiatedPublisher::get_negotiated_topics_info() const
+{
+  return negotiated_topics_info_;
 }
 
 }  // namespace negotiated

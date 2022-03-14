@@ -1137,18 +1137,14 @@ TEST_F(TestNegotiatedSubscription, get_multiple_supported_topics)
   // Setup and test the subscription
   auto sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo");
 
-  int empty_count = 0;
-  auto empty_cb = [&empty_count](const std_msgs::msg::Empty & msg)
+  auto empty_cb = [](const std_msgs::msg::Empty & msg)
     {
       (void)msg;
-      empty_count++;
     };
 
-  int string_count = 0;
-  auto string_cb = [&string_count](const std_msgs::msg::String & msg)
+  auto string_cb = [](const std_msgs::msg::String & msg)
     {
       (void)msg;
-      string_count++;
     };
 
   sub->add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), empty_cb);
@@ -1178,6 +1174,28 @@ TEST_F(TestNegotiatedSubscription, get_multiple_supported_topics)
   ASSERT_EQ(info.negotiated_topics[0].supported_type_name, "b");
   ASSERT_EQ(info.negotiated_topics[1].ros_type_name, "std_msgs/msg/Empty");
   ASSERT_EQ(info.negotiated_topics[1].supported_type_name, "a");
+
+  std::unordered_map<std::string,
+    negotiated::NegotiatedSubscription::SupportedTypeInfo> supported_types =
+    sub->get_supported_types();
+  ASSERT_EQ(supported_types.size(), 2u);
+  negotiated::NegotiatedSubscription::SupportedTypeInfo empty_type_info =
+    supported_types.at("std_msgs/msg/Empty+a");
+  ASSERT_EQ(empty_type_info.supported_type.ros_type_name, "std_msgs/msg/Empty");
+  ASSERT_EQ(empty_type_info.supported_type.supported_type_name, "a");
+  ASSERT_EQ(empty_type_info.supported_type.weight, 1.0);
+  ASSERT_FALSE(empty_type_info.is_compat);
+  negotiated::NegotiatedSubscription::SupportedTypeInfo string_type_info =
+    supported_types.at("std_msgs/msg/String+b");
+  ASSERT_EQ(string_type_info.supported_type.ros_type_name, "std_msgs/msg/String");
+  ASSERT_EQ(string_type_info.supported_type.supported_type_name, "b");
+  ASSERT_EQ(string_type_info.supported_type.weight, 1.0);
+  ASSERT_FALSE(string_type_info.is_compat);
+
+  negotiated_interfaces::msg::NegotiatedTopicInfo existing = sub->get_existing_topic_info();
+  ASSERT_EQ(existing.ros_type_name, "std_msgs/msg/String");
+  ASSERT_EQ(existing.supported_type_name, "b");
+  ASSERT_EQ(existing.topic_name, "foo/b");
 }
 
 TEST_F(TestNegotiatedSubscription, after_subscription_callback)

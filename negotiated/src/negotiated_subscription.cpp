@@ -227,7 +227,7 @@ size_t NegotiatedSubscription::get_data_topic_publisher_count() const
   return subscription_->get_publisher_count();
 }
 
-negotiated_interfaces::msg::NegotiatedTopicsInfo
+const negotiated_interfaces::msg::NegotiatedTopicsInfo &
 NegotiatedSubscription::get_negotiated_topics() const
 {
   return negotiated_topics_;
@@ -296,6 +296,18 @@ void NegotiatedSubscription::remove_downstream_supported_types(
 
     downstream_key_to_supported_types_.erase(key_name);
   }
+}
+
+const std::unordered_map<std::string, NegotiatedSubscription::SupportedTypeInfo> &
+NegotiatedSubscription::get_supported_types() const
+{
+  return key_to_supported_types_;
+}
+
+const negotiated_interfaces::msg::NegotiatedTopicInfo &
+NegotiatedSubscription::get_existing_topic_info() const
+{
+  return existing_topic_info_;
 }
 
 }  // namespace negotiated

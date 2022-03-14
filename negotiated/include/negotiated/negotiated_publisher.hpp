@@ -524,6 +524,26 @@ public:
    */
   void stop();
 
+  /// Get the types supported by this NegotiatedPublisher.
+  /**
+   * Note that this is only the types as set by add_supported_type() and
+   * add_compatible_publisher().  In particular, it does not contain any types from
+   * upstream subscriptions.
+   *
+   * \return A map between the keys and SupportedTypeInfo structures that
+   *         represent each of the supported types.
+   */
+  const std::map<std::string, detail::SupportedTypeInfo> & get_supported_types() const;
+
+  /// Get the list of topics supported by this NegotiatedPublisher and all NegotiatedSubscriptions.
+  /**
+   * This list may be empty if negotiation has not yet happened, or failed.
+   *
+   * \return The list of negotiated topics supported by both this NegotiatedPublisher and
+   *         all connected NegotiatedSubscriptions.
+   */
+  const negotiated_interfaces::msg::NegotiatedTopicsInfo & get_negotiated_topics_info() const;
+
 private:
   /// The timer callback to use to keep an eye on the network graph.
   /**
@@ -597,6 +617,10 @@ private:
   /// this NegotiatedPublisher can negotiate with downstreams.
   std::unordered_set<std::shared_ptr<UpstreamNegotiatedSubscriptionHandle>>
   upstream_negotiated_subscriptions_;
+
+  /// A stored version of the negotiated topics that were sent to attached NegotiatedSubscriptions.
+  /// This may be empty if negotiation has not happened yet or has failed.
+  negotiated_interfaces::msg::NegotiatedTopicsInfo negotiated_topics_info_;
 };
 
 }  // namespace negotiated
