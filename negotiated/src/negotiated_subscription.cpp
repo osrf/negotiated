@@ -24,6 +24,15 @@
 
 #include "negotiated/negotiated_subscription.hpp"
 
+void print_gid(const std::string & prefix, const std::array<uint8_t, 24> & gid)
+{
+  fprintf(stderr, "%s: ", prefix.c_str());
+  for (uint8_t c : gid) {
+    fprintf(stderr, "%u ", c);
+  }
+  fprintf(stderr, "\n");
+}
+
 namespace negotiated
 {
 
@@ -92,6 +101,12 @@ NegotiatedSubscription::NegotiatedSubscription(
     node_topics_,
     negotiated_subscription_->get_topic_name() + std::string("/_supported_types"),
     rclcpp::QoS(100).transient_local());
+
+  std::array<uint8_t, 24> gid_array;
+  rmw_gid_t gid = supported_types_pub_->get_gid();
+  std::copy(std::begin(gid.data), std::end(gid.data), std::begin(gid_array));
+
+  print_gid("Supported type pub", gid_array);
 }
 
 void NegotiatedSubscription::topics_info_cb(
@@ -116,6 +131,8 @@ void NegotiatedSubscription::topics_info_cb(
 
     negotiated_topics_.negotiated_topics.push_back(info);
   }
+
+  RCLCPP_INFO(node_logging_->get_logger(), "Number of negotiated topics: %lu", negotiated_topics_.negotiated_topics.size());
 
   negotiated_interfaces::msg::NegotiatedTopicInfo matched_info =
     negotiated_sub_options_.negotiate_cb(existing_topic_info_, negotiated_topics_);
@@ -197,6 +214,8 @@ void NegotiatedSubscription::send_preferences()
     {
       // We only send along types that both this object and its downstreams support.
       if (key_to_supported_types_.count(pair.first) > 0) {
+        // Note that we push both the supported type for this object as well as the downstream
+        // so that we have multiple child GIDs in the list.
         supported_types.supported_types.push_back(key_to_supported_types_.at(pair.first).supported_type);
         supported_types.supported_types.push_back(pair.second.supported_type);
       }

@@ -36,6 +36,15 @@
 
 #include "combinations.hpp"
 
+void print_gid(const std::string & prefix, negotiated::detail::PublisherGid gid)
+{
+  fprintf(stderr, "%s: ", prefix.c_str());
+  for (uint8_t c : gid) {
+    fprintf(stderr, "%u ", c);
+  }
+  fprintf(stderr, "\n");
+}
+
 namespace negotiated
 {
 
@@ -131,18 +140,22 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
         & compatible_supported_types = std::as_const(compatible_supported_types),
         & negotiated_sub_gid_to_keys = std::as_const(negotiated_sub_gid_to_keys),
         &max_weight,
-        &matched_subs](
+        &matched_subs, &i](
       std::vector<std::string>::iterator first,
       std::vector<std::string>::iterator last) -> bool
       {
+        fprintf(stderr, "------------------------ Starting a combination at level %lu\n", i);
         std::set<detail::PublisherGid> gids_needed = gid_set;
 
         double sum_of_weights = 0.0;
 
         for (std::vector<std::string>::iterator it = first; it != last; ++it) {
+          fprintf(stderr, "Checking element %s\n", it->c_str());
+
           // The iterator should *always* be available in the key_to_supported_types
           // map, since we are iterating over that same map.  But we use .at just
           // to be safe.
+
           detail::SupportedTypeInfo supported_type_info = key_to_supported_types.at(*it);
 
           for (const std::pair<detail::PublisherGid,
@@ -150,6 +163,8 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
           {
             sum_of_weights += gid_to_weight.second;
 
+            std::string prefix = std::string("Adding weight ") + std::to_string(gid_to_weight.second) + std::string(" from gid");
+            print_gid(prefix, gid_to_weight.first);
             gids_needed.erase(gid_to_weight.first);
           }
         }
@@ -193,6 +208,8 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
           // level because there may be another combination that is more favorable, but we know
           // we don't need to descend to further levels.
 
+          fprintf(stderr, "HOORAY!  Found a match, new weight %f, max weight %f\n", sum_of_weights, max_weight);
+
           if (sum_of_weights > max_weight) {
             max_weight = sum_of_weights;
 
@@ -214,6 +231,7 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
     for_each_combination(keys.begin(), keys.begin() + i, keys.end(), check_combination);
 
     if (!matched_subs.empty()) {
+      fprintf(stderr, "Found a match at level %lu, returning it\n", i);
       break;
     }
 
@@ -382,12 +400,14 @@ void NegotiatedPublisher::graph_change_timer_callback()
   negotiated_subscription_type_gids_ = new_negotiated_subscription_gids;
 
   if (different_maps && negotiated_pub_options_.negotiate_on_subscription_removal) {
+    RCLCPP_INFO(node_logging_->get_logger(), "Negotiating after graph change");
     negotiate();
   }
 }
 
 void NegotiatedPublisher::negotiate_on_upstream_success()
 {
+  RCLCPP_INFO(node_logging_->get_logger(), "Negotiating on upstream success");
   negotiate();
 }
 
@@ -493,7 +513,7 @@ void NegotiatedPublisher::supported_types_cb(
     key_to_supported_types_[key].gid_to_weight[supported_type.child_gid] = supported_type.weight;
 
     print_gid("Adding gid for", supported_type.child_gid);
-    RCLCPP_INFO(node_logging_->get_logger(), "%s adding weight for key %s", topic_name_.c_str(), key.c_str());
+    RCLCPP_INFO(node_logging_->get_logger(), "%s adding weight %f for key %s", topic_name_.c_str(), supported_type.weight, key.c_str());
 
     (*negotiated_subscription_type_gids_)[supported_type.child_gid].push_back(key);
 
@@ -509,6 +529,7 @@ void NegotiatedPublisher::supported_types_cb(
   }
 
   if (negotiated_pub_options_.negotiate_on_subscription_add) {
+    RCLCPP_INFO(node_logging_->get_logger(), "Negotiating during supported types cb");
     negotiate();
   }
 }
@@ -571,13 +592,19 @@ void NegotiatedPublisher::negotiate()
           topic_info.ros_type_name,
           topic_info.supported_type_name);
 
+        RCLCPP_INFO(node_logging_->get_logger(), "Attempting to filter key %s", key.c_str());
+
         if (key_to_supported_types_.count(key) > 0) {
+          RCLCPP_INFO(node_logging_->get_logger(), "  Adding key to the filtered list");
           upstream_filtered_supported_types[key] = key_to_supported_types_.at(key);
+        } else {
+          RCLCPP_INFO(node_logging_->get_logger(), "  Not adding key to the filtered list");
         }
       }
     }
 
     if (!all_negotiated) {
+      RCLCPP_INFO(node_logging_->get_logger(), "Not all upstreams negotiated, waiting to negotiate");
       return;
     }
   } else {
@@ -587,17 +614,23 @@ void NegotiatedPublisher::negotiate()
   std::vector<negotiated_interfaces::msg::SupportedType> matched_subs;
 
   if (!negotiated_subscription_type_gids_->empty()) {
+    RCLCPP_INFO(node_logging_->get_logger(), "Upstream filtered supported types:");
+    for (const std::pair<std::string, detail::SupportedTypeInfo> & d : upstream_filtered_supported_types) {
+      RCLCPP_INFO(node_logging_->get_logger(), "  Key %s", d.first.c_str());
+    }
     matched_subs = negotiated_pub_options_.negotiation_cb(
       *negotiated_subscription_type_gids_,
       upstream_filtered_supported_types,
       negotiated_pub_options_.maximum_negotiated_solutions);
+  } else{
+    RCLCPP_INFO(node_logging_->get_logger(), "Skipped %s negotiation because no subscriptions", topic_name_.c_str());
   }
 
   negotiated_topics_info_.negotiated_topics.clear();
 
   if (matched_subs.empty()) {
     // We couldn't find any match, so don't setup anything
-    RCLCPP_INFO(node_logging_->get_logger(), "Could not negotiate");
+    RCLCPP_INFO(node_logging_->get_logger(), "Could not negotiate %s", topic_name_.c_str());
     if (negotiated_pub_options_.disconnect_publishers_on_failure) {
       for (std::pair<const std::string,
         detail::SupportedTypeInfo> & supported_info : key_to_supported_types_)
@@ -619,6 +652,8 @@ void NegotiatedPublisher::negotiate()
     // unnecessarily tearing down and recreating the publishers if the set is going to be exactly
     // the same as last time.  In all cases, though, we send out the information to the
     // subscriptions so they can act accordingly (even new ones).
+
+    RCLCPP_INFO(node_logging_->get_logger(), "Negotiated %s", topic_name_.c_str());
 
     negotiated_topics_info_.success = true;
 
@@ -643,6 +678,7 @@ void NegotiatedPublisher::negotiate()
       if (supported_type_info.publisher == nullptr) {
         // We need to create this publisher.
         std::string topic_name = topic_name_ + "/" + type.supported_type_name;
+        RCLCPP_INFO(node_logging_->get_logger(), "Creating publisher on topic %s", topic_name.c_str());
         supported_type_info.publisher = supported_type_info.pub_factory(topic_name);
       }
 

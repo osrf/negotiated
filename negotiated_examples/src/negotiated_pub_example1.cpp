@@ -66,12 +66,14 @@ public:
         if (negotiated_pub_->type_was_negotiated<negotiated_examples::StringT>()) {
           auto msg = std_msgs::msg::String();
           msg.data = "Hello World: " + std::to_string(count_);
+          RCLCPP_INFO(get_logger(), "String type negotiated, publishing: %s", msg.data.c_str());
           negotiated_pub_->publish<negotiated_examples::StringT>(msg);
         }
 
         if (negotiated_pub_->type_was_negotiated<negotiated_examples::Int32T>()) {
           auto msg = std_msgs::msg::Int32();
           msg.data = count_;
+          RCLCPP_INFO(get_logger(), "Int32 type negotiated, publishing: %d", msg.data);
           negotiated_pub_->publish<negotiated_examples::Int32T>(msg);
         }
 
