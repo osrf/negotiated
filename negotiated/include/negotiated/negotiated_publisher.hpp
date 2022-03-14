@@ -34,8 +34,6 @@
 #include "negotiated_interfaces/msg/supported_type.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
 
-#include "negotiated/negotiated_subscription.hpp"
-
 namespace negotiated
 {
 
@@ -150,12 +148,6 @@ class NegotiatedPublisher
 public:
   RCLCPP_SMART_PTR_DEFINITIONS(NegotiatedPublisher)
 
-  struct UpstreamNegotiatedSubscriptionHandle
-  {
-    std::shared_ptr<negotiated::NegotiatedSubscription> subscription;
-    std::shared_ptr<negotiated::NegotiatedSubscription::AfterSubscriptionCallbackHandle> handle;
-  };
-
   /// Create a new NegotiatedPublisher with the given "base" topic_name.
   /**
    * The topic_name given here will be used to determine the list of NegotiatedSubscriptions in the
@@ -180,15 +172,6 @@ public:
     rclcpp::node_interfaces::NodeTimersInterface::SharedPtr node_timers,
     const std::string & topic_name,
     const NegotiatedPublisherOptions & negotiated_pub_options = NegotiatedPublisherOptions());
-
-  // Implement Rule of 5 here.  Particularly in cases where we have upstream
-  // NegotiatedSubscriptions, a copy is hard to do reliably.  Mark copy constructors, move
-  // constructors, and assignment operators as deleted.
-  virtual ~NegotiatedPublisher();
-  NegotiatedPublisher(const NegotiatedPublisher &) = delete;
-  NegotiatedPublisher(NegotiatedPublisher &&) = delete;
-  NegotiatedPublisher & operator=(const NegotiatedPublisher &) = delete;
-  NegotiatedPublisher & operator=(NegotiatedPublisher &&) = delete;
 
   /// Create a new NegotiatedPublisher with the given "base" topic_name.
   /**
@@ -384,29 +367,6 @@ public:
     key_to_supported_types_.erase(key_name);
   }
 
-  /// Start tracking a NegotiatedSubscription as an upstream of this NegotiatedPublisher.
-  /**
-   * A NegotiatedSubscription added here will be considered "upstream" of this NegotiatedPublisher,
-   * meaning that it has to successfully negotiate with its NegotiatedPublisher before this one
-   * will even consider negotiating with its "downstream" NegotiatedSubscription(s).  This primarily
-   * allows a NegotiatedPublisher/NegotiatedSubscription pair inside of the same rclcpp::Node, where
-   * the results of the upstream negotiations have an effect on the downstream negotiations.
-   *
-   * \param[in] subscription A shared_ptr to the upstream NegotiatedSubscription to start tracking.
-   */
-  std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> add_upstream_negotiated_subscription(
-    std::shared_ptr<negotiated::NegotiatedSubscription> subscription);
-
-  /// Stop tracking a NegotiatedSubscription as an upstream of this NegotiatedPublisher.
-  /**
-   * Stop tracking a NegotiatedSubscription that was originally added via
-   * add_upstream_negotiated_subscription().
-   *
-   * \param[in] subscription A shared_ptr to the upstream NegotiatedSubscription to stop tracking.
-   */
-  void remove_upstream_negotiated_subscription(
-    const UpstreamNegotiatedSubscriptionHandle * const handle);
-
   /// Start collecting information from the attached NegotiatedSubscriptions.
   /**
    * Until this method is called, no data from NegotiatedSubscriptions will be collected.
@@ -524,26 +484,6 @@ public:
    */
   void stop();
 
-  /// Get the types supported by this NegotiatedPublisher.
-  /**
-   * Note that this is only the types as set by add_supported_type() and
-   * add_compatible_publisher().  In particular, it does not contain any types from
-   * upstream subscriptions.
-   *
-   * \return A map between the keys and SupportedTypeInfo structures that
-   *         represent each of the supported types.
-   */
-  const std::map<std::string, detail::SupportedTypeInfo> & get_supported_types() const;
-
-  /// Get the list of topics supported by this NegotiatedPublisher and all NegotiatedSubscriptions.
-  /**
-   * This list may be empty if negotiation has not yet happened, or failed.
-   *
-   * \return The list of negotiated topics supported by both this NegotiatedPublisher and
-   *         all connected NegotiatedSubscriptions.
-   */
-  const negotiated_interfaces::msg::NegotiatedTopicsInfo & get_negotiated_topics_info() const;
-
 private:
   /// The timer callback to use to keep an eye on the network graph.
   /**
@@ -553,10 +493,6 @@ private:
    * will happen.
    */
   void graph_change_timer_callback();
-
-  /// The callback that will be called once any upstream NegotiatedSubscriptions have successfully
-  /// negotiated.
-  void negotiate_on_upstream_success();
 
   void supported_types_cb(
     const negotiated_interfaces::msg::SupportedTypes & supported_types,
@@ -612,15 +548,6 @@ private:
   /// negotiation.
   std::shared_ptr<std::map<detail::PublisherGid,
     std::vector<std::string>>> negotiated_subscription_type_gids_;
-
-  /// A map to track any "upstream" negotiated subscriptions that need to be successful before
-  /// this NegotiatedPublisher can negotiate with downstreams.
-  std::unordered_set<std::shared_ptr<UpstreamNegotiatedSubscriptionHandle>>
-  upstream_negotiated_subscriptions_;
-
-  /// A stored version of the negotiated topics that were sent to attached NegotiatedSubscriptions.
-  /// This may be empty if negotiation has not happened yet or has failed.
-  negotiated_interfaces::msg::NegotiatedTopicsInfo negotiated_topics_info_;
 };
 
 }  // namespace negotiated

@@ -93,25 +93,14 @@ public:
       rclcpp::QoS(1),
       pub_options);
 
-    handle_ = negotiated_pub_->add_upstream_negotiated_subscription(negotiated_sub_);
-
     negotiated_sub_->start();
 
     negotiated_pub_->start();
   }
 
-  ~NegotiatedPubSubPairExample1()
-  {
-    // This isn't strictly necessary, as the component is going down.  However, it drops an
-    // additional reference to the negotiated_sub_, which should allow it to be properly cleaned
-    // up (and reported as so in dynamic memory tracers, like asan).
-    negotiated_pub_->remove_upstream_negotiated_subscription(handle_.get());
-  }
-
 private:
   std::shared_ptr<negotiated::NegotiatedPublisher> negotiated_pub_;
   std::shared_ptr<negotiated::NegotiatedSubscription> negotiated_sub_;
-  std::shared_ptr<negotiated::NegotiatedPublisher::UpstreamNegotiatedSubscriptionHandle> handle_;
 };
 
 }  // namespace negotiated_examples
