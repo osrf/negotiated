@@ -35,24 +35,28 @@ public:
   explicit NegotiatedPubExample1(const rclcpp::NodeOptions & options)
   : rclcpp::Node("negotiated_pub_example1", options)
   {
-    negotiated_pub_ = std::make_shared<negotiated::NegotiatedPublisher>(*this, "example");
-
     bool use_intra_process = this->declare_parameter("use_intra_process", false);
+
+    double string_a_weight = this->declare_parameter("string_a_weight", 0.2);
+    double int32_weight = this->declare_parameter("int32_weight", 1.0);
+    double string_b_weight = this->declare_parameter("string_b_weight", 0.1);
+
+    negotiated_pub_ = std::make_shared<negotiated::NegotiatedPublisher>(*this, "example");
     rclcpp::PublisherOptions pub_options;
     if (use_intra_process) {
       pub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
     }
 
     negotiated_pub_->add_supported_type<negotiated_examples::StringT>(
-      0.2,
+      string_a_weight,
       rclcpp::QoS(1),
       pub_options);
     negotiated_pub_->add_supported_type<negotiated_examples::Int32T>(
-      1.0,
+      int32_weight,
       rclcpp::QoS(1),
       pub_options);
     negotiated_pub_->add_supported_type<negotiated_examples::StringT2>(
-      0.1,
+      string_b_weight,
       rclcpp::QoS(1),
       pub_options);
     negotiated_pub_->start();

@@ -36,13 +36,13 @@ public:
   explicit NegotiatedPubSubPairExample1(const rclcpp::NodeOptions & options)
   : rclcpp::Node("negotiated_pub_sub_pair_example1", options)
   {
-    negotiated_sub_ = std::make_shared<negotiated::NegotiatedSubscription>(*this, "example");
-
     bool use_intra_process = this->declare_parameter("use_intra_process", false);
-    rclcpp::SubscriptionOptions sub_options;
-    if (use_intra_process) {
-      sub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
-    }
+
+    double pub_string_a_weight = this->declare_parameter("pub_string_a_weight", 0.1);
+    double pub_int32_weight = this->declare_parameter("pub_int32_weight", 0.5);
+
+    double sub_string_a_weight = this->declare_parameter("sub_string_a_weight", 1.0);
+    double sub_int32_weight = this->declare_parameter("sub_int32_weight", 0.5);
 
     auto string_user_cb = [this](std::unique_ptr<std_msgs::msg::String> msg)
       {
@@ -50,6 +50,10 @@ public:
         if (negotiated_pub_->type_was_negotiated<negotiated_examples::StringT>()) {
           msg->data += " intermediate";
           negotiated_pub_->publish<negotiated_examples::StringT>(std::move(msg));
+        } else {
+          // If the negotiated_pub chose Int32T, there is no way to send along the
+          // data here, so just print a warning.
+          RCLCPP_WARN(this->get_logger(), "Could not send String to Int32, skipping");
         }
       };
 
@@ -60,19 +64,33 @@ public:
           std_msgs::msg::Int32 int_msg;
           int_msg.data = msg.data * 2;
           negotiated_pub_->publish<negotiated_examples::Int32T>(int_msg);
+        } else if (negotiated_pub_->type_was_negotiated<negotiated_examples::StringT>()) {
+          std_msgs::msg::String str_msg;
+          str_msg.data = std::to_string(msg.data * 2);
+          negotiated_pub_->publish<negotiated_examples::StringT>(str_msg);
         }
       };
 
-    negotiated_sub_->add_supported_callback<negotiated_examples::StringT>(
-      1.0,
-      rclcpp::QoS(1),
-      string_user_cb,
-      sub_options);
-    negotiated_sub_->add_supported_callback<negotiated_examples::Int32T>(
-      0.5,
-      rclcpp::QoS(1),
-      int_user_cb,
-      sub_options);
+    negotiated_sub_ = std::make_shared<negotiated::NegotiatedSubscription>(*this, "example");
+
+    rclcpp::SubscriptionOptions sub_options;
+    if (use_intra_process) {
+      sub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
+    }
+    if (sub_string_a_weight >= 0.0) {
+      negotiated_sub_->add_supported_callback<negotiated_examples::StringT>(
+        sub_string_a_weight,
+        rclcpp::QoS(1),
+        string_user_cb,
+        sub_options);
+    }
+    if (sub_int32_weight >= 0.0) {
+      negotiated_sub_->add_supported_callback<negotiated_examples::Int32T>(
+        sub_int32_weight,
+        rclcpp::QoS(1),
+        int_user_cb,
+        sub_options);
+    }
 
     negotiated_pub_ = std::make_shared<negotiated::NegotiatedPublisher>(
       *this,
@@ -83,15 +101,18 @@ public:
       pub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
     }
 
-    negotiated_pub_->add_supported_type<negotiated_examples::StringT>(
-      0.1,
-      rclcpp::QoS(1),
-      pub_options);
-
-    negotiated_pub_->add_supported_type<negotiated_examples::Int32T>(
-      0.5,
-      rclcpp::QoS(1),
-      pub_options);
+    if (pub_string_a_weight >= 0.0) {
+      negotiated_pub_->add_supported_type<negotiated_examples::StringT>(
+        pub_string_a_weight,
+        rclcpp::QoS(1),
+        pub_options);
+    }
+    if (pub_int32_weight >= 0.0) {
+      negotiated_pub_->add_supported_type<negotiated_examples::Int32T>(
+        pub_int32_weight,
+        rclcpp::QoS(1),
+        pub_options);
+    }
 
     negotiated_sub_->start();
 
