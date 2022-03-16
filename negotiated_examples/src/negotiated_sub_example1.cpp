@@ -32,6 +32,10 @@ public:
   explicit NegotiatedSubExample1(const rclcpp::NodeOptions & options)
   : rclcpp::Node("negotiated_sub_example1", options)
   {
+    bool use_intra_process = this->declare_parameter("use_intra_process", false);
+    double string_a_weight = this->declare_parameter("string_a_weight", 1.0);
+    double int32_weight = this->declare_parameter("int32_weight", 0.5);
+
     auto string_user_cb = [this](const std_msgs::msg::String & msg)
       {
         RCLCPP_INFO(this->get_logger(), "String user callback: %s", msg.data.c_str());
@@ -44,19 +48,18 @@ public:
 
     negotiated_sub_ = std::make_shared<negotiated::NegotiatedSubscription>(*this, "example");
 
-    bool use_intra_process = this->declare_parameter("use_intra_process", false);
     rclcpp::SubscriptionOptions sub_options;
     if (use_intra_process) {
       sub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
     }
 
     negotiated_sub_->add_supported_callback<negotiated_examples::StringT>(
-      1.0,
+      string_a_weight,
       rclcpp::QoS(1),
       string_user_cb,
       sub_options);
     negotiated_sub_->add_supported_callback<negotiated_examples::Int32T>(
-      0.5,
+      int32_weight,
       rclcpp::QoS(1),
       int_user_cb,
       sub_options);

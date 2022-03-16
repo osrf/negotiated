@@ -27,17 +27,35 @@ def generate_launch_description():
             composable_node_descriptions=[
                 ComposableNode(
                     package='negotiated_examples',
-                    plugin='negotiated_examples::NegotiatedSubExample3',
-                    name='negotiated_sub_example3',
-                    remappings=[('example', 'downstream/example')]),
+                    plugin='negotiated_examples::NegotiatedSubExample1',
+                    name='negotiated_sub_example1',
+                    remappings=[('example', 'downstream/example')],
+                    parameters=[{
+                        'string_a_weight': 1.0,
+                        'int32_weight': 0.5,
+                    }],
+                ),
                 ComposableNode(
                     package='negotiated_examples',
                     plugin='negotiated_examples::NegotiatedPubSubPairExample1',
-                    name='negotiated_pub_sub_pair_example1'),
+                    name='negotiated_pub_sub_pair_example1',
+                    parameters=[{
+                        'pub_string_a_weight': 1.0,
+                        'pub_int32_weight': 0.5,
+                        'sub_string_a_weight': 1.0,
+                        'sub_int32_weight': 0.5,
+                    }],
+                ),
                 ComposableNode(
                     package='negotiated_examples',
                     plugin='negotiated_examples::NegotiatedPubExample1',
-                    name='negotiated_pub_example1')
+                    name='negotiated_pub_example1',
+                    parameters=[{
+                        'string_a_weight': 0.2,
+                        'int32_weight': 1.0,
+                        'string_b_weight': 0.1,
+                    }],
+                )
             ],
             output='both',
     )
