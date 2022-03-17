@@ -132,7 +132,7 @@ public:
 private:
   std::shared_ptr<negotiated::NegotiatedPublisher> negotiated_pub_;
   std::shared_ptr<negotiated::NegotiatedSubscription> negotiated_sub_;
-  std::shared_ptr<negotiated::NegotiatedPublisher::UpstreamNegotiatedSubscriptionHandle> handle_;
+  std::shared_ptr<negotiated::detail::UpstreamNegotiatedSubscriptionHandle> handle_;
 };
 
 }  // namespace negotiated_examples

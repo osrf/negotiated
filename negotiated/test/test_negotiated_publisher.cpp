@@ -671,10 +671,14 @@ TEST_F(TestNegotiatedPublisher, negotiation_callback)
     [](const std::map<negotiated::detail::PublisherGid,
       std::vector<std::string>> & negotiated_sub_gid_to_keys, const std::map<std::string,
       negotiated::detail::SupportedTypeInfo> & key_to_supported_types,
+      const std::unordered_set<std::shared_ptr<
+        negotiated::detail::UpstreamNegotiatedSubscriptionHandle>>
+      & upstream_negotiated_subscriptions,
       size_t maximum_solutions) -> std::vector<negotiated_interfaces::msg::SupportedType>
     {
       (void)negotiated_sub_gid_to_keys;
       (void)key_to_supported_types;
+      (void)upstream_negotiated_subscriptions;
       (void)maximum_solutions;
 
       // By default, we would have expected the negotiation to choose the std_msgs/msg/Empty
@@ -745,10 +749,14 @@ TEST_F(TestNegotiatedPublisher, negotiation_callback_empty_set)
     [](const std::map<negotiated::detail::PublisherGid,
       std::vector<std::string>> & negotiated_sub_gid_to_keys, const std::map<std::string,
       negotiated::detail::SupportedTypeInfo> & key_to_supported_types,
+      const std::unordered_set<std::shared_ptr<
+        negotiated::detail::UpstreamNegotiatedSubscriptionHandle>>
+      & upstream_negotiated_subscriptions,
       size_t maximum_solutions) -> std::vector<negotiated_interfaces::msg::SupportedType>
     {
       (void)negotiated_sub_gid_to_keys;
       (void)key_to_supported_types;
+      (void)upstream_negotiated_subscriptions;
       (void)maximum_solutions;
 
       // By default, we would have expected the negotiation to choose the std_msgs/msg/Empty
@@ -805,10 +813,14 @@ TEST_F(TestNegotiatedPublisher, negotiation_callback_bogus_data)
     [](const std::map<negotiated::detail::PublisherGid,
       std::vector<std::string>> & negotiated_sub_gid_to_keys, const std::map<std::string,
       negotiated::detail::SupportedTypeInfo> & key_to_supported_types,
+      const std::unordered_set<std::shared_ptr<
+        negotiated::detail::UpstreamNegotiatedSubscriptionHandle>>
+      & upstream_negotiated_subscriptions,
       size_t maximum_solutions) -> std::vector<negotiated_interfaces::msg::SupportedType>
     {
       (void)negotiated_sub_gid_to_keys;
       (void)key_to_supported_types;
+      (void)upstream_negotiated_subscriptions;
       (void)maximum_solutions;
 
       // This negotiation algorithm somehow chose an invalid combination; the rest of the

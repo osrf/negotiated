@@ -44,6 +44,12 @@ namespace detail
 
 using PublisherGid = std::array<uint8_t, RMW_GID_STORAGE_SIZE>;
 
+struct UpstreamNegotiatedSubscriptionHandle
+{
+  std::shared_ptr<negotiated::NegotiatedSubscription> subscription;
+  std::shared_ptr<negotiated::NegotiatedSubscription::AfterSubscriptionCallbackHandle> handle;
+};
+
 /// Generate the key that is used as an index into the maps.
 /**
  * Internal maps are keyed off of the uniqueness of individual types as given by
@@ -102,6 +108,8 @@ struct SupportedTypeInfo final
 std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callback(
   const std::map<detail::PublisherGid, std::vector<std::string>> & negotiated_sub_gid_to_keys,
   const std::map<std::string, SupportedTypeInfo> & key_to_supported_types,
+  const std::unordered_set<std::shared_ptr<UpstreamNegotiatedSubscriptionHandle>>
+  & upstream_negotiated_subscriptions,
   size_t maximum_solutions);
 
 }  // namespace detail
@@ -134,6 +142,7 @@ struct NegotiatedPublisherOptions final
   std::function<std::vector<negotiated_interfaces::msg::SupportedType>(
       const std::map<detail::PublisherGid, std::vector<std::string>> &,
       const std::map<std::string, detail::SupportedTypeInfo> &,
+      const std::unordered_set<std::shared_ptr<detail::UpstreamNegotiatedSubscriptionHandle>> &,
       size_t maximum_solutions)> negotiation_cb{detail::default_negotiation_callback};
 
   /// A callback that will be called if negotiation is successful.  This gives the
@@ -149,12 +158,6 @@ class NegotiatedPublisher
 {
 public:
   RCLCPP_SMART_PTR_DEFINITIONS(NegotiatedPublisher)
-
-  struct UpstreamNegotiatedSubscriptionHandle
-  {
-    std::shared_ptr<negotiated::NegotiatedSubscription> subscription;
-    std::shared_ptr<negotiated::NegotiatedSubscription::AfterSubscriptionCallbackHandle> handle;
-  };
 
   /// Create a new NegotiatedPublisher with the given "base" topic_name.
   /**
@@ -394,7 +397,8 @@ public:
    *
    * \param[in] subscription A shared_ptr to the upstream NegotiatedSubscription to start tracking.
    */
-  std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> add_upstream_negotiated_subscription(
+  std::shared_ptr<detail::UpstreamNegotiatedSubscriptionHandle>
+  add_upstream_negotiated_subscription(
     std::shared_ptr<negotiated::NegotiatedSubscription> subscription);
 
   /// Stop tracking a NegotiatedSubscription as an upstream of this NegotiatedPublisher.
@@ -405,7 +409,7 @@ public:
    * \param[in] subscription A shared_ptr to the upstream NegotiatedSubscription to stop tracking.
    */
   void remove_upstream_negotiated_subscription(
-    const UpstreamNegotiatedSubscriptionHandle * const handle);
+    const detail::UpstreamNegotiatedSubscriptionHandle * const handle);
 
   /// Start collecting information from the attached NegotiatedSubscriptions.
   /**
@@ -615,7 +619,7 @@ private:
 
   /// A map to track any "upstream" negotiated subscriptions that need to be successful before
   /// this NegotiatedPublisher can negotiate with downstreams.
-  std::unordered_set<std::shared_ptr<UpstreamNegotiatedSubscriptionHandle>>
+  std::unordered_set<std::shared_ptr<detail::UpstreamNegotiatedSubscriptionHandle>>
   upstream_negotiated_subscriptions_;
 
   /// A stored version of the negotiated topics that were sent to attached NegotiatedSubscriptions.

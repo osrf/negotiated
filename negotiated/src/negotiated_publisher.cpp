@@ -52,6 +52,8 @@ std::string generate_key(
 std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callback(
   const std::map<detail::PublisherGid, std::vector<std::string>> & negotiated_sub_gid_to_keys,
   const std::map<std::string, detail::SupportedTypeInfo> & key_to_supported_types,
+  const std::unordered_set<std::shared_ptr<UpstreamNegotiatedSubscriptionHandle>>
+  & upstream_negotiated_subscriptions,
   size_t maximum_solutions)
 {
   // What the negotiation algorithm does is to try to find the minimum number of publishers with
@@ -104,6 +106,41 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
 
   std::vector<negotiated_interfaces::msg::SupportedType> matched_subs;
 
+  // If there are upstream subscriptions that we should wait on before negotiating with our
+  // downstream subscriptions, we'll discover it here.
+  std::map<std::string, SupportedTypeInfo> upstream_filtered_supported_types;
+  if (upstream_negotiated_subscriptions.size() > 0) {
+    bool all_negotiated = true;
+    for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
+      upstream_negotiated_subscriptions)
+    {
+      negotiated_interfaces::msg::NegotiatedTopicsInfo topics_info =
+        handle->subscription->get_negotiated_topics_info();
+      if (!topics_info.success || topics_info.negotiated_topics.size() == 0) {
+        all_negotiated = false;
+        break;
+      }
+
+      for (const negotiated_interfaces::msg::NegotiatedTopicInfo & topic_info :
+        topics_info.negotiated_topics)
+      {
+        std::string key = detail::generate_key(
+          topic_info.ros_type_name,
+          topic_info.supported_type_name);
+
+        if (key_to_supported_types.count(key) > 0) {
+          upstream_filtered_supported_types[key] = key_to_supported_types.at(key);
+        }
+      }
+    }
+
+    if (!all_negotiated) {
+      return matched_subs;
+    }
+  } else {
+    upstream_filtered_supported_types = key_to_supported_types;
+  }
+
   std::set<detail::PublisherGid> gid_set;
   for (const std::pair<detail::PublisherGid,
     std::vector<std::string>> & gid : negotiated_sub_gid_to_keys)
@@ -114,7 +151,7 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
   std::vector<std::string> keys;
   std::vector<detail::SupportedTypeInfo> compatible_supported_types;
   for (const std::pair<const std::string,
-    detail::SupportedTypeInfo> & supported_info : key_to_supported_types)
+    detail::SupportedTypeInfo> & supported_info : upstream_filtered_supported_types)
   {
     keys.push_back(supported_info.first);
     if (supported_info.second.is_compat) {
@@ -122,11 +159,11 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
     }
   }
 
-  for (size_t i = 1; i <= key_to_supported_types.size(); ++i) {
+  for (size_t i = 1; i <= upstream_filtered_supported_types.size(); ++i) {
     double max_weight = 0.0;
 
     auto check_combination =
-      [&key_to_supported_types = std::as_const(key_to_supported_types),
+      [&upstream_filtered_supported_types = std::as_const(upstream_filtered_supported_types),
         & gid_set = std::as_const(gid_set),
         & compatible_supported_types = std::as_const(compatible_supported_types),
         & negotiated_sub_gid_to_keys = std::as_const(negotiated_sub_gid_to_keys),
@@ -140,10 +177,10 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
         double sum_of_weights = 0.0;
 
         for (std::vector<std::string>::iterator it = first; it != last; ++it) {
-          // The iterator should *always* be available in the key_to_supported_types
+          // The iterator should *always* be available in the upstream_filtered_supported_types
           // map, since we are iterating over that same map.  But we use .at just
           // to be safe.
-          detail::SupportedTypeInfo supported_type_info = key_to_supported_types.at(*it);
+          detail::SupportedTypeInfo supported_type_info = upstream_filtered_supported_types.at(*it);
 
           for (const std::pair<detail::PublisherGid,
             double> gid_to_weight : supported_type_info.gid_to_weight)
@@ -199,7 +236,8 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
             matched_subs.clear();
             matched_subs = compatible_subs;
             for (std::vector<std::string>::iterator it = first; it != last; ++it) {
-              detail::SupportedTypeInfo supported_type_info = key_to_supported_types.at(*it);
+              detail::SupportedTypeInfo supported_type_info =
+                upstream_filtered_supported_types.at(*it);
               negotiated_interfaces::msg::SupportedType match;
               match.ros_type_name = supported_type_info.ros_type_name;
               match.supported_type_name = supported_type_info.supported_type_name;
@@ -279,7 +317,7 @@ NegotiatedPublisher::~NegotiatedPublisher()
       downstream_type.supported_type_name = type.second.supported_type_name;
       downstream_types.supported_types.push_back(downstream_type);
     }
-    for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
+    for (const std::shared_ptr<detail::UpstreamNegotiatedSubscriptionHandle> & handle :
       upstream_negotiated_subscriptions_)
     {
       handle->subscription->remove_all_downstream_supported_types(downstream_types);
@@ -383,7 +421,7 @@ void NegotiatedPublisher::negotiate_on_upstream_success()
   negotiate();
 }
 
-std::shared_ptr<NegotiatedPublisher::UpstreamNegotiatedSubscriptionHandle>
+std::shared_ptr<detail::UpstreamNegotiatedSubscriptionHandle>
 NegotiatedPublisher::add_upstream_negotiated_subscription(
   std::shared_ptr<negotiated::NegotiatedSubscription> subscription)
 {
@@ -392,7 +430,7 @@ NegotiatedPublisher::add_upstream_negotiated_subscription(
     upstream_negotiated_subscriptions_.end(),
     [&subscription =
     std::as_const(subscription)](
-      const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & check_handle) {
+      const std::shared_ptr<detail::UpstreamNegotiatedSubscriptionHandle> & check_handle) {
       return subscription == check_handle->subscription;
     });
 
@@ -400,7 +438,7 @@ NegotiatedPublisher::add_upstream_negotiated_subscription(
     RCLCPP_WARN(node_logging_->get_logger(), "Adding duplicate upstream negotiated subscription!");
   }
 
-  auto upstream_handle = std::make_shared<UpstreamNegotiatedSubscriptionHandle>();
+  auto upstream_handle = std::make_shared<detail::UpstreamNegotiatedSubscriptionHandle>();
   upstream_handle->subscription = subscription;
   upstream_handle->handle =
     subscription->add_after_subscription_callback(
@@ -412,12 +450,12 @@ NegotiatedPublisher::add_upstream_negotiated_subscription(
 }
 
 void NegotiatedPublisher::remove_upstream_negotiated_subscription(
-  const UpstreamNegotiatedSubscriptionHandle * const handle)
+  const detail::UpstreamNegotiatedSubscriptionHandle * const handle)
 {
   auto it = std::find_if(
     upstream_negotiated_subscriptions_.begin(),
     upstream_negotiated_subscriptions_.end(),
-    [handle](const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & check_handle) {
+    [handle](const std::shared_ptr<detail::UpstreamNegotiatedSubscriptionHandle> & check_handle) {
       return handle == check_handle.get();
     });
   if (it != upstream_negotiated_subscriptions_.end()) {
@@ -505,7 +543,7 @@ void NegotiatedPublisher::supported_types_cb(
     negotiated_subscription_type_gids_->emplace(gid_key, key_list);
   }
 
-  for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
+  for (const std::shared_ptr<detail::UpstreamNegotiatedSubscriptionHandle> & handle :
     upstream_negotiated_subscriptions_)
   {
     handle->subscription->update_downstream_supported_types(
@@ -556,47 +594,13 @@ void NegotiatedPublisher::negotiate()
     return;
   }
 
-  // If there are upstream subscriptions that we should wait on before negotiating with our
-  // downstream subscriptions, we'll discover it here.
-  std::map<std::string, detail::SupportedTypeInfo> upstream_filtered_supported_types;
-  if (upstream_negotiated_subscriptions_.size() > 0) {
-    bool all_negotiated = true;
-    for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
-      upstream_negotiated_subscriptions_)
-    {
-      negotiated_interfaces::msg::NegotiatedTopicsInfo topics_info =
-        handle->subscription->get_negotiated_topics_info();
-      if (!topics_info.success || topics_info.negotiated_topics.size() == 0) {
-        all_negotiated = false;
-        break;
-      }
-
-      for (const negotiated_interfaces::msg::NegotiatedTopicInfo & topic_info :
-        topics_info.negotiated_topics)
-      {
-        std::string key = detail::generate_key(
-          topic_info.ros_type_name,
-          topic_info.supported_type_name);
-
-        if (key_to_supported_types_.count(key) > 0) {
-          upstream_filtered_supported_types[key] = key_to_supported_types_.at(key);
-        }
-      }
-    }
-
-    if (!all_negotiated) {
-      return;
-    }
-  } else {
-    upstream_filtered_supported_types = key_to_supported_types_;
-  }
-
   std::vector<negotiated_interfaces::msg::SupportedType> matched_subs;
 
   if (!negotiated_subscription_type_gids_->empty()) {
     matched_subs = negotiated_pub_options_.negotiation_cb(
       *negotiated_subscription_type_gids_,
-      upstream_filtered_supported_types,
+      key_to_supported_types_,
+      upstream_negotiated_subscriptions_,
       negotiated_pub_options_.maximum_negotiated_solutions);
   }
 
