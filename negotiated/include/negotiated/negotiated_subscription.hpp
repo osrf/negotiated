@@ -427,7 +427,7 @@ public:
   /**
    * Note that this is only the types as set by add_supported_callback() and
    * add_compatible_subscription().  In particular, it does not contain any types from
-   * downstream publishers.
+   * downstream publishers; see get_downstream_key_to_supported_types() for downstream types.
    *
    * \return An unordered map between the keys and SupportedTypeInfo structures that
    *         represent each of the supported types.
@@ -445,6 +445,18 @@ public:
    * \return A NegotiatedTopicInfo structure containing the topic that was chosen by negotiation.
    */
   const negotiated_interfaces::msg::NegotiatedTopicInfo & get_existing_topic_info() const;
+
+  /// Get the downstream types supported by this NegotiatedSubscription.
+  /**
+   * These are only the types that downstream NegotiatedPublishers support.  If there are no
+   * downstream NegotiatedPublishers, or they haven't negotiated yet, this may be an empty map.
+   * To get types supported by this NegotiatedSubscription, call get_supported_types().
+   *
+   * \return An unordered map between the keys and SupportedTypeInfo structures that represent
+   *         each of the downstream types.
+   */
+  const std::unordered_map<std::string, std::vector<SupportedTypeInfo>> &
+  get_downstream_key_to_supported_types() const;
 
 private:
   /// Generate the key that is used as an index into the maps.

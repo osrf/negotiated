@@ -358,4 +358,10 @@ NegotiatedSubscription::get_existing_topic_info() const
   return existing_topic_info_;
 }
 
+const std::unordered_map<std::string, std::vector<NegotiatedSubscription::SupportedTypeInfo>> &
+NegotiatedSubscription::get_downstream_key_to_supported_types() const
+{
+  return downstream_key_to_supported_types_;
+}
+
 }  // namespace negotiated
