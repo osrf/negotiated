@@ -263,6 +263,29 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
   return matched_subs;
 }
 
+void default_update_downstream_cb(
+  const std::map<std::string, detail::SupportedTypeInfo> & key_to_supported_types,
+  const std::shared_ptr<std::map<detail::PublisherGid,
+  std::vector<std::string>>> & negotiated_subscription_type_gids,
+  const std::unordered_set<std::shared_ptr<detail::UpstreamNegotiatedSubscriptionHandle>> &
+  upstream_negotiated_subscriptions,
+  const negotiated_interfaces::msg::SupportedTypes & downstream_types_to_add,
+  const negotiated_interfaces::msg::SupportedTypes & downstream_types_to_remove,
+  PublisherGid gid_key)
+{
+  (void)key_to_supported_types;
+  (void)negotiated_subscription_type_gids;
+
+  for (const std::shared_ptr<detail::UpstreamNegotiatedSubscriptionHandle> & handle :
+    upstream_negotiated_subscriptions)
+  {
+    handle->subscription->update_downstream_supported_types(
+      downstream_types_to_add,
+      downstream_types_to_remove,
+      gid_key);
+  }
+}
+
 }  // namespace detail
 
 NegotiatedPublisher::NegotiatedPublisher(
@@ -543,14 +566,13 @@ void NegotiatedPublisher::supported_types_cb(
     negotiated_subscription_type_gids_->emplace(gid_key, key_list);
   }
 
-  for (const std::shared_ptr<detail::UpstreamNegotiatedSubscriptionHandle> & handle :
-    upstream_negotiated_subscriptions_)
-  {
-    handle->subscription->update_downstream_supported_types(
-      downstream_types_to_add,
-      downstream_types_to_remove,
-      gid_key);
-  }
+  negotiated_pub_options_.update_downstream_cb(
+    key_to_supported_types_,
+    negotiated_subscription_type_gids_,
+    upstream_negotiated_subscriptions_,
+    downstream_types_to_add,
+    downstream_types_to_remove,
+    gid_key);
 
   if (negotiated_pub_options_.negotiate_on_subscription_add) {
     negotiate();

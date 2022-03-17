@@ -112,6 +112,16 @@ std::vector<negotiated_interfaces::msg::SupportedType> default_negotiation_callb
   & upstream_negotiated_subscriptions,
   size_t maximum_solutions);
 
+void default_update_downstream_cb(
+  const std::map<std::string, detail::SupportedTypeInfo> & key_to_supported_types,
+  const std::shared_ptr<std::map<detail::PublisherGid,
+  std::vector<std::string>>> & negotiated_subscription_type_gids,
+  const std::unordered_set<std::shared_ptr<detail::UpstreamNegotiatedSubscriptionHandle>> &
+  upstream_negotiated_subscriptions,
+  const negotiated_interfaces::msg::SupportedTypes & downstream_types_to_add,
+  const negotiated_interfaces::msg::SupportedTypes & downstream_types_to_remove,
+  PublisherGid gid_key);
+
 }  // namespace detail
 
 /// NegotiatedPublisherOptions allows the user to control some aspects of the NegotiatedPublisher.
@@ -144,6 +154,18 @@ struct NegotiatedPublisherOptions final
       const std::map<std::string, detail::SupportedTypeInfo> &,
       const std::unordered_set<std::shared_ptr<detail::UpstreamNegotiatedSubscriptionHandle>> &,
       size_t maximum_solutions)> negotiation_cb{detail::default_negotiation_callback};
+
+  /// A callback that will be called to update the downstream NegotiatedSubscriptions (if there
+  /// are any.
+  std::function<void(
+      const std::map<std::string, detail::SupportedTypeInfo> &,
+      const std::shared_ptr<std::map<detail::PublisherGid,
+      std::vector<std::string>>> &,
+      const std::unordered_set<std::shared_ptr<detail::UpstreamNegotiatedSubscriptionHandle>> &,
+      const negotiated_interfaces::msg::SupportedTypes &,
+      const negotiated_interfaces::msg::SupportedTypes &,
+      detail::PublisherGid)>
+  update_downstream_cb{detail::default_update_downstream_cb};
 
   /// A callback that will be called if negotiation is successful.  This gives the
   /// NegotiatedPublisher user a chance to react in arbitrary ways once negotiation has happened.
