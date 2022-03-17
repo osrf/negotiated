@@ -228,7 +228,7 @@ size_t NegotiatedSubscription::get_data_topic_publisher_count() const
 }
 
 const negotiated_interfaces::msg::NegotiatedTopicsInfo &
-NegotiatedSubscription::get_negotiated_topics() const
+NegotiatedSubscription::get_negotiated_topics_info() const
 {
   return negotiated_topics_;
 }

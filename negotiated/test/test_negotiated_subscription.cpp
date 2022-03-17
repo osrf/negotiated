@@ -1109,7 +1109,7 @@ TEST_F(TestNegotiatedSubscription, get_empty_supported_topics)
 {
   auto sub = std::make_shared<negotiated::NegotiatedSubscription>(*node_, "foo");
 
-  negotiated_interfaces::msg::NegotiatedTopicsInfo info = sub->get_negotiated_topics();
+  negotiated_interfaces::msg::NegotiatedTopicsInfo info = sub->get_negotiated_topics_info();
   ASSERT_FALSE(info.success);
   ASSERT_EQ(info.negotiated_topics.size(), 0u);
 }
@@ -1167,7 +1167,7 @@ TEST_F(TestNegotiatedSubscription, get_multiple_supported_topics)
     };
   ASSERT_TRUE(spin_while_waiting(data_break_func));
 
-  negotiated_interfaces::msg::NegotiatedTopicsInfo info = sub->get_negotiated_topics();
+  negotiated_interfaces::msg::NegotiatedTopicsInfo info = sub->get_negotiated_topics_info();
   ASSERT_TRUE(info.success);
   ASSERT_EQ(info.negotiated_topics.size(), 2u);
   ASSERT_EQ(info.negotiated_topics[0].ros_type_name, "std_msgs/msg/String");

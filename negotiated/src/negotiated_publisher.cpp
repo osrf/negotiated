@@ -565,7 +565,7 @@ void NegotiatedPublisher::negotiate()
       upstream_negotiated_subscriptions_)
     {
       negotiated_interfaces::msg::NegotiatedTopicsInfo topics_info =
-        handle->subscription->get_negotiated_topics();
+        handle->subscription->get_negotiated_topics_info();
       if (!topics_info.success || topics_info.negotiated_topics.size() == 0) {
         all_negotiated = false;
         break;

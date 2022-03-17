@@ -399,7 +399,7 @@ public:
    * \return The list of negotiated topics supported by both this NegotiatedSubscription and
    *         the connected NegotiatedPublisher.
    */
-  const negotiated_interfaces::msg::NegotiatedTopicsInfo & get_negotiated_topics() const;
+  const negotiated_interfaces::msg::NegotiatedTopicsInfo & get_negotiated_topics_info() const;
 
   /// Add a callback to be called after a subscription is negotiated and created.
   /**
