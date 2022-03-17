@@ -401,7 +401,7 @@ public:
    */
   const negotiated_interfaces::msg::NegotiatedTopicsInfo & get_negotiated_topics() const;
 
-  /// Set the callback to be called after a subscription is negotiated and created.
+  /// Add a callback to be called after a subscription is negotiated and created.
   /**
    * This is primarily intended for internal use by the NegotiatedPublisher.  Using it for other
    * purposes may break the use-case of a NegotiatedPublisher and NegotiatedSubscription in the
@@ -409,12 +409,12 @@ public:
    *
    * \param[in] cb The callback to call after a subscription is successfully negotiated and created.
    */
-  std::shared_ptr<AfterSubscriptionCallbackHandle> set_after_subscription_callback(
+  std::shared_ptr<AfterSubscriptionCallbackHandle> add_after_subscription_callback(
     const AfterSubscriptionCallbackFunction & cb);
 
   /// Remove the after subscription callback.
   /**
-   * Like set_after_subscription_callback(), this is primarily intended for internal use by the
+   * Like add_after_subscription_callback(), this is primarily intended for internal use by the
    * NegotiatedPublisher.  Using it for other purposes may break the use-case of a
    * NegotiatedPublisher and NegotiatedSubscription in the same rclcpp::Node; use it at your
    * own risk!

@@ -234,7 +234,7 @@ NegotiatedSubscription::get_negotiated_topics() const
 }
 
 std::shared_ptr<NegotiatedSubscription::AfterSubscriptionCallbackHandle>
-NegotiatedSubscription::set_after_subscription_callback(
+NegotiatedSubscription::add_after_subscription_callback(
   const AfterSubscriptionCallbackFunction & cb)
 {
   auto handle = std::make_shared<AfterSubscriptionCallbackHandle>();

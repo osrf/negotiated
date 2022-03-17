@@ -403,7 +403,7 @@ NegotiatedPublisher::add_upstream_negotiated_subscription(
   auto upstream_handle = std::make_shared<UpstreamNegotiatedSubscriptionHandle>();
   upstream_handle->subscription = subscription;
   upstream_handle->handle =
-    subscription->set_after_subscription_callback(
+    subscription->add_after_subscription_callback(
     std::bind(&NegotiatedPublisher::negotiate_on_upstream_success, this));
 
   upstream_negotiated_subscriptions_.insert(upstream_handle);

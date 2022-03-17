@@ -1225,7 +1225,7 @@ TEST_F(TestNegotiatedSubscription, after_subscription_callback)
   bool after_sub_called = false;
   auto after_sub_cb = [&after_sub_called]() {after_sub_called = true;};
 
-  auto handle = sub->set_after_subscription_callback(after_sub_cb);
+  auto handle = sub->add_after_subscription_callback(after_sub_cb);
 
   sub->add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), empty_cb);
   sub->start();
@@ -1285,7 +1285,7 @@ TEST_F(TestNegotiatedSubscription, remove_subscription_callback)
   bool after_sub_called = false;
   auto after_sub_cb = [&after_sub_called]() {after_sub_called = true;};
 
-  auto handle = sub->set_after_subscription_callback(after_sub_cb);
+  auto handle = sub->add_after_subscription_callback(after_sub_cb);
   sub->remove_after_subscription_callback(handle.get());
 
   sub->add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), empty_cb);
