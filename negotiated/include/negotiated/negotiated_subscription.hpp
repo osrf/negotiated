@@ -346,24 +346,17 @@ public:
     }
   }
 
-  /// Add supported types from a downstream NegotiatedPublisher.
+  /// Add and remove supported types from a downstream NegotiatedPublisher.
   /**
-   * These types will be provided to our connected NegotiatedPublisher during our negotiation.
-   *
-   * \param[in] downstream_types The SupportedTypes list of downstream types to add.
-   * \param[in] gid The GID associated with the downstream types to add.
+   * \param[in] downstream_types_to_add The types to track as part of a downstream
+   *                                    NegotiatedPublisher.
+   * \param[in] downstream_types_to_remove The types to stop tracking as part of a downstream
+   *                                       NegotiatedPublisher.
+   * \param[in] gid The GID of the NegotiatedSubscription to track.
    */
-  void add_downstream_supported_types(
-    const negotiated_interfaces::msg::SupportedTypes & downstream_types,
-    const PublisherGid & gid);
-
-  /// Remove supported type from a downstream NegotiatedPublisher.
-  /**
-   * \param[in] downstream_type The SupportedType to remove.
-   * \param[in] gid The GID associated with the downstream type to remove.
-   */
-  void remove_downstream_supported_type(
-    const negotiated_interfaces::msg::SupportedType & downstream_type,
+  void update_downstream_supported_types(
+    const negotiated_interfaces::msg::SupportedTypes & downstream_types_to_add,
+    const negotiated_interfaces::msg::SupportedTypes & downstream_types_to_remove,
     const PublisherGid & gid);
 
   /// Remove all supported types from a downstream NegotiatedPublisher.

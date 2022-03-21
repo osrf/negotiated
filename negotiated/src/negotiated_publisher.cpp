@@ -440,6 +440,9 @@ void NegotiatedPublisher::supported_types_cb(
     std::end(msg_info.get_rmw_message_info().publisher_gid.data),
     std::begin(gid_key));
 
+  negotiated_interfaces::msg::SupportedTypes downstream_types_to_add;
+  negotiated_interfaces::msg::SupportedTypes downstream_types_to_remove;
+
   if (negotiated_subscription_type_gids_->count(gid_key) > 0) {
     // This NegotiatedSubscription has already given us previous types that we need to forget about.
     for (const std::string & key : negotiated_subscription_type_gids_->at(gid_key)) {
@@ -455,14 +458,11 @@ void NegotiatedPublisher::supported_types_cb(
 
       key_to_supported_types_[key].gid_to_weight.erase(gid_key);
 
-      for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
-        upstream_negotiated_subscriptions_)
-      {
-        negotiated_interfaces::msg::SupportedType downstream_type;
-        downstream_type.ros_type_name = key_to_supported_types_[key].ros_type_name;
-        downstream_type.supported_type_name = key_to_supported_types_[key].supported_type_name;
-        handle->subscription->remove_downstream_supported_type(downstream_type, gid_key);
-      }
+      negotiated_interfaces::msg::SupportedType downstream_type_to_remove;
+      downstream_type_to_remove.ros_type_name = key_to_supported_types_[key].ros_type_name;
+      downstream_type_to_remove.supported_type_name =
+        key_to_supported_types_[key].supported_type_name;
+      downstream_types_to_remove.supported_types.push_back(downstream_type_to_remove);
 
       // In theory, we should check to see if the gid_to_weight map size dropped to zero, and if so,
       // remove that type from the key_to_supported_types_ map completely.  However, we only ever
@@ -474,7 +474,6 @@ void NegotiatedPublisher::supported_types_cb(
   }
 
   std::vector<std::string> key_list;
-  negotiated_interfaces::msg::SupportedTypes downstream_types;
 
   for (const negotiated_interfaces::msg::SupportedType & supported_type :
     supported_types.supported_types)
@@ -492,11 +491,11 @@ void NegotiatedPublisher::supported_types_cb(
     key_list.push_back(key);
 
     if (upstream_negotiated_subscriptions_.size() > 0) {
-      negotiated_interfaces::msg::SupportedType downstream_type;
-      downstream_type.ros_type_name = key_to_supported_types_[key].ros_type_name;
-      downstream_type.supported_type_name = key_to_supported_types_[key].supported_type_name;
-      downstream_type.weight = key_to_supported_types_[key].gid_to_weight[gid_key];
-      downstream_types.supported_types.push_back(downstream_type);
+      negotiated_interfaces::msg::SupportedType downstream_type_to_add;
+      downstream_type_to_add.ros_type_name = key_to_supported_types_[key].ros_type_name;
+      downstream_type_to_add.supported_type_name = key_to_supported_types_[key].supported_type_name;
+      downstream_type_to_add.weight = key_to_supported_types_[key].gid_to_weight[gid_key];
+      downstream_types_to_add.supported_types.push_back(downstream_type_to_add);
     }
   }
 
@@ -509,7 +508,10 @@ void NegotiatedPublisher::supported_types_cb(
   for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
     upstream_negotiated_subscriptions_)
   {
-    handle->subscription->add_downstream_supported_types(downstream_types, gid_key);
+    handle->subscription->update_downstream_supported_types(
+      downstream_types_to_add,
+      downstream_types_to_remove,
+      gid_key);
   }
 
   if (negotiated_pub_options_.negotiate_on_subscription_add) {

@@ -1345,6 +1345,8 @@ TEST_F(TestNegotiatedSubscription, downstream_supported_types_no_overlap)
 
   sub->add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), empty_cb);
 
+  negotiated_interfaces::msg::SupportedTypes dummy_types_to_remove;
+
   negotiated_interfaces::msg::SupportedTypes downstream_types;
   negotiated_interfaces::msg::SupportedType downstream_type;
   downstream_type.ros_type_name = "std_msgs/msg/String";
@@ -1352,7 +1354,7 @@ TEST_F(TestNegotiatedSubscription, downstream_supported_types_no_overlap)
   downstream_type.weight = 1.0;
   downstream_types.supported_types.push_back(downstream_type);
   negotiated::NegotiatedSubscription::PublisherGid gid{0x1};
-  sub->add_downstream_supported_types(downstream_types, gid);
+  sub->update_downstream_supported_types(downstream_types, dummy_types_to_remove, gid);
 
   sub->start();
 
@@ -1372,7 +1374,7 @@ TEST_F(TestNegotiatedSubscription, downstream_supported_types_no_overlap)
   ASSERT_FALSE(spin_while_waiting(data_break_func));
 }
 
-TEST_F(TestNegotiatedSubscription, add_downstream_supported_types_before_start)
+TEST_F(TestNegotiatedSubscription, update_downstream_supported_types_before_start)
 {
   // Setup of our dummy publisher
   auto data_pub = node_->create_publisher<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10));
@@ -1398,6 +1400,8 @@ TEST_F(TestNegotiatedSubscription, add_downstream_supported_types_before_start)
 
   sub->add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), empty_cb);
 
+  negotiated_interfaces::msg::SupportedTypes dummy_types_to_remove;
+
   negotiated_interfaces::msg::SupportedTypes downstream_types;
   negotiated_interfaces::msg::SupportedType downstream_type;
   downstream_type.ros_type_name = "std_msgs/msg/Empty";
@@ -1405,7 +1409,7 @@ TEST_F(TestNegotiatedSubscription, add_downstream_supported_types_before_start)
   downstream_type.weight = 1.0;
   downstream_types.supported_types.push_back(downstream_type);
   negotiated::NegotiatedSubscription::PublisherGid gid{0x1};
-  sub->add_downstream_supported_types(downstream_types, gid);
+  sub->update_downstream_supported_types(downstream_types, dummy_types_to_remove, gid);
 
   sub->start();
 
@@ -1436,7 +1440,7 @@ TEST_F(TestNegotiatedSubscription, add_downstream_supported_types_before_start)
   ASSERT_EQ(count, 1);
 }
 
-TEST_F(TestNegotiatedSubscription, add_downstream_supported_types_after_start)
+TEST_F(TestNegotiatedSubscription, update_downstream_supported_types_after_start)
 {
   // Setup of our dummy publisher
   auto data_pub = node_->create_publisher<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10));
@@ -1510,6 +1514,8 @@ TEST_F(TestNegotiatedSubscription, add_downstream_supported_types_after_start)
   string_count = 0;
   empty_count = 0;
 
+  negotiated_interfaces::msg::SupportedTypes dummy_types_to_remove;
+
   negotiated_interfaces::msg::SupportedTypes downstream_types;
   negotiated_interfaces::msg::SupportedType downstream_type;
   downstream_type.ros_type_name = "std_msgs/msg/String";
@@ -1517,7 +1523,7 @@ TEST_F(TestNegotiatedSubscription, add_downstream_supported_types_after_start)
   downstream_type.weight = 1.0;
   downstream_types.supported_types.push_back(downstream_type);
   negotiated::NegotiatedSubscription::PublisherGid gid{0x1};
-  sub->add_downstream_supported_types(downstream_types, gid);
+  sub->update_downstream_supported_types(downstream_types, dummy_types_to_remove, gid);
 
   topics_pub_->publish(topics_msg);
 
@@ -1567,6 +1573,8 @@ TEST_F(TestNegotiatedSubscription, downstream_supported_this_object_not_supporte
 
   sub->add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), empty_cb);
 
+  negotiated_interfaces::msg::SupportedTypes dummy_types_to_remove;
+
   negotiated_interfaces::msg::SupportedTypes downstream_types;
   negotiated_interfaces::msg::SupportedType downstream_type;
   downstream_type.ros_type_name = "std_msgs/msg/String";
@@ -1574,7 +1582,7 @@ TEST_F(TestNegotiatedSubscription, downstream_supported_this_object_not_supporte
   downstream_type.weight = 1.0;
   downstream_types.supported_types.push_back(downstream_type);
   negotiated::NegotiatedSubscription::PublisherGid gid{0x1};
-  sub->add_downstream_supported_types(downstream_types, gid);
+  sub->update_downstream_supported_types(downstream_types, dummy_types_to_remove, gid);
 
   sub->start();
 
@@ -1620,6 +1628,8 @@ TEST_F(TestNegotiatedSubscription, remove_all_downstream_supported_types)
 
   sub->add_supported_callback<EmptyT>(1.0, rclcpp::QoS(10), empty_cb);
 
+  negotiated_interfaces::msg::SupportedTypes dummy_types_to_remove;
+
   negotiated_interfaces::msg::SupportedTypes downstream_types;
   negotiated_interfaces::msg::SupportedType downstream_type;
   downstream_type.ros_type_name = "std_msgs/msg/String";
@@ -1627,7 +1637,7 @@ TEST_F(TestNegotiatedSubscription, remove_all_downstream_supported_types)
   downstream_type.weight = 1.0;
   downstream_types.supported_types.push_back(downstream_type);
   negotiated::NegotiatedSubscription::PublisherGid gid{0x1};
-  sub->add_downstream_supported_types(downstream_types, gid);
+  sub->update_downstream_supported_types(downstream_types, dummy_types_to_remove, gid);
   sub->remove_all_downstream_supported_types(downstream_types);
 
   sub->start();

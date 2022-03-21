@@ -259,57 +259,75 @@ void NegotiatedSubscription::remove_after_subscription_callback(
   }
 }
 
-void NegotiatedSubscription::add_downstream_supported_types(
-  const negotiated_interfaces::msg::SupportedTypes & downstream_types,
+void NegotiatedSubscription::update_downstream_supported_types(
+  const negotiated_interfaces::msg::SupportedTypes & downstream_types_to_add,
+  const negotiated_interfaces::msg::SupportedTypes & downstream_types_to_remove,
   const PublisherGid & gid)
 {
-  for (const negotiated_interfaces::msg::SupportedType & type : downstream_types.supported_types) {
-    std::string key_name = generate_key(type.ros_type_name, type.supported_type_name);
+  bool made_changes = false;
 
-    downstream_key_to_supported_types_.try_emplace(key_name, std::vector<SupportedTypeInfo>());
+  for (const negotiated_interfaces::msg::SupportedType & type_to_remove :
+    downstream_types_to_remove.supported_types)
+  {
+    std::string key_name = generate_key(
+      type_to_remove.ros_type_name,
+      type_to_remove.supported_type_name);
+    if (downstream_key_to_supported_types_.count(key_name) == 0) {
+      return;
+    }
 
-    // TODO(clalancette): Check to see if this gid already exists in the vector
+    auto it = std::find_if(
+      downstream_key_to_supported_types_[key_name].begin(),
+      downstream_key_to_supported_types_[key_name].end(),
+      [&gid = std::as_const(gid)](const SupportedTypeInfo & type_info) {
+        return type_info.gid == gid;
+      });
+    if (it != downstream_key_to_supported_types_[key_name].end()) {
+      downstream_key_to_supported_types_[key_name].erase(it);
+    }
 
-    SupportedTypeInfo type_info;
-    type_info.gid = gid;
-    type_info.supported_type.ros_type_name = type.ros_type_name;
-    type_info.supported_type.supported_type_name = type.supported_type_name;
-    type_info.supported_type.weight = type.weight;
+    if (downstream_key_to_supported_types_[key_name].size() == 0) {
+      downstream_key_to_supported_types_.erase(key_name);
+      made_changes = true;
+    }
+  }
 
-    downstream_key_to_supported_types_[key_name].push_back(type_info);
+  for (const negotiated_interfaces::msg::SupportedType & type_to_add :
+    downstream_types_to_add.supported_types)
+  {
+    std::string key_name = generate_key(type_to_add.ros_type_name, type_to_add.supported_type_name);
+
+    if (downstream_key_to_supported_types_.count(key_name) == 0) {
+      downstream_key_to_supported_types_.emplace(key_name, std::vector<SupportedTypeInfo>());
+      made_changes = true;
+    }
+
+    bool gid_already_in_list{false};
+    for (SupportedTypeInfo & type_info : downstream_key_to_supported_types_[key_name]) {
+      if (type_info.gid == gid) {
+        // The GID was already in the list, so just update things.
+        type_info.supported_type.ros_type_name = type_to_add.ros_type_name;
+        type_info.supported_type.supported_type_name = type_to_add.supported_type_name;
+        type_info.supported_type.weight = type_to_add.weight;
+        gid_already_in_list = true;
+        break;
+      }
+    }
+
+    if (!gid_already_in_list) {
+      SupportedTypeInfo type_info;
+      type_info.gid = gid;
+      type_info.supported_type.ros_type_name = type_to_add.ros_type_name;
+      type_info.supported_type.supported_type_name = type_to_add.supported_type_name;
+      type_info.supported_type.weight = type_to_add.weight;
+
+      downstream_key_to_supported_types_[key_name].push_back(type_info);
+    }
   }
 
   // If the user has started negotiation we should resend our preferences
-  if (user_called_start_) {
+  if (user_called_start_ && made_changes) {
     send_preferences();
-  }
-}
-
-void NegotiatedSubscription::remove_downstream_supported_type(
-  const negotiated_interfaces::msg::SupportedType & downstream_type,
-  const PublisherGid & gid)
-{
-  std::string key_name = generate_key(
-    downstream_type.ros_type_name,
-    downstream_type.supported_type_name);
-  if (downstream_key_to_supported_types_.count(key_name) == 0) {
-    return;
-  }
-
-  auto it = std::find_if(
-    downstream_key_to_supported_types_[key_name].begin(),
-    downstream_key_to_supported_types_[key_name].end(),
-    [&gid = std::as_const(gid)](const SupportedTypeInfo & type_info) {
-      return type_info.gid == gid;
-    });
-  if (it != downstream_key_to_supported_types_[key_name].end()) {
-    downstream_key_to_supported_types_[key_name].erase(it);
-  }
-
-  if (downstream_key_to_supported_types_[key_name].size() == 0) {
-    downstream_key_to_supported_types_.erase(key_name);
-
-    // TODO(clalancette): Do we need to re-send preferences here?
   }
 }
 
