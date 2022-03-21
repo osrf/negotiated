@@ -282,7 +282,7 @@ NegotiatedPublisher::~NegotiatedPublisher()
     for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
       upstream_negotiated_subscriptions_)
     {
-      handle->subscription->remove_downstream_supported_types(downstream_types);
+      handle->subscription->remove_all_downstream_supported_types(downstream_types);
     }
   }
 
@@ -455,6 +455,15 @@ void NegotiatedPublisher::supported_types_cb(
 
       key_to_supported_types_[key].gid_to_weight.erase(gid_key);
 
+      for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
+        upstream_negotiated_subscriptions_)
+      {
+        negotiated_interfaces::msg::SupportedType downstream_type;
+        downstream_type.ros_type_name = key_to_supported_types_[key].ros_type_name;
+        downstream_type.supported_type_name = key_to_supported_types_[key].supported_type_name;
+        handle->subscription->remove_downstream_supported_type(downstream_type, gid_key);
+      }
+
       // In theory, we should check to see if the gid_to_weight map size dropped to zero, and if so,
       // remove that type from the key_to_supported_types_ map completely.  However, we only ever
       // store information about NegotiatedSubscriptions that match something in this
@@ -500,7 +509,7 @@ void NegotiatedPublisher::supported_types_cb(
   for (const std::shared_ptr<UpstreamNegotiatedSubscriptionHandle> & handle :
     upstream_negotiated_subscriptions_)
   {
-    handle->subscription->add_downstream_supported_types(downstream_types);
+    handle->subscription->add_downstream_supported_types(downstream_types, gid_key);
   }
 
   if (negotiated_pub_options_.negotiate_on_subscription_add) {

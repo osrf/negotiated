@@ -21,6 +21,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "rclcpp/rclcpp.hpp"
 
@@ -83,6 +84,8 @@ public:
     AfterSubscriptionCallbackFunction callback;
   };
 
+  using PublisherGid = std::array<uint8_t, RMW_GID_STORAGE_SIZE>;
+
   struct SupportedTypeInfo final
   {
     /// The supported type info associated with this type.
@@ -95,6 +98,8 @@ public:
     /// The saved subscription pointer, which is used in the case that this is a compatible
     /// subscription.
     rclcpp::SubscriptionBase::SharedPtr subscription;
+
+    PublisherGid gid;
 
     /// The factory function associated with this type.
     std::function<rclcpp::SubscriptionBase::SharedPtr(const std::string &)> sub_factory;
@@ -346,15 +351,26 @@ public:
    * These types will be provided to our connected NegotiatedPublisher during our negotiation.
    *
    * \param[in] downstream_types The SupportedTypes list of downstream types to add.
+   * \param[in] gid The GID associated with the downstream types to add.
    */
   void add_downstream_supported_types(
-    const negotiated_interfaces::msg::SupportedTypes & downstream_types);
+    const negotiated_interfaces::msg::SupportedTypes & downstream_types,
+    const PublisherGid & gid);
 
-  /// Remove a supported type from a downstream NegotiatedPublisher.
+  /// Remove supported type from a downstream NegotiatedPublisher.
   /**
-   * \param[in] downstream_types The SupportedTypes list of downstream types to add.
+   * \param[in] downstream_type The SupportedType to remove.
+   * \param[in] gid The GID associated with the downstream type to remove.
    */
-  void remove_downstream_supported_types(
+  void remove_downstream_supported_type(
+    const negotiated_interfaces::msg::SupportedType & downstream_type,
+    const PublisherGid & gid);
+
+  /// Remove all supported types from a downstream NegotiatedPublisher.
+  /**
+   * \param[in] downstream_types The SupportedTypes list of downstream types to remove.
+   */
+  void remove_all_downstream_supported_types(
     const negotiated_interfaces::msg::SupportedTypes & downstream_types);
 
   /// Start sending preferences to the NegotiatedPublisher.
@@ -492,7 +508,8 @@ private:
 
   /// A map of any downstream types between unique type keys (as returned by generate_key()) and
   /// the SupportedTypeInfos.
-  std::unordered_map<std::string, SupportedTypeInfo> downstream_key_to_supported_types_;
+  std::unordered_map<std::string,
+    std::vector<SupportedTypeInfo>> downstream_key_to_supported_types_;
 
   /// The subscription used to include this class in the NegotiatedPublisher network and to
   /// receive preferences from the NegotiatedPublisher once they have been negotiated.

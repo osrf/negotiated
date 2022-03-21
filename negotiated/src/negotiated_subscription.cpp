@@ -193,11 +193,11 @@ void NegotiatedSubscription::send_preferences()
     }
   } else {
     for (const std::pair<const std::string,
-      SupportedTypeInfo> & pair : downstream_key_to_supported_types_)
+      std::vector<SupportedTypeInfo>> & pair : downstream_key_to_supported_types_)
     {
       // We only send along types that both this object and its downstreams support.
       if (key_to_supported_types_.count(pair.first) > 0) {
-        supported_types.supported_types.push_back(pair.second.supported_type);
+        supported_types.supported_types.push_back(pair.second[0].supported_type);
       }
     }
   }
@@ -260,21 +260,23 @@ void NegotiatedSubscription::remove_after_subscription_callback(
 }
 
 void NegotiatedSubscription::add_downstream_supported_types(
-  const negotiated_interfaces::msg::SupportedTypes & downstream_types)
+  const negotiated_interfaces::msg::SupportedTypes & downstream_types,
+  const PublisherGid & gid)
 {
   for (const negotiated_interfaces::msg::SupportedType & type : downstream_types.supported_types) {
     std::string key_name = generate_key(type.ros_type_name, type.supported_type_name);
 
-    if (downstream_key_to_supported_types_.count(key_name) > 0) {
-      // This type is already in the downstream map, we don't need to add it again
-      continue;
-    }
+    downstream_key_to_supported_types_.try_emplace(key_name, std::vector<SupportedTypeInfo>());
 
-    downstream_key_to_supported_types_.emplace(key_name, SupportedTypeInfo());
-    downstream_key_to_supported_types_[key_name].supported_type.ros_type_name = type.ros_type_name;
-    downstream_key_to_supported_types_[key_name].supported_type.supported_type_name =
-      type.supported_type_name;
-    downstream_key_to_supported_types_[key_name].supported_type.weight = type.weight;
+    // TODO(clalancette): Check to see if this gid already exists in the vector
+
+    SupportedTypeInfo type_info;
+    type_info.gid = gid;
+    type_info.supported_type.ros_type_name = type.ros_type_name;
+    type_info.supported_type.supported_type_name = type.supported_type_name;
+    type_info.supported_type.weight = type.weight;
+
+    downstream_key_to_supported_types_[key_name].push_back(type_info);
   }
 
   // If the user has started negotiation we should resend our preferences
@@ -283,7 +285,35 @@ void NegotiatedSubscription::add_downstream_supported_types(
   }
 }
 
-void NegotiatedSubscription::remove_downstream_supported_types(
+void NegotiatedSubscription::remove_downstream_supported_type(
+  const negotiated_interfaces::msg::SupportedType & downstream_type,
+  const PublisherGid & gid)
+{
+  std::string key_name = generate_key(
+    downstream_type.ros_type_name,
+    downstream_type.supported_type_name);
+  if (downstream_key_to_supported_types_.count(key_name) == 0) {
+    return;
+  }
+
+  auto it = std::find_if(
+    downstream_key_to_supported_types_[key_name].begin(),
+    downstream_key_to_supported_types_[key_name].end(),
+    [&gid = std::as_const(gid)](const SupportedTypeInfo & type_info) {
+      return type_info.gid == gid;
+    });
+  if (it != downstream_key_to_supported_types_[key_name].end()) {
+    downstream_key_to_supported_types_[key_name].erase(it);
+  }
+
+  if (downstream_key_to_supported_types_[key_name].size() == 0) {
+    downstream_key_to_supported_types_.erase(key_name);
+
+    // TODO(clalancette): Do we need to re-send preferences here?
+  }
+}
+
+void NegotiatedSubscription::remove_all_downstream_supported_types(
   const negotiated_interfaces::msg::SupportedTypes & downstream_types)
 {
   for (const negotiated_interfaces::msg::SupportedType & type : downstream_types.supported_types) {

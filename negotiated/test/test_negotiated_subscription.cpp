@@ -1351,7 +1351,8 @@ TEST_F(TestNegotiatedSubscription, downstream_supported_types_no_overlap)
   downstream_type.supported_type_name = "b";
   downstream_type.weight = 1.0;
   downstream_types.supported_types.push_back(downstream_type);
-  sub->add_downstream_supported_types(downstream_types);
+  negotiated::NegotiatedSubscription::PublisherGid gid{0x1};
+  sub->add_downstream_supported_types(downstream_types, gid);
 
   sub->start();
 
@@ -1403,7 +1404,8 @@ TEST_F(TestNegotiatedSubscription, add_downstream_supported_types_before_start)
   downstream_type.supported_type_name = "a";
   downstream_type.weight = 1.0;
   downstream_types.supported_types.push_back(downstream_type);
-  sub->add_downstream_supported_types(downstream_types);
+  negotiated::NegotiatedSubscription::PublisherGid gid{0x1};
+  sub->add_downstream_supported_types(downstream_types, gid);
 
   sub->start();
 
@@ -1514,7 +1516,8 @@ TEST_F(TestNegotiatedSubscription, add_downstream_supported_types_after_start)
   downstream_type.supported_type_name = "b";
   downstream_type.weight = 1.0;
   downstream_types.supported_types.push_back(downstream_type);
-  sub->add_downstream_supported_types(downstream_types);
+  negotiated::NegotiatedSubscription::PublisherGid gid{0x1};
+  sub->add_downstream_supported_types(downstream_types, gid);
 
   topics_pub_->publish(topics_msg);
 
@@ -1570,7 +1573,8 @@ TEST_F(TestNegotiatedSubscription, downstream_supported_this_object_not_supporte
   downstream_type.supported_type_name = "b";
   downstream_type.weight = 1.0;
   downstream_types.supported_types.push_back(downstream_type);
-  sub->add_downstream_supported_types(downstream_types);
+  negotiated::NegotiatedSubscription::PublisherGid gid{0x1};
+  sub->add_downstream_supported_types(downstream_types, gid);
 
   sub->start();
 
@@ -1590,7 +1594,7 @@ TEST_F(TestNegotiatedSubscription, downstream_supported_this_object_not_supporte
   ASSERT_FALSE(spin_while_waiting(data_break_func));
 }
 
-TEST_F(TestNegotiatedSubscription, remove_downstream_supported_types)
+TEST_F(TestNegotiatedSubscription, remove_all_downstream_supported_types)
 {
   // Setup of our dummy publisher
   auto data_pub = node_->create_publisher<std_msgs::msg::Empty>("foo/a", rclcpp::QoS(10));
@@ -1622,8 +1626,9 @@ TEST_F(TestNegotiatedSubscription, remove_downstream_supported_types)
   downstream_type.supported_type_name = "b";
   downstream_type.weight = 1.0;
   downstream_types.supported_types.push_back(downstream_type);
-  sub->add_downstream_supported_types(downstream_types);
-  sub->remove_downstream_supported_types(downstream_types);
+  negotiated::NegotiatedSubscription::PublisherGid gid{0x1};
+  sub->add_downstream_supported_types(downstream_types, gid);
+  sub->remove_all_downstream_supported_types(downstream_types);
 
   sub->start();
 
