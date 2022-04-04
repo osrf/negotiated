@@ -31,10 +31,9 @@
 #include "negotiated_interfaces/msg/supported_type.hpp"
 #include "negotiated_interfaces/msg/supported_types.hpp"
 
+#include "negotiated/combinations.hpp"
 #include "negotiated/negotiated_publisher.hpp"
 #include "negotiated/negotiated_subscription.hpp"
-
-#include "combinations.hpp"
 
 namespace negotiated
 {

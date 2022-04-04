@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "combinations.hpp"
+#include "negotiated/combinations.hpp"
 
 TEST(Combinations, BoundRange)
 {

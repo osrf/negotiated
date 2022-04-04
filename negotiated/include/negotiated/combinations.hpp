@@ -38,8 +38,8 @@
 
 // Taken from http://howardhinnant.github.io/combinations.html
 
-#ifndef COMBINATIONS_HPP_
-#define COMBINATIONS_HPP_
+#ifndef NEGOTIATED__COMBINATIONS_HPP_
+#define NEGOTIATED__COMBINATIONS_HPP_
 
 #include <algorithm>
 #include <iterator>
@@ -152,4 +152,4 @@ for_each_combination(BidirIter first, BidirIter mid, BidirIter last, Function f)
     wfunc);
 }
 
-#endif  // COMBINATIONS_HPP_
+#endif  // NEGOTIATED__COMBINATIONS_HPP_

@@ -47,8 +47,6 @@ if(BUILD_TESTING)
   find_package(std_msgs REQUIRED)
 
   ament_add_gtest(test_combinations test/test_combinations.cpp)
-  target_include_directories(test_combinations PRIVATE
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
   target_link_libraries(test_combinations ${PROJECT_NAME})
 
   ament_add_gtest(test_negotiated_subscription test/test_negotiated_subscription.cpp)
