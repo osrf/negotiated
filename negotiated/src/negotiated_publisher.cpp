@@ -372,7 +372,7 @@ void NegotiatedPublisher::graph_change_timer_callback()
   auto new_negotiated_subscription_gids = std::make_shared<std::map<detail::PublisherGid,
       std::vector<std::string>>>();
   std::vector<rclcpp::TopicEndpointInfo> endpoints = node_graph_->get_publishers_info_by_topic(
-    topic_name_ + "/_supported_types");
+    negotiated_publisher_->get_topic_name() + std::string("/_supported_types"));
 
   // We need to hold the lock across this entire operation
   std::lock_guard<std::mutex> lg(negotiated_subscription_type_mutex_);
@@ -580,7 +580,8 @@ void NegotiatedPublisher::supported_types_cb(
 
 void NegotiatedPublisher::start()
 {
-  std::string supported_type_name = topic_name_ + "/_supported_types";
+  std::string supported_type_name =
+    negotiated_publisher_->get_topic_name() + std::string("/_supported_types");
   supported_types_sub_ = rclcpp::create_subscription<negotiated_interfaces::msg::SupportedTypes>(
     node_parameters_,
     node_topics_,
@@ -674,7 +675,8 @@ void NegotiatedPublisher::negotiate()
       keys_to_preserve.insert(key);
       if (supported_type_info.publisher == nullptr) {
         // We need to create this publisher.
-        std::string topic_name = topic_name_ + "/" + type.supported_type_name;
+        std::string topic_name =
+          negotiated_publisher_->get_topic_name() + std::string("/") + type.supported_type_name;
         supported_type_info.publisher = supported_type_info.pub_factory(topic_name);
       }
 
